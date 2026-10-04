@@ -9,6 +9,25 @@ window.ReinsCreate = (function () {
   var MIN_TRADE_USD = 0.01; // the contract refuses a zero per-trade cap
   var DAYS = { month: 30, quarter: 90, year: 365 };
 
+  /**
+   * Limits planned on the Charts page, read from the address. Each one is held
+   * to its slider's range; null when there's no plan (no loss limit given).
+   */
+  function fromPlan(p) {
+    var n = function (x) { var v = Number(x); return x !== null && x !== undefined && x !== "" && Number.isFinite(v) ? v : null; };
+    var loss = n(p && p.loss);
+    if (loss === null) return null;
+    var keep = function (x, lo, hi, d) { return x === null ? d : Math.min(hi, Math.max(lo, x)); };
+    var deposit = n(p.deposit);
+    return {
+      id: "plan", label: "Your chart plan", icon: "strategies",
+      lossPercent: Math.round(keep(loss, 1, 60, 10)),
+      tradeShare: Math.round(keep(n(p.trade), 5, 100, 20) / 5) * 5 / 100,
+      bandPercent: Math.round(keep(n(p.band), 0.1, 5, 1) * 10) / 10,
+      deposit: deposit === null ? null : Math.round(keep(deposit, 1, 1e6, 50)),
+    };
+  }
+
   var PERSONALITIES = {
     careful: { id: "careful", label: "Careful", lossPercent: 5, tradeShare: 0.1, bandPercent: 0.5,
       line: "Small trades, tight prices, stops early.", icon: "shield" },
@@ -47,5 +66,5 @@ window.ReinsCreate = (function () {
     return pick(FIRST, a) + " " + pick(SECOND, b);
   }
 
-  return { PERSONALITIES: PERSONALITIES, DAYS: DAYS, MIN_TRADE_USD: MIN_TRADE_USD, rulesFor: rulesFor, fromTemplate: fromTemplate, floorOf: floorOf, nameIdea: nameIdea };
+  return { PERSONALITIES: PERSONALITIES, fromPlan: fromPlan, DAYS: DAYS, MIN_TRADE_USD: MIN_TRADE_USD, rulesFor: rulesFor, fromTemplate: fromTemplate, floorOf: floorOf, nameIdea: nameIdea };
 })();

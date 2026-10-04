@@ -215,6 +215,56 @@ window.ReinsMarkets = (function () {
     };
   }
 
+  // ------------------------------------------------------------- the plan
+  // A person sets an agent's limits against a chart: where it starts, the
+  // price that would freeze it, and its price band. The same ranges as the
+  // create page's sliders, so a plan opens there as it is.
+  var PLAN = { loss: [1, 60], trade: [5, 100], band: [0.1, 5], deposit: [5, 1e6] };
+  var clamp = function (x, r) { return Math.min(r[1], Math.max(r[0], x)); };
+
+  /** A plan with every number inside its range; anything missing or broken takes the default. */
+  function cleanPlan(p) {
+    var n = function (x, d) { var v = Number(x); return x !== null && x !== "" && Number.isFinite(v) ? v : d; };
+    var o = p || {};
+    return {
+      deposit: Math.round(clamp(n(o.deposit, 1000), PLAN.deposit)),
+      lossPercent: Math.round(clamp(n(o.lossPercent, 10), PLAN.loss)),
+      tradePercent: Math.round(clamp(n(o.tradePercent, 25), PLAN.trade) / 5) * 5,
+      bandPercent: Math.round(clamp(n(o.bandPercent, 1), PLAN.band) * 10) / 10,
+    };
+  }
+
+  /** Where the plan's lines sit for a starting price, and what they mean in dollars. */
+  function planLines(start, plan) {
+    var p = cleanPlan(plan);
+    return {
+      start: start,
+      floor: start * (1 - p.lossPercent / 100),
+      bandHi: start * (1 + p.bandPercent / 100),
+      bandLo: start * (1 - p.bandPercent / 100),
+      floorUsd: p.deposit * (1 - p.lossPercent / 100),
+      tradeUsd: Math.max(0.01, p.deposit * p.tradePercent / 100), // the create page's smallest trade
+    };
+  }
+
+  /** A loss limit read back from where someone dragged the freeze line. */
+  function lossFromFloor(start, floor) {
+    if (!(start > 0) || !Number.isFinite(floor)) return null;
+    return Math.round(clamp((1 - floor / start) * 100, PLAN.loss));
+  }
+  /** A price band read back from where someone dragged a band line. */
+  function bandFromLine(start, price) {
+    if (!(start > 0) || !Number.isFinite(price)) return null;
+    return Math.round(clamp(Math.abs(price / start - 1) * 100, PLAN.band) * 10) / 10;
+  }
+
+  /** The create page, opened with this plan's limits (and the market it was planned on). */
+  function createLink(plan, market) {
+    var p = cleanPlan(plan);
+    return "/create.html?loss=" + p.lossPercent + "&trade=" + p.tradePercent + "&band=" + p.bandPercent +
+      "&deposit=" + p.deposit + (market ? "&from=" + encodeURIComponent(label(market)) : "");
+  }
+
   /** The four-hour agent round a moment falls in, and when the next one starts. */
   function round(now) {
     var start = Math.floor(now / ROUND_MS) * ROUND_MS;
@@ -240,7 +290,8 @@ window.ReinsMarkets = (function () {
   }
 
   return {
-    ROUND_MS: ROUND_MS, MIN_HOT_VOLUME: MIN_HOT_VOLUME,
+    ROUND_MS: ROUND_MS, MIN_HOT_VOLUME: MIN_HOT_VOLUME, PLAN: PLAN,
+    cleanPlan: cleanPlan, planLines: planLines, lossFromFloor: lossFromFloor, bandFromLine: bandFromLine, createLink: createLink,
     fromBinance: fromBinance, fromCoinbase: fromCoinbase, fromHyperliquid: fromHyperliquid,
     view: view, label: label, find: find, thesis: thesis, reason: reason, idea: idea, hotList: hotList, round: round, lossLimitFor: lossLimitFor, volumeRank: volumeRank,
     price: price, money: money, left: left, pctText: pctText,

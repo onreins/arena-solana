@@ -18,6 +18,7 @@
   var ROUND_KEY = "reins-charts-round";
   var DEFAULT_SYMBOL = "binance:BTCUSDT";
   var VENUE = { binance: "Binance", coinbase: "Coinbase", hyperliquid: "Hyperliquid" };
+  var MARK_COLOR = { hot: "#ff8a4c", watch: "#e6b062", cold: "#5fa8ff" };
   var STANCE = { bull: "Bullish", bear: "Bearish", watch: "Neutral", caution: "Careful" };
   var GLYPH = {
     hot: '<path d="M12 3.5c.5 3-1.8 4.6-3 6.4-1.1 1.6-1.6 3-1.1 4.9.6 2.4 2.6 3.7 4.1 3.7 2.6 0 4.6-2 4.6-4.8 0-1.6-.6-2.8-1.5-3.9.1 1.4-.4 2.4-1.3 2.9.3-3.5-.8-6.6-1.8-9.2z"/>',
@@ -159,6 +160,8 @@
       renderBar();
       renderThesis();
       renderHot();
+      syncMarks();
+      if (plan) plan.tick();
       Object.keys(state.byVenue).forEach(function (k) { state.byVenue[k].forEach(function (r) { state.last[r.id] = r.last; }); });
     }, 0);
   }
@@ -177,12 +180,12 @@
     var venues = { binance: new V.BinanceProvider(), coinbase: new V.CoinbaseProvider(), hyperliquid: new V.HyperliquidProvider() };
     try {
       ws = new V.VelaWorkspace("#chart", {
-        layout: false,
+        layout: "1",
         symbol: DEFAULT_SYMBOL,
         timeframe: "60",
         live: true,
         theme: "dark",
-        persist: "reins-terminal",
+        persist: "reins-terminal-2",
         timeframes: ["1", "5", "15", "60", "240", "1D", "1W"],
         providers: {
           binance: function () { return venues.binance; },
@@ -198,7 +201,14 @@
     if (at > 0) wanted = wanted.slice(0, at).toLowerCase() + wanted.slice(at);
     if (/^(binance|coinbase|hyperliquid):[A-Za-z0-9./@-]{1,40}$/.test(wanted)) ws.active.setSymbol(wanted);
     ws.on("state:changed", follow);
-    ws.on("cell:active", follow);
+    ws.on("cell:active", function () {
+      var before = watched;
+      follow();
+      var c = ws.active ? ws.active.chart : null;
+      if (c && c !== before) { watchChart(); state.markSig = null; syncMarks(); if (plan) plan.reset(); }
+    });
+    // A new layout rebuilds the charts: the round mark and the plan lines go back on the active one.
+    ws.on("layout:changed", function () { watched = null; state.markSig = null; follow(); watchChart(); syncMarks(); if (plan) plan.reset(); });
     follow();
   }
   function showMsg(text) {
@@ -220,6 +230,46 @@
     renderThesis();
     markList();
     markHot();
+    watchChart();
+    if (plan) plan.reset();
+    syncMarks();
+  }
+  /** The active chart tells us when its market has loaded: marks and plan lines go on then. */
+  var watched = null, hooked = [];
+  function watchChart() {
+    var c = ws && ws.active ? ws.active.chart : null;
+    if (!c || c === watched) return;
+    watched = c;
+    if (hooked.indexOf(c) >= 0) return; // already listening: a chart is hooked once, however often it becomes active
+    hooked.push(c);
+    if (hooked.length > 16) hooked.shift(); // charts from old layouts are gone; don't hold on to them
+    // A saved chart restores its drawings once it is ready: stale plan lines come off then.
+    c.ready().then(function () { if (c === watched && plan) plan.sweep(); }, function () { /* the chart failed to load; nothing to tidy */ });
+    c.on("market:changed", function () {
+      if (c !== watched) return;
+      state.markSig = null;
+      syncMarks();
+      if (plan) plan.reset();
+    });
+  }
+  /** The current agent round, on the chart's timeline, in its verdict's colour. */
+  function syncMarks() {
+    var c = ws && ws.active ? ws.active.chart : null, r = current();
+    if (!c || !c.marks || !c.marks.supported) return;
+    var rd = M.round(Date.now()), t = r ? M.thesis(state.rows, r) : null;
+    var sig = state.symbol + "|" + rd.start + "|" + (t ? t.verdict : "");
+    if (sig === state.markSig) return;
+    state.markSig = sig;
+    if (!t) { c.marks.clear(); return; }
+    var at = new Date(rd.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    c.marks.defineGroup({ id: "agents", label: "Agent rounds" });
+    c.marks.set([{
+      id: "round", time: rd.start, group: "agents",
+      title: "Agent round " + at + " (sample)",
+      tooltip: "Agents say " + t.verdict,
+      glyph: { shape: "circle", color: MARK_COLOR[t.verdict], letter: t.verdict.charAt(0).toUpperCase() },
+      content: { type: "text", text: t.summary },
+    }]);
   }
   function select(id) {
     if (!ws) return;
@@ -269,7 +319,7 @@
       list.removeAttribute("data-sig");
       list.innerHTML = '<li class="tm-empty">' + (state.venue === "fav" && !state.query ? "Star a market to keep it here." : "No market matches “" + esc(state.query) + "”.") + "</li>";
     } else {
-      var top = shown.slice(0, LIST_MAX);
+      var top = shown.slice(0, LIST_MAX), sigBefore = list.getAttribute("data-sig");
       paint(list, top.map(function (r) {
         var on = r.id.toLowerCase() === String(state.symbol).toLowerCase(), fav = !!state.favs[r.id];
         return '<li class="tm-item' + (on ? " on" : "") + '">' +
@@ -279,6 +329,7 @@
           '<small class="lv" title="' + VENUE[r.venue] + ', ' + M.money(r.volUsd) + ' traded in 24 hours"><i class="vd ' + r.venue + '"></i>' + M.money(r.volUsd) + " vol</small></div></span>" +
           '<span class="num lv' + flash(r.id, r.last) + '">' + M.price(r.last) + "</span>" + chg(r.change) + "</button></li>";
       }).join(""), top.map(function (r) { return r.id; }).join("|"));
+      if (list.getAttribute("data-sig") !== sigBefore) cursor = -1; // new rows: the keyboard mark starts over
     }
     var total = state.rows.length;
     $("count").textContent = shown.length > LIST_MAX
@@ -332,8 +383,22 @@
     clearTimeout(typing);
     typing = setTimeout(function () { state.query = $("q").value; $("list").scrollTop = 0; renderList(); }, 80);
   });
+  // Up and down walk the list from the search box; Enter opens the one marked (or the first).
+  var cursor = -1;
+  function moveCursor(step) {
+    var rows = $("list").querySelectorAll(".tm-row");
+    if (!rows.length) return;
+    if (rows[cursor]) rows[cursor].classList.remove("kb");
+    cursor = Math.max(0, Math.min(rows.length - 1, cursor + step));
+    rows[cursor].classList.add("kb");
+    rows[cursor].scrollIntoView({ block: "nearest" });
+  }
+  $("q").addEventListener("input", function () { cursor = -1; });
   $("q").addEventListener("keydown", function (e) {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); moveCursor(e.key === "ArrowDown" ? 1 : -1); return; }
     if (e.key !== "Enter") return;
+    var marked = $("list").querySelectorAll(".tm-row")[cursor];
+    if (marked) { select(marked.getAttribute("data-s")); return; }
     state.query = $("q").value;
     var first = M.view(state.rows, { venue: state.venue, query: state.query, sort: state.sort, dir: state.dir, favs: state.favs })[0];
     if (first) select(first.id);
@@ -412,6 +477,7 @@
     var meter = "";
     for (var i = 0; i < 5; i++) meter += "<i" + (i < filled ? ' class="f"' : "") + "></i>";
     $("t-h").textContent = r.base + " thesis";
+    state.rules = t.rules;
     var html =
       '<div class="th-head"><span class="th-verdict v-' + t.verdict + '">' + glyph(t.verdict) + t.verdict + "</span>" +
       '<p class="th-sum">' + esc(t.summary) + "</p>" +
@@ -424,7 +490,8 @@
       }).join("") + "</div>" +
       '<div class="th-foot"><div class="th-rules">Rules it would run under' +
       "<b>Loss limit " + t.rules.lossPercent + "%</b><b>Largest trade " + t.rules.tradePercent + "%</b><b>Price band 1%</b>" +
-      '<span class="th-why">enforced on chain once an agent runs it</span></div></div>';
+      '<span class="th-why">enforced on chain once an agent runs it</span></div>' +
+      '<button type="button" class="pl-chip th-plan" data-plan>Plan it on the chart</button></div>';
     if ($("t-body").innerHTML !== html) $("t-body").innerHTML = html;
   }
 
@@ -454,6 +521,33 @@
     if (b) select(b.getAttribute("data-s"));
   });
 
+  // --------------------------------------------------------- thesis / plan
+  function setView(v) {
+    var planning = v === "plan";
+    $("t-body").hidden = planning;
+    $("p-body").hidden = !planning;
+    $("t-sample").hidden = planning;
+    $("t-round").hidden = planning;
+    document.body.classList.toggle("planning", planning);
+    document.querySelectorAll("#tp [data-t]").forEach(function (b) { b.setAttribute("aria-selected", String(b.getAttribute("data-t") === v)); });
+    if (planning) plan.show(); else plan.hide();
+  }
+  $("tp").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-t]");
+    if (b) setView(b.getAttribute("data-t"));
+  });
+  $("t-body").addEventListener("click", function (e) {
+    if (!e.target.closest("[data-plan]")) return;
+    plan.use(state.rules);
+    setView("plan");
+  });
+  $("share").addEventListener("click", function () {
+    var b = $("share"), label = b.lastElementChild;
+    var done = function (text) { label.textContent = text; setTimeout(function () { label.textContent = "Share"; }, 1600); };
+    if (!navigator.clipboard) return done("Copy the address bar");
+    navigator.clipboard.writeText(location.href).then(function () { done("Link copied"); }, function () { done("Couldn\u2019t copy"); });
+  });
+
   // ------------------------------------------------- panels (narrow screens)
   function setPanel(p) {
     document.body.setAttribute("data-panel", p);
@@ -466,6 +560,12 @@
   setPanel("thesis");
 
   // ---------------------------------------------------------------- start
+  var plan = window.ReinsChartPlan({
+    el: $("p-body"),
+    chart: function () { return ws && ws.active ? ws.active.chart : null; },
+    market: current,
+    rules: function () { return state.rules || null; },
+  });
   startChart();
   renderRound();
   refresh();

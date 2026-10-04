@@ -156,6 +156,38 @@ describe("the sample thesis", () => {
   });
 });
 
+describe("planning an agent on the chart", () => {
+  test("the lines sit at the loss limit and the band around the start", () => {
+    const L = M.planLines(100, { deposit: 1000, lossPercent: 10, tradePercent: 25, bandPercent: 1 });
+    assert.equal(L.floor, 90);
+    assert.equal(L.bandHi, 101);
+    assert.equal(L.bandLo, 99);
+    assert.equal(L.floorUsd, 900);
+    assert.equal(L.tradeUsd, 250);
+  });
+  test("a small deposit's trades are counted in cents, as the create page does", () => {
+    assert.equal(M.planLines(100, { deposit: 5, lossPercent: 10, tradePercent: 5, bandPercent: 1 }).tradeUsd, 0.25);
+  });
+  test("a plan out of range, or broken, is held to the create page's sliders", () => {
+    const p = M.cleanPlan({ deposit: "abc", lossPercent: 99, tradePercent: 7, bandPercent: 0.04 });
+    assert.equal(p.deposit, 1000);
+    assert.equal(p.lossPercent, 60);
+    assert.equal(p.tradePercent, 5);
+    assert.equal(p.bandPercent, 0.1);
+  });
+  test("dragging the freeze line or a band line reads back a clean limit", () => {
+    assert.equal(M.lossFromFloor(100, 87.6), 12);
+    assert.equal(M.lossFromFloor(100, 120), 1, "a freeze line dragged above the start is the smallest limit");
+    assert.equal(M.lossFromFloor(0, 50), null);
+    assert.equal(M.bandFromLine(100, 101.26), 1.3);
+    assert.equal(M.bandFromLine(100, 97.5), 2.5, "either side reads the same");
+  });
+  test("the create page link carries the plan and where it was made", () => {
+    const link = M.createLink({ deposit: 500, lossPercent: 15, tradePercent: 20, bandPercent: 0.5 }, { base: "ETH", quote: "USDT", kind: "spot" });
+    assert.equal(link, "/create.html?loss=15&trade=20&band=0.5&deposit=500&from=ETH%2FUSDT");
+  });
+});
+
 test("rounds start every four hours on the UTC clock", () => {
   const at = Date.UTC(2026, 9, 3, 9, 30);
   const rd = M.round(at);

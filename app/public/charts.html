@@ -25,6 +25,7 @@
 <section class="tm-bar" id="bar">
   <div class="tm-sym"><span class="tm-coin" id="b-coin"></span><div><b id="b-name">…</b><small id="b-venue"></small></div></div>
   <dl class="tm-stats" id="b-stats"></dl>
+  <button type="button" class="tm-share" id="share" title="Copy a link to this market"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/></svg><span>Share</span></button>
 </section>
 
 <aside class="tm-markets" id="markets" aria-label="Markets">
@@ -60,11 +61,15 @@
 
 <section class="tm-thesis" id="thesis" aria-labelledby="t-h">
   <div class="tm-panel-h">
-    <h2 id="t-h">Agent thesis</h2>
-    <span class="tm-sample" title="Hosted agents will write these every 4 hours. Until then, rules read the same live data.">Sample</span>
+    <div class="tm-seg" role="tablist" aria-label="Thesis or plan" id="tp">
+      <button type="button" role="tab" data-t="thesis" aria-selected="true" aria-controls="t-body" id="t-h">Agent thesis</button>
+      <button type="button" role="tab" data-t="plan" aria-selected="false" aria-controls="p-body">Plan it on the chart</button>
+    </div>
+    <span class="tm-sample" id="t-sample" title="Hosted agents will write these every 4 hours. Until then, rules read the same live data.">Sample</span>
     <span class="tm-round" id="t-round"></span>
   </div>
-  <div id="t-body"><p class="tm-empty">Pick a market to read its thesis.</p></div>
+  <div id="t-body" role="tabpanel"><p class="tm-empty">Pick a market to read its thesis.</p></div>
+  <div id="p-body" role="tabpanel" hidden></div>
 </section>
 
 <aside class="tm-hot" id="hot" aria-labelledby="h-h">
@@ -82,6 +87,7 @@
 <script src="/wallet.js"></script>
 <script src="/ui.js"></script>
 <script src="/markets.js"></script>
+<script src="/charts-plan.js"></script>
 <script src="/vendor/vela-workspace.js"></script>
 <script src="/charts.js"></script>
 </body>

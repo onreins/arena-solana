@@ -317,8 +317,23 @@
   setKeyMode("later");
   applyPreset(C.PERSONALITIES.balanced);
 
+  // Opened from a plan on the Charts page (?loss=&trade=&band=&deposit=&from=): its limits, as set there.
+  var q = new URLSearchParams(location.search);
+  var planned = C.fromPlan({ loss: q.get("loss"), trade: q.get("trade"), band: q.get("band"), deposit: q.get("deposit") });
+  if (planned && !q.get("s")) {
+    presets = [planned].concat(presets);
+    renderPresets();
+    if (planned.deposit) { $("f-deposit").value = planned.deposit; setDeposit(planned.deposit); }
+    var from = (q.get("from") || "").slice(0, 40);
+    $("template").innerHTML = "Limits from your plan" + (from ? " on the <b>" + esc(from) + "</b> chart" : "") +
+      ". Agents trade USDC and EURC on Arc testnet for now; the limits work the same. Change anything. " +
+      '<a href="/charts.html">Back to the charts</a>';
+    $("template").hidden = false;
+    applyPreset(planned);
+  }
+
   // Opened from a strategy page (?s=id): its limits come first, set from its backtest.
-  var template = new URLSearchParams(location.search).get("s");
+  var template = q.get("s");
   if (template) {
     U.getJson("/data/strategies.json").then(function (d) {
       var s = (d.strategies || []).filter(function (x) { return x.id === template; })[0];

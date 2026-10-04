@@ -56,3 +56,21 @@ test("the floor is the deposit less the loss limit", () => {
   assert.equal(C.floorOf(200, 10), 180);
   assert.equal(C.floorOf(0, 10), 0);
 });
+
+test("a plan from the charts opens with its limits, each held to its slider's range", () => {
+  const p = C.fromPlan({ loss: "12", trade: "33", band: "1.26", deposit: "2500" });
+  assert.equal(p.lossPercent, 12);
+  assert.equal(p.tradeShare, 0.35, "trade snaps to the slider's 5% steps");
+  assert.equal(p.bandPercent, 1.3);
+  assert.equal(p.deposit, 2500);
+  const wild = C.fromPlan({ loss: "500", trade: "-4", band: "x", deposit: null });
+  assert.equal(wild.lossPercent, 60);
+  assert.equal(wild.tradeShare, 0.05);
+  assert.equal(wild.bandPercent, 1, "a broken band falls back to 1%");
+  assert.equal(wild.deposit, null, "no deposit in the address leaves the page's own");
+});
+
+test("no loss limit in the address means no plan", () => {
+  assert.equal(C.fromPlan({ loss: null }), null);
+  assert.equal(C.fromPlan({ loss: "" }), null);
+});

@@ -53,7 +53,8 @@ body.tm {
 .tm-cta { height: 32px; padding: 0 14px; font-size: 13px; }
 
 /* ------------------------------------------------------------- market bar */
-.tm-bar { display: flex; align-items: center; gap: 28px; padding: 0 18px; overflow-x: auto; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+.tm-bar { display: flex; align-items: center; gap: 28px; padding: 0 14px 0 18px; overflow: hidden; }
+.tm-bar .tm-stats { min-width: 0; overflow-x: auto; scrollbar-width: none; padding-right: 24px; -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent); }
 .tm-sym { display: flex; align-items: center; gap: 11px; flex: none; }
 .tm-sym b { display: flex; align-items: center; gap: 9px; font: 600 17px/1.15 var(--sans); letter-spacing: -.01em; white-space: nowrap; }
 .tm-sym .tm-verdict-mini { height: 20px; padding: 0 7px; font-size: 10px; gap: 4px; }
@@ -191,6 +192,71 @@ button.tm-verdict-mini:hover { filter: brightness(1.15); }
 .th-go:hover { background: #3aa8ff; }
 .th-go .ic { width: 14px; height: 14px; }
 
+/* ---------------------------------------------------- thesis / plan tabs */
+.tm-seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: var(--ground); box-shadow: inset 0 0 0 1px var(--hair); }
+.tm-seg button { height: 26px; padding: 0 11px; border-radius: 6px; color: var(--ink-3); font: 600 12.5px/1 var(--sans); white-space: nowrap; }
+.tm-seg button:hover { color: var(--ink-2); }
+.tm-seg button[aria-selected="true"] { background: var(--panel-2); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, .4); }
+.tm-seg button[data-t="plan"]::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: var(--blue); vertical-align: 1px; }
+
+/* ---------------------------------------------------------------- planner */
+#p-body { flex: 1; min-height: 0; overflow-y: auto; padding: 2px 16px 14px; scrollbar-width: thin; scrollbar-color: #2a2828 transparent; }
+.pl { display: grid; grid-template-columns: minmax(220px, 1fr) 120px minmax(0, 1.25fr); gap: 16px 20px; align-items: start; }
+.pl-in { display: grid; gap: 6px; }
+.pl-dep { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--ink-2); font-size: 12.5px; }
+.pl-dep span { display: inline-flex; align-items: center; gap: 2px; height: 30px; padding: 0 10px; border-radius: 7px; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--hair); color: var(--ink-3); font: 500 13px var(--mono); }
+.pl-dep span:focus-within { box-shadow: inset 0 0 0 1px rgba(30, 155, 255, .55); }
+.pl-dep input { width: 84px; border: 0; outline: 0; background: none; color: var(--ink); font: inherit; text-align: right; -moz-appearance: textfield; }
+.pl-dep input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.pl-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; }
+.pl-row label { color: var(--ink-2); font-size: 12.5px; }
+.pl-row output { font: 500 12.5px var(--mono); color: var(--ink); }
+.pl-row input[type="range"] { grid-column: 1 / -1; width: 100%; height: 16px; margin: 0; background: none; -webkit-appearance: none; appearance: none; cursor: pointer; }
+.pl-row input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: linear-gradient(90deg, var(--track, var(--blue)) var(--fill, 0%), #2a2828 var(--fill, 0%)); }
+.pl-row input[type="range"]::-moz-range-track { height: 4px; border-radius: 4px; background: linear-gradient(90deg, var(--track, var(--blue)) var(--fill, 0%), #2a2828 var(--fill, 0%)); }
+.pl-row input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 3px rgba(0, 0, 0, .35); }
+.pl-row input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border: 0; border-radius: 50%; background: #fff; }
+#pl-loss { --track: var(--red); }
+#pl-band { --track: #8f8e8e; }
+.pl-acts { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+.pl-chip { height: 26px; padding: 0 8px; border-radius: 7px; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--hair); color: var(--ink-2); font-size: 12px; font-weight: 500; white-space: nowrap; }
+.pl-chip:hover:not(:disabled) { color: var(--ink); background: #222020; }
+.pl-chip:disabled { opacity: .4; }
+.th-plan { margin-left: auto; color: #8fcbff; box-shadow: inset 0 0 0 1px rgba(30, 155, 255, .35); }
+.pl-ladder svg { width: 120px; height: 156px; overflow: visible; }
+.pl-ladder .zone { fill: rgba(143, 142, 142, .16); }
+.pl-ladder .axis { stroke: #2a2828; stroke-width: 1; }
+.pl-ladder line.start { stroke: var(--blue); stroke-width: 2; }
+.pl-ladder line.floor { stroke: var(--red); stroke-width: 2; stroke-dasharray: 4 3; }
+.pl-ladder text { font: 500 10.5px var(--mono); fill: var(--ink-2); }
+.pl-ladder text.start { fill: #8fcbff; }
+.pl-ladder text.floor { fill: #f2a19c; }
+.pl-out { display: grid; gap: 9px; align-content: start; }
+.pl-facts { list-style: none; display: grid; gap: 7px; }
+.pl-facts li { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 9px; align-items: start; color: var(--ink-3); font-size: 12px; line-height: 1.45; font-weight: 400; }
+.pl-facts b { display: block; color: var(--ink); font-weight: 600; font-size: 12.5px; margin-bottom: 1px; }
+.pl-dot { width: 8px; height: 8px; margin-top: 4px; border-radius: 2px; }
+.pl-dot.floor { background: var(--red); }
+.pl-dot.trade { background: var(--blue); }
+.pl-dot.band { background: #8f8e8e; }
+.pl-out .th-go { justify-self: start; height: 30px; }
+.pl-note { color: var(--ink-4); font-size: 11px; line-height: 1.45; font-weight: 400; }
+@container (max-width: 760px) {
+  .pl { grid-template-columns: minmax(0, 1fr) 120px; }
+  .pl-out { grid-column: 1 / -1; }
+}
+@container (max-width: 460px) {
+  .pl { grid-template-columns: minmax(0, 1fr) 104px; gap: 14px 12px; }
+  .pl-ladder svg { width: 104px; }
+  .tm-seg button { padding: 0 8px; }
+}
+
+/* ------------------------------------------------------------ share, keys */
+.tm-share { margin-left: auto; flex: none; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px; border-radius: 7px; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--hair); color: var(--ink-2); font-size: 12.5px; font-weight: 500; }
+.tm-share:hover { color: var(--ink); }
+.tm-share .ic { width: 14px; height: 14px; }
+.tm-row.kb { background: var(--panel-2); box-shadow: inset 0 0 0 1px rgba(30, 155, 255, .45); }
+
 /* -------------------------------------------------------------- hot list */
 .tm-hot { display: flex; flex-direction: column; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #2a2828 transparent; }
 .tm-hot-h { position: relative; display: grid; gap: 6px; padding: 16px 16px 14px; margin-bottom: 6px; border-bottom: 1px solid var(--hair); border-radius: 8px 8px 0 0;
@@ -214,6 +280,9 @@ button.tm-verdict-mini:hover { filter: brightness(1.15); }
 .heat.cold i.f { background: var(--cold); }
 .tm-hot-row .vn { color: var(--ink-4); font-size: 10.5px; font-weight: 400; }
 
+/* while planning, the panel grows to fit the planner and the chart gives up the room */
+body.tm.planning { grid-template-rows: 52px 62px minmax(0, 1fr) 340px; }
+
 /* short screens: give the chart the height, the thesis scrolls */
 @media (max-height: 820px) and (min-width: 901px) {
   body.tm { grid-template-rows: 52px 62px minmax(0, 1fr) 248px; }
@@ -223,6 +292,7 @@ button.tm-verdict-mini:hover { filter: brightness(1.15); }
 /* very short screens (a phone on its side): the page scrolls, the chart keeps its height */
 @media (max-height: 640px) and (min-width: 901px) {
   body.tm { height: auto; overflow: visible; grid-template-rows: 52px 62px 460px 292px; }
+  body.tm.planning { grid-template-rows: 52px 62px 460px 340px; }
 }
 
 /* ------------------------------------------------- narrower: panels as tabs */
@@ -245,8 +315,12 @@ button.tm-verdict-mini:hover { filter: brightness(1.15); }
   .tm-hot .tm-hotlist:first-of-type { padding-top: 6px; }
   .tm-hot .tm-fine { display: none; }
 }
+@media (max-width: 1279px) and (min-width: 901px) {
+  body.tm.planning { grid-template-rows: 52px 62px minmax(0, 1fr) 38px 330px; }
+}
 @media (max-height: 640px) and (min-width: 901px) and (max-width: 1279px) {
   body.tm { grid-template-rows: 52px 62px 440px 38px 268px; }
+  body.tm.planning { grid-template-rows: 52px 62px 440px 38px 330px; }
 }
 /* the three reads sit side by side while the panel has room for them */
 @container (max-width: 680px) {
