@@ -115,15 +115,43 @@ h1, h2, h3 { text-wrap: balance; font-family: var(--display); letter-spacing: -.
 .s-search { display: flex; align-items: center; gap: 7px; height: 30px; margin: 0 4px 8px; padding: 0 10px; border-radius: 7px; background: var(--panel-2); color: var(--ink-4); font-size: 12px; }
 .s-search svg { width: 12px; height: 12px; }
 .s-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 8px; border-radius: 7px; font-size: 12.5px; }
+button.s-row, button.h-row { width: 100%; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background .15s; }
+button.s-row:hover, button.h-row:hover { background: var(--panel-2); }
+button.h-row.on { background: rgba(30, 155, 255, .1); }
 .s-row.on { background: rgba(30, 155, 255, .1); box-shadow: inset 2px 0 0 var(--blue); }
 .coin { position: relative; width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; overflow: hidden; background: var(--panel-3); font: 600 9px var(--sans); color: #fff; flex: none; }
 .coin img { position: absolute; inset: 0; width: 100%; height: 100%; }
 .s-row b { display: block; font-weight: 600; }
 .s-row small { display: block; color: var(--ink-4); font-size: 10.5px; }
 .s-row .r { text-align: right; font-family: var(--mono); font-size: 11.5px; }
-.s-row .r span { display: block; font-size: 10.5px; }
+.s-row .r span { display: block; }
+.s-row .r span + span { font-size: 10.5px; }
 .s-main { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 4px; min-width: 0; }
-.s-bar { display: flex; align-items: center; gap: 22px; padding: 12px 16px; background: var(--panel); border-radius: 9px; overflow: hidden; min-height: 58px; }
+.s-bar { container: bar / inline-size; display: flex; align-items: center; gap: 16px; padding: 12px 12px 12px 16px; background: var(--panel); border-radius: 9px; overflow: hidden; min-height: 58px; }
+.s-bar-in { flex: 1; min-width: 0; display: flex; align-items: center; gap: 22px; overflow: hidden; }
+.tfs { flex: none; display: flex; gap: 2px; padding: 2px; border-radius: 8px; background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--line); }
+.tfs button { height: 26px; min-width: 34px; padding: 0 8px; border: 0; border-radius: 6px; background: none; color: var(--ink-3); font: 600 11.5px var(--mono); cursor: pointer; transition: background .15s, color .15s; }
+.tfs button:hover { color: var(--ink); }
+.tfs button[aria-pressed="true"] { background: var(--panel-3); color: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .4); }
+.tfs:not(.ready) button { opacity: .5; pointer-events: none; }
+/* a narrow bar sheds its extras first; the price always stays */
+@container bar (max-width: 780px) { .s-bar .hide-sm { display: none; } }
+@container bar (max-width: 600px) { .s-stat.chg { display: none; } }
+@container bar (max-width: 470px) { .s-sym small { display: none; } .tfs button { min-width: 28px; padding: 0 5px; } }
+/* the live chart fades in over the instant one, which then steps aside */
+.s-chart .vela { position: absolute; inset: 0; opacity: 0; transition: opacity .6s var(--ease); }
+.s-chart.live .vela { opacity: 1; }
+.s-chart.live > svg, .s-chart.live > .s-tag { opacity: 0; transition: opacity .4s; pointer-events: none; }
+.s-chart .hint { position: absolute; left: 50%; top: 50%; z-index: 3; transform: translate(-50%, -50%) scale(.96); padding: 9px 14px; border-radius: 10px; background: rgba(8, 9, 11, .88); box-shadow: inset 0 0 0 1px var(--line-2); color: var(--ink); font: 600 13px var(--sans); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s var(--ease); white-space: nowrap; }
+.s-chart .hint.on { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.s-chart .shield { position: absolute; inset: 0; z-index: 2; touch-action: pan-y; display: grid; place-items: end center; padding-bottom: 12px; }
+.s-chart .shield span { padding: 6px 12px; border-radius: 99px; background: rgba(8, 9, 11, .8); box-shadow: inset 0 0 0 1px var(--line-2); color: var(--ink-2); font: 600 12px var(--sans); }
+.s-chart.armed { box-shadow: inset 0 0 0 1px rgba(30, 155, 255, .45); }
+/* a price that just moved */
+.fl-up { animation: flup .9s ease-out; }
+.fl-down { animation: fldown .9s ease-out; }
+@keyframes flup { 0% { color: var(--green); text-shadow: 0 0 10px rgba(95, 211, 155, .7); } 100% { text-shadow: none; } }
+@keyframes fldown { 0% { color: var(--red); text-shadow: 0 0 10px rgba(255, 107, 98, .7); } 100% { text-shadow: none; } }
 .s-sym { display: flex; align-items: center; gap: 10px; flex: none; }
 .s-sym .coin { width: 28px; height: 28px; font-size: 11px; }
 .s-sym b { display: flex; align-items: center; gap: 8px; font: 600 15px var(--display); }
@@ -174,7 +202,7 @@ h1, h2, h3 { text-wrap: balance; font-family: var(--display); letter-spacing: -.
 .heat i { width: 3px; height: 8px; border-radius: 1px; background: #2a2d33; }
 .heat i.f { background: var(--hot); }
 @media (max-width: 1080px) { .shot-body { grid-template-columns: minmax(0, 1fr) 230px; } .s-mk { display: none; } }
-@media (max-width: 760px) { .shot-body { grid-template-columns: minmax(0, 1fr); min-height: 0; } .s-hot { display: none; } .s-reads { grid-template-columns: minmax(0, 1fr); } .s-read:nth-child(n+2) { display: none; } .s-bar .hide-sm { display: none; } .shot { transform: none; } .url { display: none; } .s-chart { min-height: 220px; } }
+@media (max-width: 760px) { .shot-body { grid-template-columns: minmax(0, 1fr); min-height: 0; } .s-hot { display: none; } .s-reads { grid-template-columns: minmax(0, 1fr); } .s-read:nth-child(n+2) { display: none; } .s-bar .hide-sm { display: none; } .tfs button { min-width: 30px; padding: 0 6px; } .shot { transform: none; } .url { display: none; } .s-chart { min-height: 220px; } }
 
 /* ticker */
 .ticker { position: relative; z-index: 1; margin-top: 56px; border-block: 1px solid var(--line); background: rgba(255, 255, 255, .015); overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
@@ -436,7 +464,7 @@ footer { border-top: 1px solid var(--line); padding: 48px 0 56px; }
   </div>
 
   <div class="wrap shot-wrap">
-    <div class="shot" id="shot" role="img" aria-label="The Reins trading terminal on live Hyperliquid prices: a market list, a BTC chart with an agent's limits drawn on it, the agents' thesis and the round's hot list">
+    <div class="shot" id="shot" role="region" aria-label="The Reins trading terminal on live Hyperliquid prices: a market list, a live BTC chart with an agent's limits drawn on it, the agents' thesis and the round's hot list">
       <div class="shot-top">
         <span class="lights" aria-hidden="true"><i></i><i></i><i></i></span>
         <span class="url"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2.5" y="5.5" width="7" height="5" rx="1.2"/><path d="M4 5.5V4a2 2 0 0 1 4 0v1.5"/></svg>app.reins.one/charts</span>
@@ -448,7 +476,10 @@ footer { border-top: 1px solid var(--line); padding: 48px 0 56px; }
           <div id="s-list"></div>
         </aside>
         <div class="s-main">
-          <div class="s-bar" id="s-bar"></div>
+          <div class="s-bar"><div class="s-bar-in" id="s-bar"></div>
+            <div class="tfs" id="tfs" role="group" aria-label="Chart timeframe">
+              <button type="button" data-tf="1" aria-pressed="true">1m</button><button type="button" data-tf="5">5m</button><button type="button" data-tf="15">15m</button><button type="button" data-tf="60">1h</button><button type="button" data-tf="240" class="hide-sm">4h</button><button type="button" data-tf="1D" class="hide-sm">1D</button>
+            </div></div>
           <div class="s-chart" id="s-chart"></div>
           <div class="s-thesis" id="s-thesis"></div>
         </div>
@@ -759,12 +790,13 @@ mandate_trade { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
       .then(function (r) { clearTimeout(t); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
   }
 
-  var rows = [], candles = [];
+  var rows = [], candles = [], candlesFor = "BTC";
+  var sel = "BTC"; // the coin the chart, the price bar and the thesis show
   function read(payload) {
     var meta = payload[0], ctx = payload[1];
     rows = meta.universe.map(function (u, i) {
       var c = ctx[i], last = +c.markPx, open = +c.prevDayPx;
-      return u.isDelisted || !last ? null : { coin: u.name, last: last, change: open ? last / open - 1 : 0, vol: +c.dayNtlVlm, funding: +c.funding, oi: +c.openInterest * last };
+      return u.isDelisted || !last ? null : { coin: u.name, last: last, open: open, change: open ? last / open - 1 : 0, vol: +c.dayNtlVlm, funding: +c.funding, oi: +c.openInterest * last };
     }).filter(Boolean).sort(function (a, b) { return b.vol - a.vol; });
   }
   var get = function (c) { return rows.filter(function (r) { return r.coin === c; })[0]; };
@@ -772,7 +804,7 @@ mandate_trade { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
   // The same three readers the app's sample thesis uses, kept short.
   function reads(r) {
     var hi = 0, lo = Infinity;
-    candles.slice(-24).forEach(function (k) { hi = Math.max(hi, k.h); lo = Math.min(lo, k.l); });
+    if (candlesFor === r.coin) candles.slice(-24).forEach(function (k) { hi = Math.max(hi, k.h); lo = Math.min(lo, k.l); });
     var width = hi > lo ? (hi - lo) / r.last : Math.abs(r.change) * 1.5;
     var apr = r.funding * 24 * 365, ch = r.change;
     var trend = ch >= 0.03 ? ["bull", "Bullish", "Up " + (ch * 100).toFixed(1) + "% in a day. Buyers are in control."]
@@ -780,7 +812,7 @@ mandate_trade { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
       : ["watch", "Neutral", "Flat at " + pct(ch) + ". No trend to follow yet."];
     var flow = apr >= 0.3 ? ["caution", "Careful", "Longs pay " + (apr * 100).toFixed(0) + "% a year to stay in. Crowded."]
       : apr <= -0.1 ? ["bull", "Bullish", "Shorts are paying to stay in. A squeeze is possible."]
-      : ["watch", "Neutral", money(r.vol) + " traded today, ordinary for BTC."];
+      : ["watch", "Neutral", money(r.vol) + " traded today, ordinary for " + r.coin + "."];
     var loss = Math.max(5, Math.min(30, Math.ceil(width * 200 / 5) * 5));
     var risk = width > 0.15 ? ["caution", "Careful", "Swung " + (width * 100).toFixed(1) + "% today. Small trades only."]
       : ["watch", "Neutral", "A " + (width * 100).toFixed(1) + "% daily range. A " + loss + "% loss limit gives it room."];
@@ -791,21 +823,21 @@ mandate_trade { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
 
   function paintList() {
     var pick = ["BTC", "ETH", "SOL", "HYPE", "XRP", "DOGE", "SUI", "BNB"].map(get).filter(Boolean);
-    $("s-list").innerHTML = pick.map(function (r, i) {
-      return '<div class="s-row' + (i === 0 ? " on" : "") + '">' + coin(r.coin) + "<div><b>" + esc(r.coin) + "</b><small>" + money(r.vol) + "</small></div>" +
-        '<div class="r">' + price(r.last) + '<span class="' + (r.change >= 0 ? "up" : "down") + '">' + pct(r.change) + "</span></div></div>";
+    $("s-list").innerHTML = pick.map(function (r) {
+      return '<button type="button" class="s-row' + (r.coin === sel ? " on" : "") + '" data-sel="' + esc(r.coin) + '" aria-pressed="' + (r.coin === sel) + '">' + coin(r.coin) + "<div><b>" + esc(r.coin) + "</b><small>" + money(r.vol) + "</small></div>" +
+        '<div class="r"><span data-p="' + esc(r.coin) + '">' + price(r.last) + '</span><span data-c="' + esc(r.coin) + '" class="' + (r.change >= 0 ? "up" : "down") + '">' + pct(r.change) + "</span></div></button>";
     }).join("");
   }
   function paintBar() {
-    var r = get("BTC");
+    var r = get(sel);
     if (!r) return;
-    var t = reads(r);
-    $("s-bar").innerHTML = '<div class="s-sym">' + coin("BTC") + '<div><b>BTC-PERP <span class="verdict v-' + t.verdict + '">' + t.verdict + "</span></b><small>Hyperliquid &middot; Perpetual</small></div></div>" +
-      '<dl class="s-stat big"><dt>Price</dt><dd>' + price(r.last) + "</dd></dl>" +
-      '<dl class="s-stat"><dt>24h change</dt><dd class="' + (r.change >= 0 ? "up" : "down") + '">' + pct(r.change) + "</dd></dl>" +
+    var t = reads(r), c = esc(r.coin);
+    $("s-bar").innerHTML = '<div class="s-sym">' + coin(r.coin) + "<div><b>" + c + '-PERP <span class="verdict v-' + t.verdict + '">' + t.verdict + "</span></b><small>Hyperliquid &middot; Perpetual</small></div></div>" +
+      '<dl class="s-stat big"><dt>Price</dt><dd data-p="' + c + '">' + price(r.last) + "</dd></dl>" +
+      '<dl class="s-stat chg"><dt>24h change</dt><dd data-c="' + c + '" class="' + (r.change >= 0 ? "up" : "down") + '">' + pct(r.change) + "</dd></dl>" +
       '<dl class="s-stat hide-sm"><dt>Funding / hour</dt><dd>' + (r.funding * 100).toFixed(4) + "%</dd></dl>" +
       '<dl class="s-stat hide-sm"><dt>Open interest</dt><dd>' + money(r.oi) + "</dd></dl>";
-    $("s-thesis").innerHTML = '<div class="s-th-h"><b>BTC thesis</b><span class="sample">Sample</span><span class="go">Plan it on the chart</span></div>' +
+    $("s-thesis").innerHTML = '<div class="s-th-h"><b>' + c + " thesis</b>" + '<span class="sample">Sample</span><span class="go">Plan it on the chart</span></div>' +
       '<div class="s-reads">' + t.list.map(function (x) {
         return '<div class="s-read"><header>' + x[0] + ' agent<span class="st-' + x[1][0] + '">' + x[1][1] + "</span></header><p>" + esc(x[1][2]) + "</p></div>";
       }).join("") + "</div>";
@@ -815,15 +847,15 @@ mandate_trade { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
     $("s-hot").innerHTML = hot.map(function (r) {
       var n = Math.min(5, 1 + Math.round(r.change * 40)), bars = "";
       for (var i = 0; i < 5; i++) bars += "<i" + (i < n ? ' class="f"' : "") + "></i>";
-      return '<div class="h-row">' + coin(r.coin) + "<div><b>" + esc(r.coin) + "</b><small>" + (r.change >= 0.05 ? "At its highs" : "Trending up") + " &middot; " + money(r.vol) + "</small></div>" +
-        '<div class="r"><span class="up">' + pct(r.change) + '</span><span class="heat">' + bars + "</span></div></div>";
+      return '<button type="button" class="h-row' + (r.coin === sel ? " on" : "") + '" data-sel="' + esc(r.coin) + '">' + coin(r.coin) + "<div><b>" + esc(r.coin) + "</b><small>" + (r.change >= 0.05 ? "At its highs" : "Trending up") + " &middot; " + money(r.vol) + "</small></div>" +
+        '<div class="r"><span class="up" data-c="' + esc(r.coin) + '">' + pct(r.change) + '</span><span class="heat">' + bars + "</span></div></button>";
     }).join("") || '<p style="padding:6px;color:var(--ink-3);font-size:12px">Nothing stands out this round.</p>';
     var start = Math.floor(Date.now() / (4 * HOUR)) * 4 * HOUR, left = Math.round((start + 4 * HOUR - Date.now()) / 60000);
     $("s-round").textContent = "Round " + new Date(start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " · next in " + Math.floor(left / 60) + "h " + (left % 60) + "m";
   }
   function paintTicker() {
     var html = rows.slice(0, 16).map(function (r) {
-      return '<span class="tk">' + coin(r.coin) + "<b>" + esc(r.coin) + '</b><span class="p">' + price(r.last) + '</span><span class="c ' + (r.change >= 0 ? "up" : "down") + '">' + pct(r.change) + "</span></span>";
+      return '<span class="tk">' + coin(r.coin) + "<b>" + esc(r.coin) + '</b><span class="p" data-p="' + esc(r.coin) + '">' + price(r.last) + '</span><span class="c ' + (r.change >= 0 ? "up" : "down") + '" data-c="' + esc(r.coin) + '">' + pct(r.change) + "</span></span>";
     }).join("");
     $("ticker").innerHTML = html + html; // twice, so the loop is seamless
   }
@@ -840,12 +872,13 @@ mandate_trade { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
   }
 
   function paintChart() {
-    var el = $("s-chart"), r = get("BTC");
+    var el = $("s-chart"), r = get(sel);
+    if (candlesFor !== sel) return;
     if (!candles.length || !r) { el.innerHTML = '<span class="empty">Live chart unavailable right now</span>'; return; }
     var W = 760, H = 300, padR = 66, padT = 16, padB = 18, n = candles.length;
-    var last = r.last, loss = 5, floor = last * (1 - loss / 100), hiBand = last * 1.01, loBand = last * 0.99;
-    var hi = Math.max.apply(null, candles.map(function (k) { return k.h; }).concat(hiBand)) * 1.002;
-    var lo = Math.min.apply(null, candles.map(function (k) { return k.l; }).concat(floor)) * 0.997;
+    var last = r.last;
+    var hi = Math.max.apply(null, candles.map(function (k) { return k.h; }).concat(last)) * 1.002;
+    var lo = Math.min.apply(null, candles.map(function (k) { return k.l; }).concat(last)) * 0.998;
     var y = function (p) { return padT + (hi - p) / (hi - lo) * (H - padT - padB); };
     var cw = (W - padR - 8) / n, out = [];
     for (var g = 0; g <= 4; g++) {
@@ -858,16 +891,8 @@ mandate_trade { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
       out.push('<g class="cdl" style="--i:' + i + '"><line x1="' + x.toFixed(1) + '" x2="' + x.toFixed(1) + '" y1="' + y(k.h).toFixed(1) + '" y2="' + y(k.l).toFixed(1) + '" stroke="' + col + '" stroke-width="1"/>' +
         '<rect x="' + (x - cw * 0.34).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + (cw * 0.68).toFixed(1) + '" height="' + Math.max(1, bot - top).toFixed(1) + '" fill="' + col + '" rx="0.6"/></g>');
     });
-    var line = function (p, col, dash, w, label, at) {
-      var ly = y(p).toFixed(1);
-      return '<line class="pln' + (dash ? " dash" : "") + '" x1="0" x2="' + (W - padR) + '" y1="' + ly + '" y2="' + ly + '" stroke="' + col + '" stroke-width="' + w + '"' + (dash ? ' stroke-dasharray="' + dash + '"' : "") + "/>" +
-        '<text class="plt" x="' + at + '" y="' + (y(p) - 6).toFixed(1) + '" fill="' + col + '">' + label + "</text>";
-    };
-    out.push(line(hiBand, "#80858f", "2 4", 1, "Band +1%", 130), line(loBand, "#80858f", "2 4", 1, "Band −1%", 230),
-      line(last, "#1e9bff", "", 1.6, "Start", 14), line(floor, "#ff6b62", "6 5", 1.8, "Freeze −" + loss + "%", 14));
     el.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none">' + out.join("") + "</svg>" +
-      '<span class="s-tag" id="tag-last" style="top:' + (y(last) / H * 100).toFixed(2) + '%;background:#1e9bff">' + price(last) + "</span>" +
-      '<span class="s-tag" style="top:' + (y(floor) / H * 100).toFixed(2) + '%;background:#d9483f">' + price(floor) + "</span>";
+      '<span class="s-tag" id="tag-last" style="top:' + (y(last) / H * 100).toFixed(2) + '%;background:#1e9bff">' + price(last) + "</span>";
   }
 
   function paint() {
@@ -885,10 +910,155 @@ mandate_trade { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
     return post({ type: "metaAndAssetCtxs" }).then(function (p) { read(p); $("live-text").textContent = "Live"; paint(); })
       .catch(function () { $("live-text").textContent = "Prices unavailable"; });
   }
-  Promise.all([load(), post({ type: "candleSnapshot", req: { coin: "BTC", interval: "1h", startTime: Date.now() - 80 * HOUR } }).then(function (c) {
-    candles = c.slice(-72).map(function (k) { return { o: +k.o, h: +k.h, l: +k.l, c: +k.c }; });
-  }, function () { candles = []; })]).then(paintChart);
-  setInterval(function () { if (!document.hidden) load(); }, 15000);
+
+  // ---------------------------------------------------------- live prices
+  // Hyperliquid streams every coin's mid price over one socket. Updates are
+  // gathered and painted once a second; a price that moved flashes. The 24h
+  // stats (volume, funding, the hot list) still refresh once a minute.
+  var sock = null, wait = 1000, pending = null;
+  function stream() {
+    if (sock || document.hidden || !("WebSocket" in window)) return;
+    try { sock = new WebSocket("wss://api.hyperliquid.xyz/ws"); } catch (e) { sock = null; return; }
+    sock.onopen = function () { wait = 1000; sock.send(JSON.stringify({ method: "subscribe", subscription: { type: "allMids" } })); };
+    sock.onmessage = function (e) {
+      var m;
+      try { m = JSON.parse(e.data); } catch (err) { return; }
+      if (m.channel === "allMids" && m.data && m.data.mids) pending = m.data.mids;
+    };
+    sock.onclose = function () {
+      sock = null;
+      if (!document.hidden) { setTimeout(stream, wait); wait = Math.min(wait * 2, 30000); }
+    };
+    sock.onerror = function () { try { sock.close(); } catch (e) { /* closing anyway */ } };
+  }
+  function tick() {
+    if (!pending || !rows.length) return;
+    var mids = pending; pending = null;
+    var moved = {};
+    rows.forEach(function (r) {
+      var m = +mids[r.coin];
+      if (!m || m === r.last) return;
+      moved[r.coin] = m > r.last ? "fl-up" : "fl-down";
+      r.last = m;
+      r.change = r.open ? m / r.open - 1 : r.change;
+    });
+    document.querySelectorAll("[data-p]").forEach(function (el) {
+      var c = el.getAttribute("data-p"), r = moved[c] && get(c);
+      if (!r) return;
+      el.textContent = price(r.last);
+      el.classList.remove("fl-up", "fl-down"); void el.offsetWidth; el.classList.add(moved[c]);
+    });
+    document.querySelectorAll("[data-c]").forEach(function (el) {
+      var c = el.getAttribute("data-c"), r = moved[c] && get(c);
+      if (!r) return;
+      el.textContent = pct(r.change);
+      el.classList.toggle("up", r.change >= 0); el.classList.toggle("down", r.change < 0);
+    });
+    var b = get("BTC");
+    if (b && moved.BTC) {
+      $("pill-text").textContent = "Live: BTC $" + price(b.last) + ", and the agents\u2019 picks";
+      if ($("tag-last")) $("tag-last").textContent = price(b.last);
+    }
+  }
+  setInterval(tick, 1000);
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) { if (sock) { sock.onclose = null; sock.close(); sock = null; } }
+    else { load(); stream(); }
+  });
+
+  // ------------------------------------------------------------ live chart
+  // The instant chart above is a picture; this swaps in a real one: Vela, the
+  // engine the app uses, on BTC's live candles. It loads after the page so the
+  // first paint stays fast. The wheel only zooms once the chart has been
+  // clicked (so scrolling past it never gets stuck), and on a touch screen a
+  // tap hands the chart the gestures.
+  var chart = null;
+  function liveChart() {
+    var box = $("s-chart");
+    if (!box || chart) return;
+    var s = document.createElement("script");
+    s.src = "/vendor/vela-chart.js";
+    s.async = true;
+    s.onload = function () {
+      var V = window.ReinsChart;
+      if (!V) return;
+      var host = document.createElement("div");
+      host.className = "vela";
+      box.appendChild(host);
+      try {
+        chart = new V.Vela(host, { symbol: "hyperliquid:" + sel, timeframe: "1", live: true, theme: "dark", volume: true, drawings: false, intro: true });
+        chart.data.registerProvider("hyperliquid", new V.HyperliquidProvider());
+      } catch (e) { host.remove(); chart = null; return; }
+      chart.ready().then(function () {
+        box.classList.add("live");
+        $("tfs").classList.add("ready");
+        guard(box);
+      }, function () { host.remove(); chart = null; });
+    };
+    document.head.appendChild(s);
+  }
+  function guard(box) {
+    var armed = false, hint = document.createElement("div"), timer;
+    hint.className = "hint";
+    hint.textContent = "Click the chart to zoom and pan";
+    box.appendChild(hint);
+    var arm = function (on) { armed = on; box.classList.toggle("armed", on); };
+    box.addEventListener("wheel", function (e) {
+      if (armed) return;
+      e.stopPropagation(); // the page scrolls on; the chart doesn't zoom
+      hint.classList.add("on"); clearTimeout(timer);
+      timer = setTimeout(function () { hint.classList.remove("on"); }, 1200);
+    }, { capture: true, passive: true });
+    box.addEventListener("pointerdown", function () { arm(true); hint.classList.remove("on"); });
+    box.addEventListener("pointerleave", function (e) { if (e.pointerType === "mouse") arm(false); });
+    if (window.matchMedia("(pointer: coarse)").matches) {
+      var shield = document.createElement("div");
+      shield.className = "shield";
+      shield.innerHTML = "<span>Tap to use the chart</span>";
+      shield.addEventListener("click", function () { shield.remove(); arm(true); });
+      box.appendChild(shield);
+    }
+  }
+  $("tfs").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-tf]");
+    if (!b || !chart) return;
+    document.querySelectorAll("#tfs [data-tf]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+    chart.setMarket({ timeframe: b.getAttribute("data-tf") }).catch(function () { /* the old timeframe stays */ });
+  });
+
+  // A coin's hourly candles: the instant chart's picture, and the day's range its risk agent reads.
+  function fetchCandles(c) {
+    return post({ type: "candleSnapshot", req: { coin: c, interval: "1h", startTime: Date.now() - 80 * HOUR } }).then(function (k) {
+      if (c !== sel) return;
+      candles = k.slice(-72).map(function (x) { return { o: +x.o, h: +x.h, l: +x.l, c: +x.c }; });
+      candlesFor = c;
+    }, function () { if (c === sel) { candles = []; candlesFor = c; } });
+  }
+  function pick(c) {
+    if (!c || c === sel || !get(c)) return;
+    sel = c;
+    document.querySelectorAll("[data-sel]").forEach(function (b) {
+      var on = b.getAttribute("data-sel") === c;
+      b.classList.toggle("on", on);
+      if (b.hasAttribute("aria-pressed")) b.setAttribute("aria-pressed", String(on));
+    });
+    paintBar();
+    if (chart) chart.setMarket({ symbol: "hyperliquid:" + c }).catch(function () { /* the chart keeps the last coin */ });
+    fetchCandles(c).then(function () { paintBar(); if (!chart) paintChart(); });
+  }
+  $("shot").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-sel]");
+    if (b) pick(b.getAttribute("data-sel"));
+  });
+
+  Promise.all([load(), fetchCandles("BTC")]).then(function () {
+    paintChart();
+    stream();
+    // the real chart comes in once the page has settled
+    var go = function () { liveChart(); };
+    if ("requestIdleCallback" in window) requestIdleCallback(go, { timeout: 1500 }); else setTimeout(go, 600);
+  });
+  setInterval(function () { if (!document.hidden) load(); }, 60000);
 })();
 
 /* The freeze story: an agent's value wanders, slides to the loss limit and
