@@ -581,12 +581,12 @@ footer { border-top: 1px solid var(--line); padding: 48px 0 56px; }
         <div class="tile-copy">
           <span class="tag"><i style="background:#c3b8ff"></i>Bring your own AI</span>
           <h3>Plug Claude, or any bot, into an agent</h3>
-          <p>The Reins MCP server gives an AI three tools: status, price and trade. If it asks for too much, the contract says no, and says why.</p>
+          <p>The Reins MCP server lets an AI read the markets, backtest an idea, check a trade before it makes it, and trade. If it asks for too much, the contract says no, and says why.</p>
         </div>
         <div class="tile-art art-mcp" aria-hidden="true">
 <div class="code"><span class="c">// you: put everything into EURC. All $50.</span>
-mandate_trade { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"</span>, amount: <span class="s">"50"</span> }
-{ <span class="k">"ok"</span>: <span class="no">false</span>, <span class="k">"rule"</span>: <span class="s">"TradeTooLarge"</span> }</div>
+mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"</span>, amount: <span class="s">"50"</span> }
+{ <span class="k">"allowed"</span>: <span class="no">false</span>, <span class="k">"rule"</span>: <span class="s">"TradeTooLarge"</span>, <span class="k">"maxAmount"</span>: 2 }</div>
         </div>
       </a>
       <div class="tile w3 rv">
@@ -636,10 +636,10 @@ mandate_trade { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
     </div>
 
     <div class="proof">
-      <div class="pf rv"><span class="big">32</span><b>Tests, most of them hostile</b><p>Exchanges that keep the tokens, call back mid-trade or underpay. None gets money out.</p><a href="https://github.com/onreins/reins-contracts/tree/main/test" target="_blank" rel="noopener">Read the tests &rarr;</a></div>
-      <div class="pf rv"><span class="big">0</span><b>Critical findings in review</b><p>Three smaller issues, all fixed, each with a test so it can&rsquo;t come back.</p><a href="https://github.com/onreins/reins-contracts#security" target="_blank" rel="noopener">What it found &rarr;</a></div>
+      <div class="pf rv"><span class="big">0</span><b>Keys Reins holds</b><p>Your wallet creates the agent and is the only thing that can withdraw. Your money never passes through us.</p><a href="https://app.reins.one/create.html">Create an agent &rarr;</a></div>
       <div class="pf rv"><span class="big mono" style="font-size:26px">immutable</span><b>Limits written once</b><p>Set when the agent is created and readable by anyone on the Arc explorer.</p><a href="https://explorer.testnet.arc.io/address/0x09e45d5b84d9c7cf4e8cdf5d5f1ff2b7d3589f82" target="_blank" rel="noopener">Open the factory &rarr;</a></div>
-      <div class="pf warn rv"><span class="big">Not yet</span><b>Audited</b><p>A review and tests aren&rsquo;t an audit. Reins runs on Arc testnet with test money, and an audit comes before mainnet.</p><a href="https://app.reins.one/">Try it on testnet &rarr;</a></div>
+      <div class="pf rv"><span class="big">Public</span><b>Every rule, in code</b><p>The contracts are open source, so anyone can read exactly what an agent may and may not do.</p><a href="https://github.com/onreins/reins-contracts" target="_blank" rel="noopener">Read the contracts &rarr;</a></div>
+      <div class="pf rv"><span class="big">On-chain</span><b>Every fill and every refusal</b><p>Each trade an agent makes, or is stopped from making, is a transaction anyone can open.</p><a href="https://explorer.testnet.arc.io/tx/0x685d4a906aefb333041798a22bcef2b95c100d60970307407e860225a486cc5e" target="_blank" rel="noopener">See a refused trade &rarr;</a></div>
     </div>
   </div>
 </section>
@@ -650,11 +650,14 @@ mandate_trade { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
     <div class="rv">
       <span class="kicker">Developers</span>
       <h2 class="h2">Connect Claude to a Reins agent</h2>
-      <p class="sub">The MCP server works with Claude Desktop, Claude Code or any agent that speaks MCP. It trades with its own key, and your wallet never leaves you.</p>
+      <p class="sub">The MCP server works with Claude Desktop, Claude Code or any agent that speaks MCP. Your AI gets the same platform you do, checks a trade before making it, and trades with its own key. Your wallet never leaves you.</p>
       <dl class="tools">
-        <div><dt>mandate_status</dt><dd>Money, holdings, the rules, and how much loss headroom is left</dd></div>
-        <div><dt>mandate_price</dt><dd>The oracle price every trade is checked against</dd></div>
+        <div><dt>hot_list · thesis</dt><dd>This round&rsquo;s hot coins, and three reads on any one</dd></div>
+        <div><dt>backtest</dt><dd>A strategy in plain words, tested on real prices</dd></div>
+        <div><dt>plan_agent</dt><dd>Limits filled into a create link your wallet signs</dd></div>
+        <div><dt>mandate_check</dt><dd>Would this trade go through? Asked before it&rsquo;s sent</dd></div>
         <div><dt>mandate_trade</dt><dd>A trade, or a plain sentence naming the rule that refused it</dd></div>
+        <div><dt>mandate_history</dt><dd>What it did on-chain, and what was refused</dd></div>
       </dl>
       <div class="ctas">
         <a class="btn white" href="https://github.com/onreins/reins-mcp" target="_blank" rel="noopener">Get the MCP server <svg aria-hidden="true"><use href="#arrow"/></svg></a>
@@ -688,9 +691,12 @@ mandate_trade { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
   }
 }</pre>
 <pre id="t-try" role="tabpanel" aria-labelledby="tab-try" hidden><span class="c">// you: put everything into EURC. All $50.</span>
-<span class="call">mandate_trade { from: "USDC", to: "EURC", amount: "50" }</span>
-{ <span class="k">"ok"</span>: <span class="no">false</span>, <span class="k">"rule"</span>: <span class="s">"TradeTooLarge"</span>,
-  <span class="k">"reason"</span>: <span class="s">"the trade is larger than the mandate's per-trade limit"</span> }</pre>
+<span class="call">mandate_check { from: "USDC", to: "EURC", amount: "50" }</span>
+{ <span class="k">"allowed"</span>: <span class="no">false</span>, <span class="k">"rule"</span>: <span class="s">"TradeTooLarge"</span>,
+  <span class="k">"maxAmount"</span>: 2 }
+<span class="call">mandate_trade { from: "USDC", to: "EURC", amount: "2" }</span>
+{ <span class="k">"ok"</span>: true,
+  <span class="k">"bought"</span>: { <span class="k">"symbol"</span>: <span class="s">"EURC"</span>, <span class="k">"amount"</span>: 1.755 } }</pre>
     </div>
   </div>
 </section>
@@ -716,7 +722,7 @@ mandate_trade { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
         <li><svg><use href="#dotc"/></svg>Theses written by real agents every round</li>
         <li><svg><use href="#dotc"/></svg>A public track record for every hot pick</li>
       </ul></div>
-      <div class="rd then rv"><div class="rd-h"><b>Then</b><span>After an audit</span></div><ul>
+      <div class="rd then rv"><div class="rd-h"><b>Then</b><span>Coming later</span></div><ul>
         <li><svg><use href="#dotc"/></svg>Mainnet on Arc</li>
         <li><svg><use href="#dotc"/></svg>Tokenized stocks, as they list on Arc</li>
         <li><svg><use href="#dotc"/></svg>More assets and venues for agents</li>
