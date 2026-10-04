@@ -36,8 +36,8 @@
       </form>
       <div class="rx-sec">Starting points</div>
       <div class="rx-cards" id="starters"></div>
-      <div class="rx-sec" id="recent-h" hidden>Recent chats</div>
-      <ul class="rx-sessions" id="recent"></ul>
+      <div class="rx-sec rx-sec-row" id="recent-h" hidden><span>Recent chats</span><button type="button" class="rx-link" id="recent-all" hidden></button></div>
+      <ul class="rx-recent" id="recent"></ul>
     </section>
 
     <section class="rx-chat" aria-label="Chat">
@@ -48,6 +48,7 @@
       </div>
       <div class="rx-hist" id="hist" hidden>
         <div class="rx-hist-h"><b>Your chats</b><span>Saved in this browser</span></div>
+        <label class="rx-hist-q"><span class="sr-only">Search your chats</span><input id="hist-q" type="search" placeholder="Search chats" autocomplete="off"></label>
         <ul class="rx-sessions" id="sessions"></ul>
       </div>
       <div class="rx-msgs" id="msgs" role="log" aria-live="polite"><div class="rx-thread" id="thread"></div></div>
@@ -164,22 +165,47 @@
     var d = new Date(t), now = new Date(), start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     return t >= start ? "Today" : t >= start - 864e5 ? "Yesterday" : t >= start - 7 * 864e5 ? "This week" : "Earlier";
   }
-  function sessionItems(list, grouped) {
+  function ago(t) {
+    var s = (Date.now() - t) / 1000;
+    if (s < 60) return "Just now";
+    if (s < 3600) return Math.floor(s / 60) + "m ago";
+    if (s < 86400) return Math.floor(s / 3600) + "h ago";
+    if (s < 7 * 86400) return Math.floor(s / 86400) + "d ago";
+    return new Date(t).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  }
+  // A chat that built a strategy shows its coin; one that only asked a question shows a spark.
+  var iconOf = function (s) { return s.spec && s.spec.asset ? U.coins([s.spec.asset]) : '<span class="dot">' + ICON.spark + "</span>"; };
+  var kindOf = function (s) { return s.spec ? (s.spec.asset ? s.spec.asset + " strategy" : "Strategy") : "Question"; };
+  var delBtn = function (s) { return '<button type="button" class="del" data-del="' + esc(s.id) + '" aria-label="Delete this chat" title="Delete">' + ICON.x + "</button>"; };
+  function sessionItems(list) {
     var html = "", last = null;
     list.forEach(function (s) {
       var g = dayGroup(s.at);
-      if (grouped && g !== last) { html += '<li class="g">' + g + "</li>"; last = g; }
+      if (g !== last) { html += '<li class="g">' + g + "</li>"; last = g; }
       html += '<li class="s' + (cur && s.id === cur.id ? " on" : "") + '"><button type="button" class="open" data-open="' + esc(s.id) + '">' +
-        (s.spec ? U.coins([s.spec.asset]) : '<span class="dot"></span>') + '<span class="n">' + esc(titleOf(s)) + "</span></button>" +
-        '<button type="button" class="del" data-del="' + esc(s.id) + '" aria-label="Delete this chat" title="Delete">' + ICON.x + "</button></li>";
+        iconOf(s) + '<span class="n">' + esc(titleOf(s)) + '</span><span class="t">' + ago(s.at) + "</span></button>" + delBtn(s) + "</li>";
     });
     return html;
   }
+  function recentItems(list) {
+    return list.map(function (s) {
+      return '<li class="rc"><button type="button" class="open" data-open="' + esc(s.id) + '">' + iconOf(s) +
+        '<span class="tx"><b>' + esc(titleOf(s)) + "</b><small>" + kindOf(s) + " · " + ago(s.at) + "</small></span></button>" + delBtn(s) + "</li>";
+    }).join("");
+  }
+  var RECENT = 4, showAllRecent = false;
   function renderSessions() {
     $("recent-h").hidden = !sessions.length;
-    $("recent").innerHTML = sessionItems(sessions.slice(0, 6), false);
-    $("sessions").innerHTML = sessions.length ? sessionItems(sessions, true) : '<li class="empty">No other chats yet.</li>';
+    $("recent").innerHTML = recentItems(showAllRecent ? sessions : sessions.slice(0, RECENT));
+    $("recent-all").hidden = sessions.length <= RECENT;
+    $("recent-all").textContent = showAllRecent ? "Show fewer" : "Show all " + sessions.length;
+    var q = $("hist-q").value.trim().toLowerCase();
+    var found = q ? sessions.filter(function (s) { return (titleOf(s) + " " + kindOf(s)).toLowerCase().indexOf(q) >= 0; }) : sessions;
+    $("sessions").innerHTML = found.length ? sessionItems(found)
+      : '<li class="empty">' + (sessions.length ? "No chats match “" + esc(q) + "”." : "No other chats yet.") + "</li>";
   }
+  $("recent-all").addEventListener("click", function () { showAllRecent = !showAllRecent; renderSessions(); });
+  $("hist-q").addEventListener("input", renderSessions);
   function onSessionClick(e) {
     var del = e.target.closest("[data-del]"), open = e.target.closest("[data-open]");
     if (del) {

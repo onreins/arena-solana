@@ -58,7 +58,12 @@
   function pickRound() {
     var start = M.round(Date.now()).start;
     var all = Object.keys(FEEDS).every(function (v) { return state.byVenue[v]; });
-    if (!state.round || state.round.start !== start || (!state.round.full && all)) {
+    // Saved picks whose markets are mostly gone (a venue was dropped) are picked again, not shown half-empty.
+    var gone = function (r) {
+      var ids = r.hot.concat(r.cold), found = ids.filter(function (id) { return M.find(state.rows, id); }).length;
+      return all && ids.length > 0 && found < ids.length / 2;
+    };
+    if (!state.round || state.round.start !== start || (!state.round.full && all) || gone(state.round)) {
       var fresh = M.hotList(state.rows, 8);
       var ids = function (list) { return list.map(function (x) { return x.row.id; }); };
       state.round = { start: start, full: all, hot: ids(fresh.hot), cold: ids(fresh.cold) };
