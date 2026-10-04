@@ -133,11 +133,11 @@ window.ReinsUI = (function () {
   // The Reins mark: a rounded lowercase r and its dot, white on the dark sidebar.
   var MARK = '<svg width="26" height="26" viewBox="256 256 512 512" aria-hidden="true"><g fill="#fff"><rect x="307" y="327" width="130" height="368" rx="65"/><path d="M430 396C452 352 494 327 540 327a50.5 50.5 0 0 1 0 101c-58 0-103 34-103 96H415V396z"/><circle cx="670" cy="378" r="47"/></g></svg>';
   var NAV = [
-    [null, [["explore", "Agents", "/"], ["strategies", "Strategies", "/#strategies"], ["chat", "Strategy chat", "/chat.html"], ["charts", "Charts", "/charts.html"], ["create", "Create agent", "/create.html"]]],
+    [null, [["explore", "Agents", "/"], ["strategies", "Strategies", "/strategies.html"], ["chat", "Chat", "/chat.html"], ["charts", "Charts", "/charts.html"], ["create", "Create agent", "/create.html"]]],
     ["ARC", [["window", "Block explorer", "#", "nav-explorer"]]],
   ];
   // On a phone the sidebar is hidden, so the main pages move to a bar along the bottom.
-  var TABS = [["explore", "Agents", "/"], ["strategies", "Strategies", "/#strategies"], ["charts", "Charts", "/charts.html"], ["chat", "Chat", "/chat.html"], ["create", "Create", "/create.html"]];
+  var TABS = [["explore", "Agents", "/"], ["strategies", "Strategies", "/strategies.html"], ["charts", "Charts", "/charts.html"], ["chat", "Chat", "/chat.html"], ["create", "Create", "/create.html"]];
   function topbar(page) {
     var nav = NAV.map(function (g) {
       return (g[0] ? '<div class="grp">' + g[0] + "</div>" : "") + g[1].map(function (it) {
@@ -168,10 +168,10 @@ window.ReinsUI = (function () {
       $("promo").remove();
       try { localStorage.setItem("reins-promo", "hidden"); } catch (e) { /* storage off */ }
     });
-    // Search lives on Explore; elsewhere, Enter takes you there with the query.
+    // Search lives on Explore and Strategies; elsewhere, Enter takes you to Explore with the query.
     $("gsearch").value = new URLSearchParams(location.search).get("q") || "";
     $("gsearch").addEventListener("keydown", function (e) {
-      if (e.key === "Enter" && page !== "explore") location.href = "/?q=" + encodeURIComponent($("gsearch").value.trim());
+      if (e.key === "Enter" && page !== "explore" && page !== "strategies") location.href = "/?q=" + encodeURIComponent($("gsearch").value.trim());
     });
     document.addEventListener("keydown", function (e) {
       var t = document.activeElement && document.activeElement.tagName;

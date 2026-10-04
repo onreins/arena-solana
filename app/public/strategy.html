@@ -16,7 +16,7 @@
 <header id="top"></header>
 
 <main id="main">
-  <nav class="crumbs" aria-label="Breadcrumb"><a href="/#strategies">Strategies</a><span id="crumb-ic"></span><span id="crumb-name">…</span></nav>
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/strategies.html">Strategies</a><span id="crumb-ic"></span><span id="crumb-name">…</span></nav>
 
   <section class="hm-hero sg-hero" aria-labelledby="name">
     <div class="sg-copy">
@@ -42,14 +42,14 @@
       </div>
       <div class="plot" id="plot" tabindex="0" role="group" aria-label="Growth of $1 in the backtest" aria-describedby="plot-help"><span class="skel" style="height:260px"></span></div>
       <p class="sr-only" id="plot-help">Use the left and right arrow keys to step through the chart.</p>
-      <div class="legend"><span><i style="background:#5aaeff"></i><span id="lg-strat">Strategy</span></span><span><i style="background:#7d84a8"></i><span id="lg-bench">Holding</span></span><span class="muted">Growth of $1, log scale</span></div>
+      <div class="legend"><span><i style="background:#5aaeff"></i><span id="lg-strat">Strategy</span></span><span class="muted">Growth of $1, log scale</span></div>
     </div>
   </section>
 
   <div class="scards sg-stats">
-    <div class="scard"><div class="lbl" title="Compounded yearly growth">Annual return, since 2024</div><div class="val" id="s-since">—</div><div class="sub2">the more realistic guide</div></div>
-    <div class="scard"><div class="lbl" title="Compounded yearly growth">Annual return, since 2021</div><div class="val" id="s-all">—</div><div class="sub2">2021 was an exceptional year</div></div>
-    <div class="scard"><div class="lbl">Worst drop</div><div class="val" id="s-dd">—</div><div class="sub2" id="s-wm"></div></div>
+    <div class="scard"><div class="lbl" title="Compounded yearly growth">Yearly return</div><div class="val" id="s-since">—</div><div class="sub2">since 2024, backtested</div></div>
+    <div class="scard"><div class="lbl">Worst drop</div><div class="val" id="s-dd">—</div><div class="sub2">from a high, whole backtest</div></div>
+    <div class="scard"><div class="lbl">Worst month</div><div class="val" id="s-wm">—</div><div class="sub2">whole backtest</div></div>
     <div class="scard"><div class="lbl">Sharpe</div><div class="val" id="s-sharpe">—</div><div class="sub2" id="s-pf"></div></div>
     <div class="scard"><div class="lbl">Trades a month</div><div class="val" id="s-tpm">—</div><div class="sub2" id="s-hold"></div></div>
   </div>
@@ -68,17 +68,13 @@
           <button type="button" data-r="2021" aria-pressed="false">2021</button>
         </div>
       </div>
-      <div class="sg-vs-bars">
-        <div class="sg-bar strat"><span id="k-strat-l">Strategy</span><span class="tr"><i id="k-strat-bar" style="width:0"></i></span><b id="k-strat">—</b></div>
-        <div class="sg-bar"><span>Just holding</span><span class="tr"><i id="k-bench-bar" style="width:0"></i></span><b id="k-bench">—</b></div>
-      </div>
       <dl class="sg-facts" id="k-facts"></dl>
     </section>
 
     <section class="hm-panel" aria-labelledby="y-h">
-      <div class="hm-panel-h"><h2 id="y-h">Year by year <small>against holding</small></h2></div>
+      <div class="hm-panel-h"><h2 id="y-h">Year by year <small>calendar years</small></h2></div>
       <ol class="sg-years" id="years"></ol>
-      <div class="sg-key"><span><i style="background:var(--blue)"></i>Strategy</span><span><i style="background:#7d7c7c"></i>Holding BTC, ETH and SOL</span><span>A faded end means the bar runs off the scale</span></div>
+      <div class="sg-key"><span>A faded end means the bar runs off the scale</span></div>
     </section>
   </div>
 

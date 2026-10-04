@@ -1,0 +1,60 @@
+/* The smart-money strategy page: the strategy page's frame, plus a month table and a proof list. */
+.sm-tag { background: rgba(255, 138, 76, .2) !important; color: #ffc29e !important; }
+.sm-src { color: #8f98c4; font-size: 12.5px; }
+.sm-soon { cursor: help; }
+.sm-chart-t { color: #c9d1f2; font: 500 13px var(--sans); }
+.sm-plot { position: relative; flex: 1; min-height: 240px; margin-top: 10px; }
+.sm-plot svg { width: 100%; height: 100%; min-height: 240px; display: block; touch-action: pan-y; cursor: crosshair; }
+.sm-plot .g { stroke: rgba(170, 183, 232, .12); }
+.sm-plot .g.one { stroke: rgba(170, 183, 232, .35); stroke-dasharray: 3 4; }
+.sm-plot text { fill: #6f78a3; font: 400 10.5px var(--mono); }
+.sm-plot .l-strat { stroke: #5aaeff; stroke-width: 2.2; vector-effect: non-scaling-stroke; }
+.sm-plot .cur line { stroke: rgba(255, 255, 255, .35); stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+.sm-plot .cur circle { stroke: #111433; stroke-width: 2; }
+.scard .val .sm-of { color: var(--ink-3); font-size: .6em; font-weight: 500; }
+
+.sm-steps { counter-reset: s; list-style: none; display: grid; gap: 14px; padding: 4px 2px 2px; }
+.sm-steps li { counter-increment: s; display: grid; grid-template-columns: 30px minmax(0, 1fr); column-gap: 12px; color: var(--ink-2); font-weight: 400; line-height: 1.5; font-size: 14px; }
+.sm-steps li::before { content: counter(s); grid-row: span 2; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: rgba(30, 155, 255, .14); color: #8fcbff; font: 600 13px var(--mono); }
+.sm-steps b { color: var(--ink); font-weight: 600; }
+
+.sm-months { display: grid; gap: 2px; }
+.sm-mh, .sm-m { display: grid; grid-template-columns: 112px 86px minmax(0, 1fr) 64px 44px; gap: 12px; align-items: center; }
+.sm-mh { padding: 0 2px 8px; color: var(--ink-3); font-size: 11.5px; }
+.sm-mh span:last-child, .sm-m .n { text-align: right; }
+.sm-m { min-height: 40px; padding: 0 2px; border-top: 1px solid var(--line); font-size: 13.5px; }
+.sm-m .d { color: var(--ink-2); white-space: nowrap; }
+.sm-m .mk { font-family: var(--mono); font-size: 12.5px; white-space: nowrap; }
+.sm-fall { font-style: normal; font: 600 10px var(--sans); color: var(--amber); padding: 1px 5px; border-radius: 4px; background: rgba(230, 176, 98, .12); }
+.sm-m .bar { position: relative; height: 22px; border-radius: 5px; background: rgba(255, 255, 255, .03); }
+.sm-m .bar::after { content: ""; position: absolute; left: 50%; top: 2px; bottom: 2px; width: 1px; background: rgba(255, 255, 255, .18); }
+.sm-m .bar i { position: absolute; top: 4px; bottom: 4px; border-radius: 3px; }
+.sm-m .bar i.pos { background: rgba(102, 195, 153, .55); }
+.sm-m .bar i.neg { background: rgba(232, 113, 107, .55); }
+.sm-m .v { text-align: right; font: 500 12.5px var(--mono); }
+.sm-m .n { color: var(--ink-3); font-family: var(--mono); font-size: 12.5px; }
+
+.sm-read { list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.sm-read li { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; padding: 14px; border-radius: 10px; background: rgba(255, 255, 255, .025); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink-2); font-size: 13.5px; line-height: 1.5; font-weight: 400; }
+.sm-read li b { color: var(--ink); font-weight: 600; }
+.sm-read li i { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font: 700 13px var(--sans); font-style: normal; }
+.sm-read li.ok i { background: rgba(102, 195, 153, .14); color: var(--green); }
+.sm-read li.warn i { background: rgba(230, 176, 98, .14); color: var(--amber); }
+.sm-read li.next i { background: rgba(30, 155, 255, .14); color: #8fcbff; }
+
+
+@media (max-width: 1100px) {
+  .sm-read { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+@media (max-width: 900px) {
+  .sm-read { grid-template-columns: minmax(0, 1fr); }
+  .sm-mh, .sm-m { grid-template-columns: 92px 64px minmax(0, 1fr) 58px 32px; gap: 8px; }
+}
+@media (max-width: 560px) {
+  /* phones: the trade count goes, and the "falling" tag sits under the market move */
+  .sm-mh, .sm-m { grid-template-columns: 86px 52px minmax(0, 1fr) 54px; }
+  .sm-mh span:last-child, .sm-m .n { display: none; }
+  .sm-m { padding: 6px 2px; font-size: 12.5px; }
+  .sm-m .mk { white-space: normal; line-height: 1.5; }
+  .sm-fall { display: inline-block; }
+}

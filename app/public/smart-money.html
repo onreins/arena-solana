@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<title>Smart Money · Reins</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="/app.css">
+<link rel="stylesheet" href="/home.css">
+<link rel="stylesheet" href="/strategy.css">
+<link rel="stylesheet" href="/smart-money.css">
+
+<a class="skip" href="#main">Skip to content</a>
+<aside id="side"></aside>
+<header id="top"></header>
+
+<main id="main">
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/strategies.html">Strategies</a><span id="crumb-ic"></span><span>Smart Money</span></nav>
+
+  <section class="hm-hero sg-hero" aria-labelledby="name">
+    <div class="sg-copy">
+      <div class="sg-tags"><span class="tagp sm-tag">New</span><span class="tagp">Testing</span><span class="sm-src">Hyperliquid traders</span></div>
+      <h1 id="name">Smart Money</h1>
+      <p class="hm-lede">Trades alongside a hand-picked group of Hyperliquid's most profitable traders, and only on the moves its signal rates highest.</p>
+      <p class="sg-head" id="headline"><span class="skel line" style="width:260px;height:30px"></span></p>
+      <p class="sg-vs" id="vs"></p>
+      <div class="hm-cta">
+        <a class="btn-white" href="/charts.html">See the markets it trades</a>
+        <span class="chip sm-soon" title="Every trade is logged in public as it happens, before any real money">Paper agent coming</span>
+      </div>
+      <p class="sg-fine" id="fine"></p>
+    </div>
+
+    <div class="sg-chartbox">
+      <div class="sg-chart-h">
+        <span class="sm-chart-t">Six months, every regime</span>
+        <div class="sg-read" id="read" aria-live="off"></div>
+      </div>
+      <div class="sm-plot" id="plot" role="img" aria-label="Growth of $1 in the strategy over six months"><span class="skel" style="height:260px"></span></div>
+      <div class="legend"><span><i style="background:#5aaeff"></i>Smart Money</span><span class="muted">Growth of $1</span></div>
+    </div>
+  </section>
+
+  <div class="scards sg-stats">
+    <div class="scard"><div class="lbl">Beat the market</div><div class="val" id="s-months">—</div><div class="sub2">months it beat the market</div></div>
+    <div class="scard"><div class="lbl">Per trade, vs the market</div><div class="val" id="s-edge">—</div><div class="sub2" id="s-edge-sub"></div></div>
+    <div class="scard"><div class="lbl" title="Gains divided by losses, after fees">Profit factor</div><div class="val" id="s-pf">—</div><div class="sub2" id="s-pf-sub"></div></div>
+    <div class="scard"><div class="lbl">Worst drop</div><div class="val" id="s-dd">—</div><div class="sub2" id="s-dd-sub"></div></div>
+    <div class="scard"><div class="lbl">Trades</div><div class="val" id="s-trades">—</div><div class="sub2" id="s-trades-sub"></div></div>
+  </div>
+
+  <div class="sg-row">
+    <section class="hm-panel" aria-labelledby="h-h">
+      <div class="hm-panel-h"><h2 id="h-h">How it works, broadly</h2></div>
+      <ol class="sm-steps">
+        <li><b>Finds traders worth following.</b> Hyperliquid accounts are ranked on their past results only, and the group is refreshed every month.</li>
+        <li><b>Picks its moments.</b> It acts on a small share of what that group does: the moves its signal rates highest.</li>
+        <li><b>Trades the way a bot really could.</b> Every entry and exit fills after the fact, at a price that was actually available, after fees.</li>
+      </ol>
+    </section>
+
+    <section class="hm-panel" aria-labelledby="m-h">
+      <div class="hm-panel-h"><h2 id="m-h">Month by month <small>per trade, against the market</small></h2></div>
+      <div class="sm-months" id="months"><span class="skel" style="height:220px"></span></div>
+    </section>
+  </div>
+
+  <section class="hm-panel sg-wide" aria-labelledby="p-h">
+    <div class="hm-panel-h"><h2 id="p-h">What's proven, and what isn't</h2></div>
+    <ul class="sm-read" id="proof"></ul>
+  </section>
+
+  <footer class="foot">
+    <span id="foot-fine">A test on past Hyperliquid data, not live results. Not investment advice.</span>
+    <span>Agents on Arc trade USDC and EURC for now</span>
+  </footer>
+</main>
+
+<script src="/wallet.js"></script>
+<script src="/ui.js"></script>
+<script src="/smart-money-page.js"></script>
+</html>

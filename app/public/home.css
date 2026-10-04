@@ -71,8 +71,7 @@
 .hm-dots button:hover::before { background: rgba(170, 183, 232, .45); }
 .hm-dots button[aria-pressed="true"]::before { background: #aac4ff; }
 
-/* Featured templates and the chain's latest events. */
-.hm-row { margin-top: 8px; display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: 8px; }
+/* Panels, and the chain's latest events. */
 .hm-panel { min-width: 0; padding: 16px; border-radius: 10px; background: var(--card); box-shadow: var(--shadow); display: flex; flex-direction: column; }
 .hm-panel-h { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .hm-panel-h h2 { font: 500 14px var(--sans); display: flex; align-items: center; gap: 8px; }
@@ -80,20 +79,7 @@
 .hm-panel-h a, .hm-panel-h > span { color: var(--ink-3); font-size: 12.5px; display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
 .hm-panel-h a:hover { color: var(--ink); }
 .hm-panel-h a .ic { width: 14px; height: 14px; }
-.hm-feats { margin-top: 12px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.hm-feat { min-width: 0; padding: 14px 14px 12px; border-radius: 10px; background: var(--chip); box-shadow: inset 0 0 0 1px var(--line); display: flex; flex-direction: column;
-  transition: background-color .15s, box-shadow .15s, transform .15s; }
-.hm-feat:hover { background: #232222; box-shadow: inset 0 0 0 1px rgba(30, 155, 255, .4); transform: translateY(-2px); }
-.hm-feat .t { display: flex; align-items: center; gap: 10px; }
-.hm-feat .t b { flex: 1; min-width: 0; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hm-feat .big { margin-top: 16px; font: 600 30px/1 var(--sans); letter-spacing: -.03em; }
-.hm-feat .lbl { margin-top: 6px; color: var(--ink-3); font-size: 12px; }
-.hm-feat .ch { height: 72px; margin: 12px -14px 0; }
-.hm-feat .ch svg { width: 100%; height: 100%; }
-.hm-feat .ft { margin-top: 10px; display: flex; justify-content: space-between; gap: 8px; color: var(--ink-3); font-size: 12px; }
-.hm-feat .ft b { color: var(--ink-2); font-weight: 500; }
-.hm-feat.skel-card { min-height: 236px; }
-.hm-feed { list-style: none; margin: 6px 0 0; flex: 1 1 0; min-height: 200px; overflow-y: auto; scrollbar-width: thin; }
+.hm-feed { list-style: none; margin: 6px 0 0; max-height: 340px; overflow-y: auto; scrollbar-width: thin; }
 .hm-ev { padding: 10px 2px; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; align-items: start; }
 .hm-ev:last-child { border-bottom: 0; }
 .hm-ev .ei { width: 30px; height: 30px; border-radius: 50%; background: var(--chip-2); color: var(--ink-2); display: grid; place-items: center; }
@@ -121,17 +107,51 @@
 @keyframes hm-spin { to { transform: rotate(360deg); } }
 @keyframes hm-in { from { opacity: 0; transform: translateY(-6px); } }
 @keyframes hm-drift { to { transform: translateX(-42%) scale(1.08); } }
-@media (prefers-reduced-motion: reduce) { .hm-checks li.run .mk { animation: none; border-top-color: #7aa5ff; } .hm-feat:hover { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .hm-checks li.run .mk { animation: none; border-top-color: #7aa5ff; } }
 
 @media (max-width: 1100px) {
   .hm-hero { grid-template-columns: minmax(0, 1fr); gap: 28px; }
-  .hm-row { grid-template-columns: minmax(0, 1fr); }
-  .hm-feed { flex: none; max-height: 340px; }
 }
 @media (max-width: 760px) {
   .hm-hero { padding: 22px 18px; }
   .hm-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 16px; }
   .hm-stats div:nth-child(3) { padding-left: 0; border-left: 0; }
-  .hm-feats { grid-template-columns: minmax(0, 1fr); }
-  .hm-feat .ch { height: 60px; }
 }
+
+/* ------------------------------------------------------- strategy cards */
+/* Every strategy on the Strategies tab: what it does, three numbers, its curve. */
+.st-list { display: grid; gap: 12px; }
+.st-card { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 180px; gap: 20px; align-items: center; padding: 20px 22px; border-radius: 12px; background: radial-gradient(120% 140% at 0% 0%, var(--st-tint), rgba(30, 155, 255, .04) 55%, transparent 80%), var(--card); box-shadow: var(--shadow), inset 0 0 0 1px var(--st-edge); transition: box-shadow .2s, transform .2s; --st-tint: rgba(255, 255, 255, .05); --st-edge: rgba(255, 255, 255, .07); --st-edge-h: rgba(255, 255, 255, .18); }
+.st-card.valid { --st-tint: rgba(30, 155, 255, .13); --st-edge: rgba(30, 155, 255, .18); --st-edge-h: rgba(30, 155, 255, .4); }
+.st-card.smart { --st-tint: rgba(255, 138, 76, .14); --st-edge: rgba(255, 138, 76, .18); --st-edge-h: rgba(255, 138, 76, .38); }
+.st-card:hover { box-shadow: var(--shadow), inset 0 0 0 1px var(--st-edge-h); transform: translateY(-1px); }
+.st-card:focus-visible { outline: 2px solid #5aaeff; outline-offset: 2px; }
+.st-card .k { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; color: var(--ink-3); font-size: 12px; }
+.st-card .k > * { white-space: nowrap; }
+.st-card h3 { display: flex; align-items: center; gap: 10px; margin: 8px 0 4px; font: 600 19px/1.2 var(--sans); letter-spacing: -.01em; }
+.st-card p { color: var(--ink-3); font-size: 13.5px; line-height: 1.45; font-weight: 400; }
+.st-card dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.st-card dt { color: var(--ink-3); font-size: 11.5px; }
+.st-card dd { margin: 4px 0 0; font: 600 18px var(--sans); letter-spacing: -.02em; }
+.st-card .sp svg { width: 100%; height: 56px; display: block; }
+.st-card .sp path { vector-effect: non-scaling-stroke; stroke-width: 1.6; }
+.st-empty { padding: 28px 16px; text-align: center; color: var(--ink-3); }
+.st-empty b { display: block; color: var(--ink); margin-bottom: 4px; }
+@media (prefers-reduced-motion: reduce) { .st-card:hover { transform: none; } }
+@media (max-width: 1100px) {
+  .st-card { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .st-card .sp { grid-column: 1 / -1; }
+  .st-card .sp svg { height: 44px; }
+}
+@media (max-width: 900px) {
+  .st-card { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 18px; }
+}
+.st-card dd .yr { margin-left: 2px; color: var(--ink-3); font: 500 11px var(--sans); letter-spacing: 0; }
+/* the coins a strategy trades, in a row beside its name */
+.st-card h3 .tok.multi, .sg-tags .tok.multi { display: inline-flex; width: auto; height: 22px; }
+.st-card h3 .tok.multi img, .st-card h3 .tok.multi i, .sg-tags .tok.multi img, .sg-tags .tok.multi i { position: static; width: 22px; height: 22px; margin-left: -6px; border: 2px solid var(--card); }
+.sg-tags .tok.multi img, .sg-tags .tok.multi i { border-color: #1b1f45; }
+.st-card h3 .tok.multi :first-child, .sg-tags .tok.multi :first-child { margin-left: 0; }
+.st-page { margin-top: 24px; }
+.st-all { margin-left: auto; color: var(--ink-3); font-size: 12.5px; font-weight: 400; }
+.st-all:hover { color: var(--ink); }

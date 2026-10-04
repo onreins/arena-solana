@@ -1,5 +1,5 @@
 /* The Agents page's top half: the rule check replaying the testnet run, the
-   featured strategy cards, the on-chain activity feed and the hero's totals.
+   on-chain activity feed and the hero's totals.
    Loaded after ui.js; index.html hands it the data it already fetches. */
 window.ReinsHome = (function () {
   "use strict";
@@ -113,29 +113,6 @@ window.ReinsHome = (function () {
     play(0);
   }
 
-  // ------------------------------------------------------- featured cards
-  var T2024 = Date.UTC(2024, 0, 1) / 1000;
-  var FEATURED = 3;
-
-  function featured(el, strats) {
-    var top = (strats || []).slice(0, FEATURED);
-    if (!top.length) {
-      el.innerHTML = '<p class="hm-empty"><b>Strategy templates couldn’t load</b>Reload the page to try again.</p>';
-      return;
-    }
-    el.innerHTML = top.map(function (s) {
-      var st = s.stats, valid = s.status === "validated";
-      var pts = U.curvePoints(s.curve.filter(function (p) { return p.t >= T2024; }));
-      return '<a class="hm-feat" href="/strategy.html?s=' + encodeURIComponent(s.id) + '">' +
-        '<span class="t">' + U.coins(s.universe, "sm") + "<b>" + esc(s.name) + "</b>" +
-        '<span class="tagp' + (valid ? " ok" : "") + '">' + (valid ? "Validated" : "Candidate") + "</span></span>" +
-        '<span class="big ' + U.dirOf(st.cagr_since_2024 * 100) + '">' + U.pct(st.cagr_since_2024 * 100, 0) + "</span>" +
-        '<span class="lbl">Annual return since 2024, backtested</span>' +
-        '<span class="ch">' + U.areaSvg(pts, { smooth: true }) + "</span>" +
-        '<span class="ft"><span>Worst drop <b>' + U.pct(st.max_drawdown * 100, 0) + "</b></span><span>" + U.coinCount(s.universe) + " coins</span></span></a>";
-    }).join("");
-  }
-
   // -------------------------------------------------------- activity feed
   var ZERO = "0x0000000000000000000000000000000000000000";
   var KIND = {
@@ -211,5 +188,5 @@ window.ReinsHome = (function () {
     });
   }
 
-  return { ruleCheck: ruleCheck, featured: featured, activity: activity, countUp: countUp, ago: ago, checkClass: checkClass, RUN: RUN, CHECKS: CHECKS };
+  return { ruleCheck: ruleCheck, activity: activity, countUp: countUp, ago: ago, checkClass: checkClass, RUN: RUN, CHECKS: CHECKS };
 })();

@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400&display=swap">
 <link rel="stylesheet" href="/app.css">
 <link rel="stylesheet" href="/home.css">
+<link rel="stylesheet" href="/smart-money.css">
 
 <a class="skip" href="#main">Skip to content</a>
 <aside id="side"></aside>
@@ -41,55 +42,30 @@
     </figure>
   </section>
 
-  <div class="hm-row">
-    <section class="hm-panel" aria-labelledby="f-h">
-      <div class="hm-panel-h">
-        <h2 id="f-h">Top strategy templates <small>backtests</small></h2>
-        <a href="#strategies" id="f-all">All templates</a>
-      </div>
-      <div class="hm-feats" id="feats">
-        <div class="hm-feat skel-card"><span class="skel line"></span></div>
-        <div class="hm-feat skel-card"><span class="skel line"></span></div>
-        <div class="hm-feat skel-card"><span class="skel line"></span></div>
-      </div>
+  <div class="hcard">
+    <section class="hsec" id="strategies" aria-labelledby="s-h">
+      <h2 id="s-h">Strategies <small>backtests on past prices, not live results</small><a class="st-all" href="/strategies.html">All strategies</a></h2>
+      <div class="st-list" id="strats"><span class="skel" style="height:120px"></span><span class="skel" style="height:120px"></span></div>
     </section>
-    <section class="hm-panel" aria-labelledby="feed-h">
-      <div class="hm-panel-h">
-        <h2 id="feed-h"><i class="pulse" aria-hidden="true"></i>On-chain activity</h2>
-        <span id="feed-sub"></span>
-      </div>
+
+    <section class="hsec" id="activity" aria-labelledby="feed-h" hidden>
+      <h2 id="feed-h"><i class="pulse" aria-hidden="true"></i>On-chain activity <small id="feed-sub"></small></h2>
       <ol class="hm-feed" id="feed">
         <li class="hm-ev"><span class="ei"></span><div><span class="skel line"></span><span class="skel line" style="width:50%"></span></div></li>
         <li class="hm-ev"><span class="ei"></span><div><span class="skel line"></span><span class="skel line" style="width:40%"></span></div></li>
       </ol>
     </section>
-  </div>
-
-  <div class="hcard">
-    <div class="toolbar" role="search">
-      <label class="field-s"><span id="q-ic"></span><span class="sr-only">Search agents and strategies</span><input id="q" type="search" placeholder="Search by agent name, address or owner…" autocomplete="off"></label>
-      <span class="grow"></span>
-      <label class="sr-only" for="filter">Show</label>
-      <select class="sel" id="filter"><option value="all">All agents</option><option value="live">Live</option><option value="closed">Closed</option></select>
-      <label class="sr-only" for="range">Return over</label>
-      <select class="sel" id="range"><option value="all">All time</option><option value="1m">30D</option><option value="1w">7D</option><option value="1d">1D</option></select>
-    </div>
-
-    <section class="hsec" id="strategies" aria-labelledby="s-h">
-      <h2 id="s-h">Strategy templates <small>backtests, not live results</small></h2>
-      <div class="dense-wrap">
-        <table class="dense">
-          <thead><tr>
-            <th scope="col">Strategy</th><th scope="col">Coins</th><th scope="col" aria-sort="descending" title="Compounded yearly growth">Annual return, since 2024</th>
-            <th scope="col">Since 2021</th><th scope="col">Worst drop</th><th scope="col">Status</th><th scope="col">Snapshot</th>
-          </tr></thead>
-          <tbody id="strats"><tr><td colspan="7"><span class="skel line"></span></td></tr></tbody>
-        </table>
-      </div>
-    </section>
 
     <section class="hsec" id="agents" aria-labelledby="a-h">
       <h2 id="a-h">Agents <small id="a-count"></small></h2>
+      <div class="toolbar" role="search">
+        <label class="field-s"><span id="q-ic"></span><span class="sr-only">Search agents and strategies</span><input id="q" type="search" placeholder="Search by agent name, address or owner…" autocomplete="off"></label>
+        <span class="grow"></span>
+        <label class="sr-only" for="filter">Show</label>
+        <select class="sel" id="filter"><option value="all">All agents</option><option value="live">Live</option><option value="closed">Closed</option></select>
+        <label class="sr-only" for="range">Return over</label>
+        <select class="sel" id="range"><option value="all">All time</option><option value="1m">30D</option><option value="1w">7D</option><option value="1d">1D</option></select>
+      </div>
       <div class="dense-wrap">
         <table class="dense">
           <caption class="sr-only">Every agent on Reins, read from the chain</caption>
@@ -119,6 +95,7 @@
 <script src="/wallet.js"></script>
 <script src="/ui.js"></script>
 <script src="/home.js"></script>
+<script src="/strategy-cards.js"></script>
 <script>
 (function () {
   "use strict";
@@ -126,11 +103,11 @@
   var $ = function (id) { return document.getElementById(id); };
   var esc = U.esc;
   var PAGE = 10;
-  var board = [], rets = {}, series = {}, strats = [];
+  var board = [], rets = {}, series = {};
   var view = { filter: "all", range: "all", q: new URLSearchParams(location.search).get("q") || "", sort: "tvl", dir: -1, page: 0 };
   var RANGE = { all: "all time", "1m": "30D", "1w": "7D", "1d": "1D" };
 
-  U.topbar(location.hash === "#strategies" ? "strategies" : "explore");
+  U.topbar("explore");
   $("q-ic").outerHTML = U.icon("search");
   $("pg-prev").innerHTML = U.icon("back");
   $("pg-next").innerHTML = U.icon("right");
@@ -201,40 +178,13 @@
   }
 
   // -------------------------------------------------------------- strategies
-  var T2024 = Date.UTC(2024, 0, 1) / 1000;
-  function renderStrats() {
-    var rows = strats.filter(function (s) { return matches(s.name + " " + s.universe.join(" ") + " " + s.status); });
-    $("strats").innerHTML = rows.length
-      ? rows.map(function (s) {
-          var st = s.stats, valid = s.status === "validated";
-          var curve = s.curve.filter(function (p) { return p.t >= T2024; }).map(function (p) { return p.index; });
-          return '<tr class="row" data-s="' + esc(s.id) + '">' +
-            '<td><a class="name" href="/strategy.html?s=' + encodeURIComponent(s.id) + '">' + U.coins(s.universe) + esc(s.name) + "</a></td>" +
-            "<td>" + U.coinCount(s.universe) + "</td>" +
-            "<td>" + U.pctHtml(st.cagr_since_2024 * 100, 0) + "</td>" +
-            "<td>" + U.pctHtml(st.cagr * 100, 0) + "</td>" +
-            "<td>" + U.pct(st.max_drawdown * 100, 0) + "</td>" +
-            '<td><span class="tagp' + (valid ? " ok" : "") + '">' + (valid ? "Validated" : "Candidate") + "</span></td>" +
-            "<td>" + U.spark(curve) + "</td></tr>";
-        }).join("")
-      : strats.length
-        ? '<tr><td colspan="7" class="empty"><b>Nothing matches</b>Try another name or coin.</td></tr>'
-        : '<tr><td colspan="7" class="empty"><b>Strategy templates couldn’t load</b>Reload the page to try again.</td></tr>';
-    $("strats").querySelectorAll("tr[data-s]").forEach(function (tr) {
-      tr.addEventListener("click", function (ev) { if (!ev.target.closest("a")) location.href = "/strategy.html?s=" + encodeURIComponent(tr.getAttribute("data-s")); });
-    });
-  }
-  U.getJson("/data/strategies.json")
-    .then(function (d) {
-      strats = (d.strategies || []).slice().sort(function (a, b) { return b.stats.cagr_since_2024 - a.stats.cagr_since_2024; });
-      renderStrats();
-      H.featured($("feats"), strats);
-    })
-    .catch(function () { strats = []; renderStrats(); H.featured($("feats"), strats); });
+  // The same cards as the Strategies page (strategy-cards.js), filtered by the search.
+  var stratList = window.ReinsStrategyCards.mount($("strats"));
+  function renderStrats() { stratList.filter(matches); }
+  renderStrats(); // a ?q= in the address filters them from the start
 
   // ---------------------------------------------------------- top half
   H.ruleCheck($("rc"));
-  $("f-all").insertAdjacentHTML("beforeend", U.icon("right"));
   var feedShown = false;
   function loadActivity() {
     if (document.hidden && feedShown) return Promise.resolve(); // a background tab needn't keep the RPC busy
@@ -279,12 +229,6 @@
   $("q").addEventListener("input", function () { $("gsearch").value = $("q").value; onQuery($("q").value); });
   $("gsearch").addEventListener("input", function () { $("q").value = $("gsearch").value; onQuery($("gsearch").value); });
   U.onAccount(renderBoard);
-  window.addEventListener("hashchange", function () {
-    // Both the sidebar and the phone tab bar mark the current page.
-    document.querySelectorAll(".side a.item, .tabbar a").forEach(function (a) { a.removeAttribute("aria-current"); });
-    var href = location.hash === "#strategies" ? "/#strategies" : "/";
-    document.querySelectorAll('.side a.item[href="' + href + '"], .tabbar a[href="' + href + '"]').forEach(function (a) { a.setAttribute("aria-current", "page"); });
-  });
 
   // ----------------------------------------------------------------- loading
   async function refresh() {

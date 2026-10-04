@@ -1,8 +1,8 @@
 /**
- * The Charts page: a full-screen market terminal. Every market on Binance,
- * Coinbase and Hyperliquid in a list on the left, LuxAlgo's Vela chart in
+ * The Charts page: a full-screen market terminal. Every perpetual on
+ * Hyperliquid in a list on the left, LuxAlgo's Vela chart in
  * the middle, the coin's agent thesis below it, and the round's hot list on
- * the right. Prices come straight from each exchange's public API; the
+ * the right. Prices come straight from Hyperliquid's public API; the
  * numbers and the sample thesis live in markets.js.
  */
 (function () {
@@ -16,8 +16,10 @@
   var LIST_MAX = 200;
   var FAV_KEY = "reins-charts-favs";
   var ROUND_KEY = "reins-charts-round";
-  var DEFAULT_SYMBOL = "binance:BTCUSDT";
-  var VENUE = { binance: "Binance", coinbase: "Coinbase", hyperliquid: "Hyperliquid" };
+  var DEFAULT_SYMBOL = "hyperliquid:BTC";
+  var VENUE = { hyperliquid: "Hyperliquid" };
+  // Spot quotes, so an old link to a spot pair opens the same coin's perp.
+  var SPOT_QUOTE = /[-/]?(USDT|USDC|FDUSD|BUSD|USD|EUR)$/i;
   var MARK_COLOR = { hot: "#ff8a4c", watch: "#e6b062", cold: "#5fa8ff" };
   var STANCE = { bull: "Bullish", bear: "Bearish", watch: "Neutral", caution: "Careful" };
   var GLYPH = {
@@ -86,12 +88,6 @@
       return getJson("https://api.hyperliquid.xyz/info", { method: "POST", headers: { "Content-Type": "application/json" }, body: '{"type":"metaAndAssetCtxs"}' })
         .then(M.fromHyperliquid);
     },
-    binance: function () {
-      return getJson("https://api.binance.com/api/v3/ticker/24hr?type=MINI")
-        .catch(function () { return getJson("https://api.binance.us/api/v3/ticker/24hr?type=MINI"); })
-        .then(M.fromBinance);
-    },
-    coinbase: function () { return getJson("https://api.exchange.coinbase.com/products/stats").then(M.fromCoinbase); },
   };
 
   var asked = {};
@@ -177,7 +173,7 @@
   var ws = null;
   function startChart() {
     if (!V) return showMsg("The chart didn't load. Check your connection and refresh.");
-    var venues = { binance: new V.BinanceProvider(), coinbase: new V.CoinbaseProvider(), hyperliquid: new V.HyperliquidProvider() };
+    var hyperliquid = new V.HyperliquidProvider();
     try {
       ws = new V.VelaWorkspace("#chart", {
         layout: "1",
@@ -185,13 +181,9 @@
         timeframe: "60",
         live: true,
         theme: "dark",
-        persist: "reins-terminal-2",
+        persist: "reins-terminal-3", // -3: perps only, so a saved spot layout doesn't come back
         timeframes: ["1", "5", "15", "60", "240", "1D", "1W"],
-        providers: {
-          binance: function () { return venues.binance; },
-          coinbase: function () { return venues.coinbase; },
-          hyperliquid: function () { return venues.hyperliquid; },
-        },
+        providers: { hyperliquid: function () { return hyperliquid; } },
       });
     } catch (err) {
       return showMsg("This browser can't draw the chart: " + (err && err.message ? err.message : "unknown error") + ".");
@@ -199,7 +191,8 @@
     var wanted = new URLSearchParams(location.search).get("s") || "";
     var at = wanted.indexOf(":");
     if (at > 0) wanted = wanted.slice(0, at).toLowerCase() + wanted.slice(at);
-    if (/^(binance|coinbase|hyperliquid):[A-Za-z0-9./@-]{1,40}$/.test(wanted)) ws.active.setSymbol(wanted);
+    if (/^(binance|coinbase):[A-Za-z0-9./@-]{1,40}$/.test(wanted)) wanted = "hyperliquid:" + wanted.split(":")[1].replace(SPOT_QUOTE, "").toUpperCase();
+    if (/^hyperliquid:[A-Za-z0-9./@-]{1,40}$/.test(wanted)) ws.active.setSymbol(wanted);
     ws.on("state:changed", follow);
     ws.on("cell:active", function () {
       var before = watched;
@@ -219,7 +212,7 @@
   function chartSymbol() {
     var s = ws && ws.active ? String(ws.active.symbol || "") : "";
     if (!s) return state.symbol || DEFAULT_SYMBOL;
-    return s.indexOf(":") > 0 ? s.split(":")[0].toLowerCase() + ":" + s.split(":").slice(1).join(":") : "binance:" + s;
+    return s.indexOf(":") > 0 ? s.split(":")[0].toLowerCase() + ":" + s.split(":").slice(1).join(":") : "hyperliquid:" + s;
   }
   function follow() {
     var s = chartSymbol();

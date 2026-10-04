@@ -23,3 +23,5 @@ data/candles/
 # the runner: its database holds encrypted trading keys; STOP is its kill switch
 data/runner.sqlite*
 data/STOP
+# strategy research that would let anyone copy a strategy: kept local, never published
+research/smart-money-*.mjs

@@ -1,6 +1,7 @@
 /* The strategy page: a backtested template, drawn from /data/strategies.json.
-   The hero chart, the money calculator and the drawdown chart follow one
-   start date (since 2024, or since 2021); the year bars and the rules don't.
+   The hero, the money calculator and the drawdowns follow one start date:
+   2024 by default, or 2021 to check how it did through the 2021 bull run
+   and the 2022 crash. The year bars show every year.
    The numbers come from strategy-math.js, which has its own tests. */
 (function () {
   "use strict";
@@ -13,11 +14,10 @@
   var TICKS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 5, 10, 20, 50, 100, 200, 500];
   var MAX_TICKS = 6;
   var NARROW = 520;
-  var LABEL_GAP = 14; // px between the two end-of-line labels
 
   var id = new URLSearchParams(location.search).get("s") || "";
   var doc = null, s = null, range = "2024", amount = 1000;
-  var view = null; // { a, b }: strategy and holding, rebased to the start date
+  var view = null; // { a }: the strategy, rebased to the start date
   var geo = null;  // the hero chart's geometry, for the hover readout
 
   var multiple = function (v) { return v >= 10 ? v.toFixed(0) + "×" : v >= 2 ? v.toFixed(1) + "×" : v.toFixed(2) + "×"; };
@@ -41,16 +41,14 @@
       '<span class="tagp" title="Results come from historical prices, not live trading">Backtest</span>' + U.strategyRisk(s);
     $("name").textContent = s.name;
     $("tagline").textContent = s.tagline;
-    $("fine").textContent = doc.note + " Costs: " + doc.costs + ". " + s.onArc;
+    $("fine").textContent = (valid ? "Validated: it held up on data it wasn't tuned on. " : "Candidate: promising, but not yet confirmed on data it wasn't tuned on. ") +
+      "A backtest on past prices, not live results. Costs: " + doc.costs + ". " + s.onArc;
     $("u-go").href = "/create.html?s=" + encodeURIComponent(s.id);
     $("lg-strat").textContent = s.name;
-    $("lg-bench").textContent = s.bench.name;
-    $("k-strat-l").textContent = s.name;
 
     $("s-since").innerHTML = U.pctHtml(st.cagr_since_2024 * 100, 0);
-    $("s-all").innerHTML = U.pctHtml(st.cagr * 100, 0);
     $("s-dd").textContent = U.pct(st.max_drawdown * 100, 0);
-    $("s-wm").textContent = "Worst month " + U.pct(st.worst_month * 100, 0);
+    $("s-wm").textContent = U.pct(st.worst_month * 100, 0);
     $("s-sharpe").textContent = st.sharpe.toFixed(2);
     $("s-pf").textContent = st.trade_pf != null ? "Profit factor " + st.trade_pf.toFixed(2) : "";
     $("s-tpm").textContent = st.trades_per_month != null ? String(st.trades_per_month) : "—";
@@ -93,11 +91,10 @@
 
   // ------------------------------------------------------- year by year
   function renderYears() {
-    var years = Object.keys(s.years), bench = s.bench.years || {};
+    var years = Object.keys(s.years);
     var sv = years.map(function (y) { return s.years[y]; });
-    var bv = years.map(function (y) { return bench[y] != null ? bench[y] : 0; });
-    var cap = M.yearCap(sv, bv);
-    var negSpan = Math.min(cap, -Math.min(0, minOf(sv), minOf(bv)));
+    var cap = M.yearCap(sv, []);
+    var negSpan = Math.min(cap, -Math.min(0, minOf(sv)));
     var total = negSpan + cap, zero = (negSpan / total) * 100;
     var endMonth = new Date(doc.period[1]).toLocaleDateString("en-US", { month: "short" });
     var bar = function (v, cls, faded) {
@@ -108,12 +105,12 @@
     };
     $("years").innerHTML = years.map(function (y, i) {
       var partial = y === String(new Date(doc.period[1]).getUTCFullYear());
-      // A year past the scale is shrunk as a pair, so the larger bar still shows as larger.
-      var fit = M.yearBars(sv[i], bv[i], cap);
+      // A year past the scale is shrunk to fit, and drawn with a faded end.
+      var fit = M.yearBars(sv[i], 0, cap);
       var note = fit.scaled ? "not to scale" : partial ? "to " + endMonth : "";
       return '<li><span class="y">' + esc(y) + (note ? "<small>" + note + "</small>" : "") + "</span>" +
-        '<span class="bars" style="--zero:' + zero.toFixed(2) + '%">' + bar(fit.s, "s", fit.scaled) + bar(fit.b, "h", fit.scaled) + "</span>" +
-        '<span class="v">' + U.pctHtml(sv[i] * 100, 0) + "<small>holding " + U.pct(bv[i] * 100, 0) + "</small></span></li>";
+        '<span class="bars" style="--zero:' + zero.toFixed(2) + '%">' + bar(fit.s, "s", fit.scaled) + "</span>" +
+        '<span class="v">' + U.pctHtml(sv[i] * 100, 0) + "</span></li>";
     }).join("");
   }
 
@@ -121,18 +118,29 @@
   function setRange(r) {
     range = r;
     document.querySelectorAll("[data-r]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-r") === r)); });
-    view = { a: M.rebase(s.curve, START[r]), b: M.rebase(s.bench.curve, START[r]) };
+    view = { a: M.rebase(s.curve, START[r]) };
+    renderHeadline();
     renderChart();
     renderDrawdowns();
     renderCalc();
   }
 
+  // A plain yearly figure, with the worst drop beside it. From 2021 it says what that year was.
+  function renderHeadline() {
+    var st = s.stats, from21 = range === "2021";
+    $("headline").innerHTML = '<span class="from">A year, on average, since January ' + range + "</span>" +
+      '<span class="to calm">' + esc(U.pct((from21 ? st.cagr : st.cagr_since_2024) * 100, 0)) + "</span>";
+    $("vs").innerHTML = "Worst drop from a high: <b>" + esc(U.pct(st.max_drawdown * 100, 0)) + "</b>. " +
+      (from21 ? "2021 was a one-off bull run for crypto, and these coins were picked knowing how it went, so 2024 on is the fairer guide."
+        : "Backtested after costs, not live results.");
+  }
+
   // ------------------------------------------------- hero: growth of $1
   function renderChart() {
-    var a = view.a, b = view.b, plot = $("plot");
-    if (a.length < 2 || b.length < 2) { plot.innerHTML = '<div class="plot-empty">Not enough history for this range.</div>'; geo = null; return; }
+    var a = view.a, plot = $("plot");
+    if (a.length < 2) { plot.innerHTML = '<div class="plot-empty">Not enough history for this range.</div>'; geo = null; return; }
     var W = Math.max(300, Math.round(plot.clientWidth || 700)), H = W < NARROW ? 220 : 290, L = 44, R = 46, T = 10, B = 24;
-    var vals = a.concat(b).map(function (p) { return p.v; });
+    var vals = a.map(function (p) { return p.v; });
     var lo = Math.log(minOf(vals)), hi = Math.log(Math.max.apply(null, vals));
     var pad = (hi - lo) * 0.08 || 0.1; lo -= pad; hi += pad;
     var t0 = a[0].t, t1 = last(a).t;
@@ -150,17 +158,13 @@
     yearLabels(t0, t1, X, H - 6).forEach(function (l) { out += l; });
     var sp = line(a);
     out += '<path d="' + sp + " L" + X(t1).toFixed(1) + " " + (H - B) + " L" + X(t0).toFixed(1) + " " + (H - B) + ' Z" class="a-strat"/>' +
-      '<path d="' + line(b) + '" class="l-bench"/><path d="' + sp + '" class="l-strat"/>';
-    var ea = last(a).v, eb = last(b).v;
-    // Two finishes close together would print on top of each other: push them apart.
-    var ya = Y(ea), yb = Y(eb), gap = LABEL_GAP - Math.abs(ya - yb);
-    if (gap > 0) { var push = (gap / 2) * (ya <= yb ? 1 : -1); ya -= push; yb += push; }
-    out += '<text x="' + (W - R + 6) + '" y="' + (ya + 4).toFixed(1) + '" class="end strat">' + multiple(ea) + "</text>" +
-      '<text x="' + (W - R + 6) + '" y="' + (yb + 4).toFixed(1) + '" class="end">' + multiple(eb) + "</text>";
+      '<path d="' + sp + '" class="l-strat"/>';
+    var ea = last(a).v;
+    out += '<text x="' + (W - R + 6) + '" y="' + (Y(ea) + 4).toFixed(1) + '" class="end strat">' + multiple(ea) + "</text>";
     out += '<g class="cur" id="cur" visibility="hidden"><line id="cur-l" y1="' + T + '" y2="' + (H - B) + '"/>' +
-      '<circle id="cur-b" r="3.5" fill="#7d84a8"/><circle id="cur-a" r="4.5" fill="#5aaeff"/></g>';
+      '<circle id="cur-a" r="4.5" fill="#5aaeff"/></g>';
     plot.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="In the backtest, ' + esc(s.name) + " turned $1 into $" + ea.toFixed(2) +
-      " since " + monthYear(t0) + ", against $" + eb.toFixed(2) + ' for holding">' + out + "</svg>";
+      " since " + monthYear(t0) + '">' + out + "</svg>";
     geo = { W: W, L: L, R: R, t0: t0, t1: t1, X: X, Y: Y };
     readAt(a.length - 1, false);
   }
@@ -184,9 +188,9 @@
   // The readout above the chart: a point in time, or the end when nothing is hovered.
   function readAt(i, show) {
     if (!geo) return;
-    var pa = view.a[i], pb = view.b[nearest(view.b, pa.t)];
+    var pa = view.a[i];
     cursor = i;
-    $("read").innerHTML = esc(day(pa.t)) + " · <b>" + esc(s.name) + " " + multiple(pa.v) + "</b> · <i>holding " + multiple(pb.v) + "</i>";
+    $("read").innerHTML = esc(day(pa.t)) + " · <b>" + esc(s.name) + " " + multiple(pa.v) + "</b>";
     var cur = $("cur");
     if (!cur) return;
     cur.setAttribute("visibility", show ? "visible" : "hidden");
@@ -196,8 +200,6 @@
     $("cur-l").setAttribute("x2", x);
     $("cur-a").setAttribute("cx", x);
     $("cur-a").setAttribute("cy", geo.Y(pa.v).toFixed(1));
-    $("cur-b").setAttribute("cx", geo.X(pb.t).toFixed(1));
-    $("cur-b").setAttribute("cy", geo.Y(pb.v).toFixed(1));
   }
 
   function wireChart() {
@@ -228,10 +230,10 @@
 
   // ------------------------------------------------------------ drawdowns
   function renderDrawdowns() {
-    var a = view.a, b = view.b, box = $("dd");
+    var a = view.a, box = $("dd");
     if (a.length < 2) { box.innerHTML = ""; return; }
-    var da = M.drawdowns(a.map(function (p) { return p.v; })), db = M.drawdowns(b.map(function (p) { return p.v; }));
-    var floor = Math.min(minOf(da), minOf(db), -0.05) * 1.08;
+    var da = M.drawdowns(a.map(function (p) { return p.v; }));
+    var floor = Math.min(minOf(da), -0.05) * 1.08;
     var W = Math.max(300, Math.round(box.clientWidth || 520)), H = W < NARROW ? 170 : 200, L = 44, R = 12, T = 8, B = 22;
     var t0 = a[0].t, t1 = last(a).t;
     var X = function (t) { return L + ((t - t0) / (t1 - t0)) * (W - L - R); };
@@ -246,37 +248,26 @@
     yearLabels(t0, t1, X, H - 4).forEach(function (l) { out += l; });
     var sp = line(a, da);
     out += '<path class="a-strat" d="' + sp + " L" + X(t1).toFixed(1) + " " + T + " L" + X(t0).toFixed(1) + " " + T + ' Z"/>' +
-      '<path class="l-bench" d="' + line(b, db) + '"/><path class="l-strat" d="' + sp + '"/>';
+      '<path class="l-strat" d="' + sp + '"/>';
     var worst = da.indexOf(minOf(da)), wx = X(a[worst].t);
     out += '<text class="low" x="' + Math.min(W - R - 20, Math.max(L + 20, wx)).toFixed(1) + '" y="' + Math.min(H - B - 2, Y(da[worst]) + 15).toFixed(1) +
       '" text-anchor="middle">' + U.pct(da[worst] * 100, 0) + "</text>";
-    box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="In the backtest, its deepest fall from a previous high: ' + U.pct(da[worst] * 100, 0) +
-      ", against " + U.pct(minOf(db) * 100, 0) + ' for holding">' + out + "</svg>";
+    box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="In the backtest, its deepest fall from a previous high: ' + U.pct(da[worst] * 100, 0) + '">' + out + "</svg>";
     $("dd-note").textContent = "Since " + monthYear(t0) + ", its deepest fall from a previous high was " + U.pct(da[worst] * 100, 0) +
-      " in " + monthYear(a[worst].t) + ", on weekly closes. Holding fell as far as " + U.pct(minOf(db) * 100, 0) +
-      ". The worst-drop figure above, " + U.pct(s.stats.max_drawdown * 100, 0) + ", is measured on daily prices across the whole backtest.";
+      " in " + monthYear(a[worst].t) + ", on weekly closes. The worst-drop figure above, " + U.pct(s.stats.max_drawdown * 100, 0) + ", is measured on daily prices across the whole backtest.";
   }
 
   // ---------------------------------------- what your money would have done
   function renderCalc() {
-    var a = view.a, b = view.b;
+    var a = view.a;
     if (a.length < 2) return;
     var loss = M.lossLimit(s.stats.max_drawdown);
-    var endA = amount * last(a).v, endB = amount * last(b).v;
-    var top = Math.max(endA, endB, amount);
-    $("headline").innerHTML = '<span class="from">In the backtest, ' + esc(dollars(amount)) + " put in " + esc(monthYear(a[0].t)) + " would now be</span>" +
-      '<span class="to ' + (endA >= amount ? "up" : "down") + '">' + esc(dollars(endA)) + "</span>";
-    $("vs").innerHTML = esc(s.bench.name) + ": <b>" + esc(dollars(endB)) + "</b>";
-    $("k-strat").textContent = dollars(endA);
-    $("k-bench").textContent = dollars(endB);
-    $("k-strat-bar").style.width = ((endA / top) * 100).toFixed(1) + "%";
-    $("k-bench-bar").style.width = ((endB / top) * 100).toFixed(1) + "%";
+    var endA = amount * last(a).v;
 
     var low = M.lowest(a), froze = M.freezeAt(a, loss);
     var dd = minOf(M.drawdowns(a.map(function (p) { return p.v; })));
-    var ahead = endA - endB;
     var facts = [
-      ["", ahead >= 0 ? "Ahead of holding by" : "Behind holding by", dollars(Math.abs(ahead)), "after trading costs"],
+      ["", "Now worth", dollars(endA), U.pct((endA / amount - 1) * 100, 0) + " after trading costs"],
       low.v < 1
         ? ["", "At its lowest", dollars(amount * low.v), U.pct((low.v - 1) * 100, 0) + " from your deposit, " + day(low.t)]
         : ["", "At its lowest", dollars(amount), "It never closed a week below what you put in"],
@@ -308,9 +299,6 @@
         if (view) renderCalc();
       });
     });
-    document.querySelectorAll("[data-r]").forEach(function (b) {
-      b.addEventListener("click", function () { if (s) setRange(b.getAttribute("data-r")); });
-    });
   }
 
   // ---------------------------------------------------------------- start
@@ -326,12 +314,15 @@
   });
   wireChart();
   wireCalc();
+  document.querySelectorAll("[data-r]").forEach(function (b) {
+    b.addEventListener("click", function () { if (s) setRange(b.getAttribute("data-r")); });
+  });
 
   U.getJson("/data/strategies.json").then(function (d) {
     doc = d;
     s = (d.strategies || []).filter(function (x) { return x.id === id; })[0];
     if (!s) {
-      missing("Strategy not found", '<a class="chip" href="/#strategies">See all strategies</a>');
+      missing("Strategy not found", '<a class="chip" href="/strategies.html">See all strategies</a>');
       return;
     }
     renderHead();

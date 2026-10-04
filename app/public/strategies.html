@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<title>Strategies · Reins</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="/app.css">
+<link rel="stylesheet" href="/home.css">
+<link rel="stylesheet" href="/smart-money.css">
+
+<a class="skip" href="#main">Skip to content</a>
+<aside id="side"></aside>
+<header id="top"></header>
+
+<main id="main">
+  <div class="page-head">
+    <div>
+      <h1>Strategies</h1>
+      <p class="sub">Ready-made strategies an agent can run. Each one is a backtest on past prices, after costs, not live results.</p>
+    </div>
+    <a class="chip" href="/chat.html">Describe your own</a>
+  </div>
+  <div class="st-list st-page" id="strats"><span class="skel" style="height:120px"></span><span class="skel" style="height:120px"></span><span class="skel" style="height:120px"></span></div>
+
+  <footer class="foot">
+    <span>Backtests on historical prices, after costs. Past results do not predict future returns. The exact rules stay private.</span>
+    <span>Not investment advice</span>
+  </footer>
+</main>
+
+<script src="/wallet.js"></script>
+<script src="/ui.js"></script>
+<script src="/strategy-cards.js"></script>
+<script>
+(function () {
+  "use strict";
+  var U = window.ReinsUI;
+  U.topbar("strategies");
+  var list = window.ReinsStrategyCards.mount(document.getElementById("strats"));
+  // The top bar's search filters the cards here.
+  var q = document.getElementById("gsearch");
+  q.addEventListener("input", function () {
+    var v = q.value.trim().toLowerCase();
+    list.filter(function (text) { return !v || text.toLowerCase().indexOf(v) >= 0; });
+  });
+})();
+</script>
+</html>
