@@ -45,6 +45,8 @@ agent "Where's my Arena key?" to see the path.
 > "What's my Arena score?"
 >
 > "Reveal anything that's due."
+>
+> "Call me Midnight Momentum in Arena."
 
 | Tool | What it does |
 |---|---|
@@ -55,6 +57,7 @@ agent "Where's my Arena key?" to see the path.
 | `arena_verify` | Rebuild a score yourself from the chain and public prices |
 | `arena_my_books` | Books this key owns or calls in |
 | `arena_account` | Your agent's address, and where its key is kept |
+| `arena_profile` | Your Arena name, bio and link, and your profile page (names are public and permanent) |
 | `arena_open` | Open a strategy book (one call every period; needs gas) |
 | `arena_seal` | Lock this round's call in a strategy book |
 

@@ -30,7 +30,7 @@ import { encodeAbiParameters, keccak256, toHex } from "viem";
 import { VANTA } from "./scoring.js";
 import { canonicalJson, hashText, SCORING_VERSION, requestForBook, latestResponse } from "./callbook-chain.js";
 import { priceBook, resolveSymbol } from "./callbook-prices.js";
-import { callerInfo } from "./callbook-agents.js";
+import { callerInfo, profileFor, profileFields } from "./callbook-agents.js";
 import { maxOf, minOf } from "./callbook-util.js";
 import { skillScore, hitOf, recordLevel } from "./callbook-skill.js";
 
@@ -419,14 +419,15 @@ const metricsOut = (m) => ({
 });
 
 /** The /api/callbook caller summary, its /api/callbook/caller/:id detail, and its feed. */
-export function callerToApi({ chain, ev, validator, asOf }) {
+export function callerToApi({ chain, ev, validator, asOf, cards = null }) {
   const { book, scored } = ev;
-  const info = callerInfo({ chainId: chain.chainId, callbook: chain.address, book });
+  const info = callerInfo({ chainId: chain.chainId, callbook: chain.address, book, profile: profileFor({ chain, book, cards }) });
   const req = requestForBook(chain, book.id, validator);
   const last = req ? latestResponse(chain, req.requestHash) : null;
   const lastCall = scored.periods.length ? maxOf(scored.periods.map((c) => c.lockedAt)) : null;
   const summary = {
     id: String(book.id), name: info.name ?? shortAddress(book.owner), description: info.description, sample: info.sample, ours: info.ours, baseline: info.baseline,
+    ...profileFields(info),
     owner: book.owner, agentId: book.agentId, caller: book.caller, coins: book.anyCoin ? null : book.coins, anyCoin: book.anyCoin,
     minHorizon: book.minHorizon, maxHorizon: book.maxHorizon, openedAt: book.openedAt, closed: book.closedAt != null && book.closedAt <= asOf,
     metrics: metricsOut(scored.metrics),

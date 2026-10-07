@@ -8,6 +8,14 @@
  */
 import { keccak256, toHex } from "viem";
 
+import { profileKey } from "./callbook-chain.js";
+import { profileForDisplay } from "./arena-names.js";
+import { HIDDEN_PROFILES } from "./arena-hidden.js";
+
+// Lowercased here, so a checksummed address pasted into arena-hidden.js still matches.
+const HIDDEN_ACCOUNTS = new Set(HIDDEN_PROFILES.accounts.map((a) => String(a).toLowerCase()));
+const HIDDEN_BOOKS = new Set(HIDDEN_PROFILES.books.map((b) => String(b).toLowerCase()));
+
 export const strategyHashOf = (id) => keccak256(toHex(id));
 
 /** Our own agents' strategies, by id. runner/callbook-agents.js implements them. */
@@ -62,12 +70,63 @@ export const SAMPLE_CALLERS = {
   },
 };
 
+/**
+ * The profile people set for a record, as it may be shown, or null. First
+ * match wins: the record's own profile, its owner's (when they own several
+ * books, every one but their any-coin open-call book gets " #id", so no two
+ * read the same), then the ERC-8004 agent it
+ * links (`cards`: agentId -> { name, description }, read at index time).
+ * A record in HIDDEN_PROFILES shows none.
+ * @returns {{ name, bio, link, domain, source: "book" | "person" | "agent" } | null}
+ */
+export function profileFor({ chain, book, cards = null }) {
+  const owner = String(book.owner).toLowerCase();
+  if (HIDDEN_ACCOUNTS.has(owner)) return null;
+  if (HIDDEN_BOOKS.has(`${chain.chainId}:${String(chain.address).toLowerCase()}:${book.id}`)) return null;
+  const own = profileForDisplay(chain.profiles?.get(profileKey(owner, book.id)));
+  if (own) return { ...own, source: "book" };
+  const person = profileForDisplay(chain.profiles?.get(profileKey(owner, 0)));
+  if (person) {
+    const suffix = booksOwned(chain, owner) > 1 && !book.anyCoin ? ` #${book.id}` : "";
+    return { ...person, name: `${person.name}${suffix}`, source: "person" };
+  }
+  const card = book.agentId != null ? cards?.get(String(book.agentId)) : null;
+  const agent = card ? profileForDisplay({ name: card.name, bio: card.description, link: "" }) : null;
+  return agent ? { ...agent, source: "agent" } : null;
+}
+
+// How many books each owner has, counted once per state of the books map.
+const OWNED = new WeakMap();
+function booksOwned(chain, owner) {
+  let c = OWNED.get(chain.books);
+  if (!c || c.size !== chain.books.size) {
+    const counts = new Map();
+    for (const b of chain.books.values()) counts.set(b.owner, (counts.get(b.owner) ?? 0) + 1);
+    c = { size: chain.books.size, counts };
+    OWNED.set(chain.books, c);
+  }
+  return c.counts.get(owner) ?? 0;
+}
+
+/** A person's own profile (bookId 0), as it may be shown, or null. */
+export function personProfile(chain, owner) {
+  const who = String(owner).toLowerCase();
+  if (HIDDEN_ACCOUNTS.has(who)) return null;
+  return profileForDisplay(chain.profiles?.get(profileKey(who, 0)));
+}
+
+/** The profile fields every record carries; all null without a profile. */
+export const profileFields = (info) => ({
+  nameSource: info.source ?? null, bio: info.bio ?? null, link: info.link ?? null, linkDomain: info.domain ?? null,
+});
+
 /** { name, description, sample, ours } for an open-call book; name null means "use the short address". */
-export function callerInfo({ chainId, callbook, book }) {
+export function callerInfo({ chainId, callbook, book, profile = null }) {
   const sample = Number(chainId) === 31337 ? SAMPLE_CALLERS[book.owner] : null;
-  if (sample) return { name: sample.name, description: sample.description, sample: true, ours: false, baseline: Boolean(sample.baseline), key: sample.key };
+  if (sample) return { name: sample.name, description: sample.description, sample: true, ours: false, baseline: Boolean(sample.baseline), key: sample.key, source: "ours" };
+  if (profile) return { name: profile.name, description: profile.bio, sample: false, ours: false, baseline: false, ...profile };
   const other = OTHER_BOOKS[`${chainId}:${String(callbook).toLowerCase()}:${book.id}`];
-  if (other) return { name: other.name, description: other.description ?? null, sample: false, ours: false, baseline: Boolean(other.baseline) };
+  if (other) return { name: other.name, description: other.description ?? null, sample: false, ours: false, baseline: Boolean(other.baseline), source: "manual" };
   return { name: null, description: null, sample: false, ours: false, baseline: false };
 }
 
@@ -80,12 +139,14 @@ export function isOurBook(ours, { bookId, owner }) {
  * { name, ours, description, key? } for a book. Our name and description go
  * only to a book that is ours by owner and record (isOurBook): a strategy hash
  * or a caller address is public, so anyone could copy them onto a book of
- * their own. Every other book is "Book #N".
+ * their own. Next comes the profile people set (profileFor), then OTHER_BOOKS.
+ * Every other book is "Book #N".
  */
-export function agentInfo({ chainId, callbook, bookId, strategyHash, owner, ours: ourBooks }) {
+export function agentInfo({ chainId, callbook, bookId, strategyHash, owner, ours: ourBooks, profile = null }) {
   const ours = isOurBook(ourBooks, { bookId, owner }) ? BY_HASH.get(String(strategyHash).toLowerCase()) : null;
-  if (ours) return { name: ours.name, ours: true, baseline: Boolean(ours.baseline), description: ours.description, key: ours.key, strategy: ours.id };
+  if (ours) return { name: ours.name, ours: true, baseline: Boolean(ours.baseline), description: ours.description, key: ours.key, strategy: ours.id, source: "ours" };
+  if (profile) return { name: profile.name, ours: false, baseline: false, description: profile.bio, ...profile };
   const other = OTHER_BOOKS[`${chainId}:${String(callbook).toLowerCase()}:${bookId}`];
-  if (other) return { name: other.name, ours: false, baseline: Boolean(other.baseline), description: other.description ?? null };
+  if (other) return { name: other.name, ours: false, baseline: Boolean(other.baseline), description: other.description ?? null, source: "manual" };
   return { name: `Book #${bookId}`, ours: false, baseline: false, description: null };
 }

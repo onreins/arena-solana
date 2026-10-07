@@ -69,6 +69,29 @@ window.Callbook = (function () {
   var own = function (obj, k) { return Object.prototype.hasOwnProperty.call(obj, k) ? obj[k] : undefined; };
   // A book's name, or "Book #N" when the server sends none (a book that isn't one we vouch for).
   function nameOf(x) { return x && typeof x.name === "string" && x.name.trim() ? x.name : "Book #" + String(x && (x.id != null ? x.id : x.bookId)); }
+  // A person’s profile page: every record one address runs, in one place.
+  var ADDR_RE = /^0x[0-9a-fA-F]{40}$/;
+  function profileHref(owner) { return ADDR_RE.test(owner || "") ? "/arena/p/" + String(owner).toLowerCase() : null; }
+  /** " · More from this person", for a record's meta line. */
+  function moreFrom(x) {
+    var href = profileHref(x && x.owner);
+    return href ? ' · <a class="cb-more-from" href="' + esc(href) + '">More from this person</a>' : "";
+  }
+  // A small avatar drawn from an address: a mirrored 5×5 grid in one hue. Nothing is fetched,
+  // so it can’t track anyone or be swapped for something else.
+  function identicon(addr, size) {
+    var a = String(addr || "").toLowerCase().replace(/^0x/, ""), px = size || 40;
+    if (!/^[0-9a-f]{40}$/.test(a)) return "";
+    var hue = parseInt(a.slice(0, 4), 16) % 360, cells = "";
+    for (var i = 0; i < 15; i++) {
+      if (parseInt(a.charAt(4 + i), 16) % 2) continue;
+      var row = Math.floor(i / 3), col = i % 3;
+      cells += '<rect x="' + (col + 1) + '" y="' + (row + 1) + '" width="1" height="1"/>';
+      if (col < 2) cells += '<rect x="' + (5 - col) + '" y="' + (row + 1) + '" width="1" height="1"/>';
+    }
+    return '<svg class="cb-avatar" viewBox="0 0 7 7" width="' + px + '" height="' + px + '" aria-hidden="true">' +
+      '<rect width="7" height="7" rx="1.6" fill="hsl(' + hue + ' 45% 14%)"/><g fill="hsl(' + hue + ' 80% 66%)" shape-rendering="crispEdges">' + cells + "</g></svg>";
+  }
   function movedTag(x) {
     return x && x.agentMoved ? '<span class="cb-tag" tabindex="0" data-tip="The ERC-8004 agent this book points to has changed hands since the book opened">Agent changed hands</span>' : "";
   }
@@ -390,7 +413,7 @@ window.Callbook = (function () {
 
   return {
     skillHtml: skillHtml, skillTip: skillTip, skillPanel: skillPanel, countUp: countUp, glow: glow, levelLine: levelLine, RECORD: RECORD, skillRank: skillRank, LEVELS: LEVELS,
-    own: own, nameOf: nameOf, movedTag: movedTag, YOUNG_DAYS: YOUNG_DAYS, challengeLine: challengeLine, isHttp: isHttp, RULES: RULES, scoreOf: scoreOf, scoreWhy: scoreWhy, periodAt: periodAt, eodOf: eodOf, where: where, costsText: costsText, loadIndex: loadIndex, loadBook: loadBook, loadCaller: loadCaller, params: params, wantMock: wantMock, ID_RE: ID_RE,
+    own: own, nameOf: nameOf, movedTag: movedTag, profileHref: profileHref, moreFrom: moreFrom, identicon: identicon, ADDR_RE: ADDR_RE, YOUNG_DAYS: YOUNG_DAYS, challengeLine: challengeLine, isHttp: isHttp, RULES: RULES, scoreOf: scoreOf, scoreWhy: scoreWhy, periodAt: periodAt, eodOf: eodOf, where: where, costsText: costsText, loadIndex: loadIndex, loadBook: loadBook, loadCaller: loadCaller, params: params, wantMock: wantMock, ID_RE: ID_RE,
     pct: pct, pctHtml: pctHtml, dd: dd, num: num, int: int, isNum: isNum, shortHash: shortHash, txLink: txLink,
     ago: ago, stamp: stamp, day: day, clock: clock, span: span, hours: hours, now: now,
     sidePill: sidePill, challengePill: challengePill, nextBoundary: nextBoundary,

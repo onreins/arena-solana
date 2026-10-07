@@ -184,7 +184,7 @@ describe("planning an agent on the chart", () => {
   });
   test("the create page link carries the plan and where it was made", () => {
     const link = M.createLink({ deposit: 500, lossPercent: 15, tradePercent: 20, bandPercent: 0.5 }, { base: "ETH", quote: "USDT", kind: "spot" });
-    assert.equal(link, "/create.html?loss=15&trade=20&band=0.5&deposit=500&from=ETH%2FUSDT");
+    assert.equal(link, "/create?loss=15&trade=20&band=0.5&deposit=500&from=ETH%2FUSDT");
   });
 });
 

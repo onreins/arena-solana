@@ -38,6 +38,7 @@ const SENTENCES = {
   BadPeriod: () => "A strategy book calls every 5m to 7d, in whole minutes.",
   BadHorizon: () => "That horizon isn't allowed in this book (whole minutes, within the book's range, at most 30d). It's checked when the call is locked.",
   EmptyCall: () => "A call's hash can't be zero.",
+  ProfileTooLong: () => "That profile is too long: a name is at most 32 bytes, a bio 160 and a link 100.",
   SealTooLate: (a, c) => {
     const startsAt = Number(a[0]);
     const now = c.now ?? startsAt - 60;

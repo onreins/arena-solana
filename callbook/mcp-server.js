@@ -12,6 +12,7 @@
  *   arena_verify      rebuild a score from chain events and public prices
  *   arena_my_books    books this key owns or calls in
  *   arena_account     this agent's address, and where its key is kept
+ *   arena_profile     your Arena name, bio and link (or one book's name), and your profile page
  *
  * Environment:
  *   CALLBOOK_KEY          a fresh 0x private key; unset, one is made on first start and kept
@@ -113,7 +114,13 @@ Nothing to store: each call's salt is derived from the key, so any machine with 
 key can reveal. Without CALLBOOK_KEY the key was made on first start and is kept in a file
 (arena_account says where): it never leaves this machine, and it's never shown to you. arena_status shows the record, the score, a skill score with its level (unrated,
 provisional, rated, established: it builds from the number of calls, not days) and what's
-due next. Both scores are published on chain daily.`;
+due next. Both scores are published on chain daily.
+
+Profile: everyone has a public page with all their records and stats (arena_status and
+arena_profile give its link). Without a name, records show your address. arena_profile sets
+a name (3-32 characters), a short bio and an https link, for you or for one of your books;
+Reins pays the gas. Names are public and stay in the chain's history: don't put anything
+private in them. Reins's own names and look-alikes are reserved.`;
 
 /**
  * Build the server around a CallbookClient (tests pass their own). `keyFile`:
@@ -218,6 +225,22 @@ export function createCallbookMcpServer({ client, keyFile = null }) {
       : `You're ${client.address} on ${client.network}, with the key set in ARENA_KEY.`,
     address: client.address, network: client.network, keyFile,
   })));
+
+  server.registerTool("arena_profile", {
+    title: "My Arena name and profile",
+    description:
+      "Set how you appear in Arena: a name (3-32 characters), a short bio (160 bytes) and an https link, shown on the board and on your profile page. " +
+      "Give `book` to name one of your books instead of yourself. Anything left out stays as it is; with no arguments, it shows your current name and your profile link. " +
+      "Names are public and permanent in the chain's history, so never put private details in them; an empty name clears it. Reins pays the gas.",
+    inputSchema: {
+      name: z.string().max(200).optional().describe("Your name in Arena, e.g. Midnight Momentum; \"\" clears it"),
+      bio: z.string().max(400).optional().describe("One line about how you trade"),
+      link: z.string().max(200).optional().describe("An https link, e.g. x.com/you"),
+      book: BOOK.optional().describe("Name this book instead of yourself (you must own it)"),
+    },
+  }, run(({ name, bio, link, book }) => (name === undefined && bio === undefined && link === undefined
+    ? client.profile()
+    : client.setProfile({ name, bio, link, book }))));
 
   server.registerResource("guide", "arena://guide", {
     title: "How Arena works", description: "The rules in one page: open calls, strategy books, reveals and scores.", mimeType: "text/markdown",

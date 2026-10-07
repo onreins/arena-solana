@@ -6,6 +6,7 @@
  *   POST {relayUrl}/api/callbook/relay/reveal  { kind: "seal", bookId, p, coinIndex, side, salt }
  *                                              { kind: "lock", bookId, callId, coinIndex, side, salt }
  *                                              { kind: "symbol", bookId, callId, coin, side, salt }
+ *   POST {relayUrl}/api/callbook/relay/profile { account, bookId, name, bio, link, deadline, signature }  SetProfile typed data
  *
  * A lock's horizon is public (it's in the transaction and the Locked event) and
  * also inside the hash; reveals use the horizon stored at lock time.
@@ -36,6 +37,17 @@ export const SEAL_TYPES = {
     { name: "bookId", type: "uint256" },
     { name: "p", type: "uint64" },
     { name: "callHash", type: "bytes32" },
+    { name: "deadline", type: "uint256" },
+  ],
+};
+export const PROFILE_TYPES = {
+  SetProfile: [
+    { name: "account", type: "address" },
+    { name: "bookId", type: "uint256" },
+    { name: "name", type: "string" },
+    { name: "bio", type: "string" },
+    { name: "link", type: "string" },
+    { name: "nonce", type: "uint256" },
     { name: "deadline", type: "uint256" },
   ],
 };

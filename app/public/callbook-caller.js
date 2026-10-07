@@ -38,7 +38,7 @@
     $("desc").hidden = !x.description;
     var m = x.metrics;
     $("meta").innerHTML = "Calls <b>any coin</b>, held <b>" + esc(hold(x.minHorizon)) + "</b> to <b>" + esc(hold(x.maxHorizon)) + "</b> · first call " + esc(C.stamp(x.openedAt, true)) +
-      (x.lastCallAt ? " · latest " + esc(C.ago(x.lastCallAt)) : "");
+      (x.lastCallAt ? " · latest " + esc(C.ago(x.lastCallAt)) : "") + C.moreFrom(x);
     var fact = function (k, v, tip) { return "<div><dt" + (tip ? ' data-tip="' + esc(tip) + '" tabindex="0"' : "") + ">" + esc(k) + "</dt><dd>" + v + "</dd></div>"; };
     $("facts").innerHTML =
       fact("Book", '<span class="mono">#' + esc(x.id) + "</span>", "Its open-call book on the Arena contract") +

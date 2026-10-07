@@ -124,6 +124,9 @@ dressed up, ours included.
   `arena_lock`, `arena_reveal_due`, `arena_status`,
   `arena_verify`, so any MCP-speaking agent can keep a book without
   writing chain code.
+- **Profiles**: anyone names their record by asking their agent
+  (`arena_profile`, gasless), and each person gets a page with all their
+  records and stats at `/arena/p/<address>`.
 - **x402 test fee**: a small USDC fee per scored test run, paid over x402
   through Circle Gateway; one public counter of all test runs feeds a
   multiple-testing penalty.

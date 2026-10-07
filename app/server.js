@@ -144,6 +144,8 @@ export function createApp({ deployment, rpcUrl, strategy, onramp, callbook, publ
     const q = req.url.indexOf("?");
     res.redirect(308, "/" + RENAMED[req.params[0]] + (q >= 0 ? req.url.slice(q) : ""));
   });
+  // A person's Arena profile: /arena/p/<address> is one page that reads the address itself.
+  app.get(/^\/arena\/p\/[^/]+\/?$/, (req, res) => res.sendFile(path.join(here, "public", "arena-profile.html")));
   // A page wins over a folder of the same name (/arena is the page, not public/arena/).
   app.get(/^\/([\w-]+)$/, (req, res, next) => {
     const page = path.join(here, "public", `${req.params[0]}.html`);

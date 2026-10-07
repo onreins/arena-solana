@@ -35,6 +35,8 @@ export const CALLBOOK_EVENTS = parseAbi([
   "event Locked(uint256 indexed bookId, uint64 indexed callId, bytes32 callHash, uint64 entryAt, uint32 horizon)",
   "event RevealedLocked(uint256 indexed bookId, uint64 indexed callId, uint8 coinIndex, int8 side, uint32 horizon)",
   "event RevealedLockedSymbol(uint256 indexed bookId, uint64 indexed callId, string coin, int8 side, uint32 horizon)",
+  // Names: bookId 0 is the account itself; the newest event wins and an empty name clears.
+  "event Profile(address indexed account, uint256 indexed bookId, string name, string bio, string link)",
 ]);
 
 export const VALIDATION_EVENTS = parseAbi([
@@ -183,6 +185,17 @@ function applyCallbookLog(books, log, at) {
   }
 }
 
+/** The key a profile is kept under: an account, and 0 or one of its books. */
+export const profileKey = (account, bookId = 0) => `${String(account).toLowerCase()}:${Number(bookId)}`;
+
+/** The raw text as sent; arena-names.js decides what of it is shown. */
+function applyProfileLog(profiles, log, at) {
+  const a = log.args;
+  profiles.set(profileKey(a.account, a.bookId), {
+    account: a.account.toLowerCase(), bookId: Number(a.bookId), name: a.name ?? "", bio: a.bio ?? "", link: a.link ?? "", at, tx: log.transactionHash,
+  });
+}
+
 /** The longest request URI kept: a book descriptor is a few hundred characters. */
 export const MAX_REQUEST_URI = 8_192;
 
@@ -212,7 +225,8 @@ function applyValidationLog(v, log, at, validator) {
  * every request and response naming `validator` (any validator when unset).
  *
  * opts: { client, address, fromBlock, toBlock?, validationRegistry?, validator?, state?, chunk? }
- * Returns { address, chainId, toBlock, books: Map<id, book>, validation: { requests, responses }, blockTimes }
+ * Returns { address, chainId, toBlock, books: Map<id, book>, profiles: Map<profileKey, profile>,
+ * validation: { requests, responses }, blockTimes }
  * and is itself a valid `state` for the next call.
  */
 export async function readCallbook({ client, address, fromBlock = 0n, toBlock, validationRegistry, validator, state, chunk = DEFAULT_LOG_CHUNK }) {
@@ -222,9 +236,11 @@ export async function readCallbook({ client, address, fromBlock = 0n, toBlock, v
     chainId: await client.getChainId(),
     toBlock: BigInt(fromBlock) - 1n,
     books: new Map(),
+    profiles: new Map(),
     validation: { requests: new Map(), responses: new Map() },
     blockTimes: new Map(),
   };
+  s.profiles ??= new Map(); // a snapshot saved before profiles existed
   const from = s.toBlock + 1n;
   if (from > head) return s;
 
@@ -239,7 +255,8 @@ export async function readCallbook({ client, address, fromBlock = 0n, toBlock, v
     if (!log.eventName || !log.args) continue;
     const at = s.blockTimes.get(log.blockNumber);
     if (same(log.address, address)) {
-      if (CALLBOOK_EVENTS.some((e) => e.name === log.eventName)) applyCallbookLog(s.books, log, at);
+      if (log.eventName === "Profile") applyProfileLog(s.profiles, log, at);
+      else if (CALLBOOK_EVENTS.some((e) => e.name === log.eventName)) applyCallbookLog(s.books, log, at);
     } else if (VALIDATION_EVENTS.some((e) => e.name === log.eventName)) {
       applyValidationLog(s.validation, log, at, validator);
     }
@@ -251,7 +268,8 @@ export async function readCallbook({ client, address, fromBlock = 0n, toBlock, v
 
 // ------------------------------------------------------------------ snapshots
 
-const SNAPSHOT_VERSION = 1;
+// 2: states carry profiles. A version-1 snapshot may have scanned past Profile events without keeping them, so it is read again from the start.
+const SNAPSHOT_VERSION = 2;
 const big = (_, v) => (typeof v === "bigint" ? `${v}n` : v instanceof Map ? { __map: [...v.entries()] } : v);
 const unbig = (_, v) => {
   if (typeof v === "string" && /^\d+n$/.test(v)) return BigInt(v.slice(0, -1));
