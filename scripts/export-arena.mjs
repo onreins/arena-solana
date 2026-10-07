@@ -86,6 +86,12 @@ for (const rel of FILES) {
 put("app/server.js", readFileSync(path.join(TEMPLATES, "server.js"), "utf8"));
 put("package.json", readFileSync(path.join(TEMPLATES, "package.json"), "utf8"));
 put("README.md", readFileSync(path.join(TEMPLATES, "README.md"), "utf8"));
+// Screenshots for the README, taken from app.reins.one.
+for (const img of readdirSync(path.join(TEMPLATES, "images")).filter((f) => /\.(png|jpg|gif|webp)$/.test(f))) {
+  const dest = path.join(OUT, "docs", "images", img);
+  mkdirSync(path.dirname(dest), { recursive: true });
+  cpSync(path.join(TEMPLATES, "images", img), dest);
+}
 
 // The test rig without the Reins vault the Arena tests never touch.
 const helpers = source("test/helpers.js")

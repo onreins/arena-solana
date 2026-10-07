@@ -220,6 +220,7 @@
 .cbp-spark.none { height: auto; color: var(--ink-4); font-size: 12px; }
 .cbp-rec-n { display: flex; justify-content: space-between; color: var(--ink-3); font-size: 12.5px; }
 .cbp-calls td a { color: var(--ink); }
+.cbp-calls th small { display: block; color: var(--ink-4); font-size: 11px; }
 .cbp-calls .c-round small { display: block; margin-top: 2px; color: var(--ink-4); font-size: 11.5px; font-weight: 400; }
 .cbp-missing .cbp-stats, .cbp-missing .cbp-recs-p, .cbp-missing .cbp-calls-p, .cbp-missing .cb-verify { display: none; }
 @media (max-width: 760px) {
