@@ -428,8 +428,22 @@ footer { border-top: 1px solid var(--line); padding: 48px 0 56px; }
 .sfx.on { opacity: 1; }
 .hero .sfx { top: 0; height: 900px; -webkit-mask-image: radial-gradient(75% 65% at 50% 28%, #000 35%, transparent 80%); mask-image: radial-gradient(75% 65% at 50% 28%, #000 35%, transparent 80%); }
 .hero .sfx.on { opacity: .75; }
+.hero-copy::before { content: ""; position: absolute; inset: -60px -12% -40px; z-index: -1; pointer-events: none; background: radial-gradient(closest-side, rgba(7, 8, 10, .78), rgba(7, 8, 10, .45) 60%, transparent); }
+.hero .lede, .hero .facts, .step p, #developers .sub, #developers .tools, #roadmap .sub, .end p { text-shadow: 0 1px 14px rgba(7, 8, 10, .9), 0 0 2px rgba(7, 8, 10, .8); }
+.hero .pill { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); background: rgba(7, 8, 10, .55); }
 .end .sfx { inset: 0; height: 100%; -webkit-mask-image: radial-gradient(85% 110% at 50% 100%, #000 40%, transparent 90%); mask-image: radial-gradient(85% 110% at 50% 100%, #000 40%, transparent 90%); }
 .end .sfx.on { opacity: 1; }
+section.block { position: relative; isolation: isolate; }
+#platform > .sfx { top: 60px; height: 520px; -webkit-mask-image: radial-gradient(60% 50% at 50% 55%, #000 30%, transparent 75%); mask-image: radial-gradient(60% 50% at 50% 55%, #000 30%, transparent 75%); }
+#platform > .sfx.on { opacity: .38; }
+#safety > .sfx { top: 40px; left: auto; right: max(0px, calc((100% - 1240px) / 2)); width: min(460px, 38vw); aspect-ratio: 1; }
+#developers > .sfx { top: 10%; height: 90%; -webkit-mask-image: radial-gradient(55% 60% at 72% 62%, #000 25%, transparent 75%); mask-image: radial-gradient(55% 60% at 72% 62%, #000 25%, transparent 75%); }
+#developers > .sfx.on { opacity: .5; }
+#developers { padding-bottom: 140px; }
+@media (max-width: 900px) { #developers > .sfx { -webkit-mask-image: linear-gradient(180deg, transparent 55%, #000 85%); mask-image: linear-gradient(180deg, transparent 55%, #000 85%); } }
+#roadmap > .sfx { top: 0; height: 640px; -webkit-mask-image: radial-gradient(70% 80% at 50% 0%, #000 30%, transparent 80%); mask-image: radial-gradient(70% 80% at 50% 0%, #000 30%, transparent 80%); }
+#roadmap > .sfx.on { opacity: .7; }
+@media (max-width: 900px) { #safety > .sfx { display: none; } }
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -508,6 +522,7 @@ footer { border-top: 1px solid var(--line); padding: 48px 0 56px; }
 
 <!-- ---------------------------------------------------------------- loop -->
 <section class="block" id="platform">
+  <canvas class="sfx" data-shader="strands" aria-hidden="true"></canvas>
   <div class="wrap center rv">
     <span class="kicker">The platform</span>
     <h2 class="h2">From a hunch to an agent, without leaving the page</h2>
@@ -618,6 +633,7 @@ mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
 
 <!-- -------------------------------------------------------------- safety -->
 <section class="block" id="safety">
+  <canvas class="sfx" data-shader="metal" aria-hidden="true"></canvas>
   <div class="wrap">
     <div class="rv">
       <span class="kicker">Safety</span>
@@ -657,6 +673,7 @@ mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
 
 <!-- ---------------------------------------------------------- developers -->
 <section class="block" id="developers">
+  <canvas class="sfx" data-shader="grid" aria-hidden="true"></canvas>
   <div class="wrap dev">
     <div class="rv">
       <span class="kicker">Developers</span>
@@ -714,6 +731,7 @@ mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
 
 <!-- -------------------------------------------------------------- roadmap -->
 <section class="block" id="roadmap">
+  <canvas class="sfx" data-shader="rays" aria-hidden="true"></canvas>
   <div class="wrap">
     <div class="center rv">
       <span class="kicker">Roadmap</span>
@@ -801,7 +819,16 @@ mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
   };
   var pct = function (x) { return (x >= 0 ? "+" : "") + (x * 100).toFixed(2) + "%"; };
   var money = function (v) { return "$" + (v >= 1e9 ? (v / 1e9).toFixed(2) + "B" : v >= 1e6 ? (v / 1e6).toFixed(1) + "M" : Math.round(v).toLocaleString("en-US")); };
-  var coin = function (c) { return '<span class="coin">' + esc(c.replace(/^k(?=[A-Z])/, "").charAt(0)) + '<img src="' + ICON(c) + '" alt="" loading="lazy" onerror="this.remove()"></span>'; };
+  // Ledger has no icon for some coins (LIT); remember misses so they aren't requested again.
+  var MISSING_KEY = "reins:missing-icons";
+  var missing = { LIT: 1 };
+  try { Object.assign(missing, JSON.parse(localStorage.getItem(MISSING_KEY)) || {}); } catch (e) { /* storage blocked: start from the known list */ }
+  window.reinsIconMissing = function (img) { missing[img.dataset.sym] = 1; img.remove(); try { localStorage.setItem(MISSING_KEY, JSON.stringify(missing)); } catch (e) { /* storage blocked */ } };
+  var coin = function (c) {
+    var sym = c.replace(/^k(?=[A-Z])/, "").toUpperCase();
+    var img = missing[sym] ? "" : '<img src="' + ICON(c) + '" alt="" loading="lazy" data-sym="' + esc(sym) + '" onerror="reinsIconMissing(this)">';
+    return '<span class="coin">' + esc(sym.charAt(0)) + img + '</span>';
+  };
   function post(body) {
     var ctl = new AbortController(), t = setTimeout(function () { ctl.abort(); }, 10000);
     return fetch(API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: ctl.signal })
@@ -1161,51 +1188,87 @@ mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
 })();
 </script>
 <script type="module">
-/* Shaders (shaders.com, MIT): slow WebGPU backdrops behind the hero and the
-   closing call to action. A progressive extra: without WebGPU, on touch
-   screens, with reduced motion or on any error, the CSS glow underneath is the
-   page. Loaded after the page from jsDelivr, version pinned, telemetry off. */
+/* Shaders (shaders.com, MIT): WebGPU effects through the page. A progressive
+   extra: without WebGPU, on touch screens or on any error, the CSS underneath is
+   the page. Loaded after the page from jsDelivr, version pinned, telemetry off.
+   Every canvas shares one GPU device, and a canvas off screen drops to ~1fps. */
 const canvases = [...document.querySelectorAll("canvas[data-shader]")];
 const wanted = canvases.length && "gpu" in navigator
-  && !matchMedia("(prefers-reduced-motion: reduce)").matches
   && matchMedia("(hover: hover) and (pointer: fine)").matches;
+
+const stops = (...pairs) => pairs.map(([color, position]) => ({ color, position }));
+const shape = (config) => ({ shape: JSON.stringify(config), shapeType: config.type });
+const spin = (speed) => ({ type: "auto-animate", mode: "loop", outputMin: 0, outputMax: 360, speed, easing: "linear" });
+const follow = { type: "mouse-position", smoothing: 0.12, momentum: 0.2 };
+
 const LOOKS = {
-  // Deep navy drifting into brand blue, a violet turn and a warm edge, like the headline.
-  hero: [{ type: "FilmGrain", props: { strength: 0.3, bias: 2 }, children: [{
-    type: "MeshGradient",
-    props: {
-      stops: [
-        { color: "#07080a", position: 0 }, { color: "#0a1830", position: 0.34 }, { color: "#0f5ea8", position: 0.6 },
-        { color: "#3b2a8a", position: 0.82 }, { color: "#ff8a4c", position: 1 },
-      ],
+  // Deep navy drifting into brand blue, a violet turn and a warm edge, like the
+  // headline, with a little drifting dust.
+  hero: [
+    { type: "MeshGradient", props: {
+      stops: stops(["#07080a", 0], ["#0a1830", 0.34], ["#0f5ea8", 0.6], ["#3b2a8a", 0.82], ["#ff8a4c", 1]),
       count: 5, smoothness: 2.6, variation: 0.3, swirl: 0.2, drift: 0.45, speed: 0.35,
-    },
-  }] }],
-  // The hero's drifting light again, cooler, rising behind the last call to action.
-  end: [{ type: "FilmGrain", props: { strength: 0.25 }, children: [{
-    type: "MeshGradient",
-    props: {
-      stops: [
-        { color: "#07080a", position: 0 }, { color: "#0b1d3d", position: 0.4 }, { color: "#1468c4", position: 0.68 },
-        { color: "#4a35b0", position: 0.88 }, { color: "#7cc6ff", position: 1 },
-      ],
+    } },
+    { type: "FloatingParticles", props: {
+      particleColor: "#9fd3ff", count: 400, particleSize: 0.9, speed: 0.12, angle: 80,
+      twinkle: 0.7, opacity: 0.3, blendMode: "screen",
+    } },
+    { type: "FilmGrain", props: { strength: 0.3, bias: 2 } },
+  ],
+  // Ribbons of light running through the five steps, from watch to launch.
+  strands: [{ type: "Strands", props: {
+    stops: stops(["#1e9bff", 0], ["#7cc6ff", 0.35], ["#9d8cff", 0.7], ["#ff8a4c", 1]),
+    lineCount: 7, lineWidth: 0.04, softness: 0.25, amplitude: 1.6, frequency: 0.35, spread: 0.25,
+    speed: 0.35, colorSpeed: 0.4, start: { x: 0, y: 0.6 }, end: { x: 1, y: 0.6 },
+  } }],
+  // A link of liquid chrome turning slowly: the rein itself.
+  metal: [{ type: "LiquidMetal", props: {
+    ...shape({ type: "link3D", radius: 0.2, length: 0.17, tube: 0.075, rotX: spin(0.06), rotY: 30, rotZ: spin(0.04) }),
+    lightColor: "#d8ecff", darkColor: "#07111f", turbulence: 0.7, ripple: 3, warp: 1.1, speed: 0.4, sharpness: 0.7,
+  } }],
+  // A blueprint floor under the terminal, leaning with the cursor.
+  grid: [
+    { type: "Grid", props: { color: "#2f8cff", cells: 16, thickness: 1.5, softness: 0 } },
+    { type: "Perspective", props: {
+      tilt: 64, fov: 70, zoom: 1.2, offset: { x: 0.5, y: 0.35 },
+      pan: { type: "mouse", axis: "x", outputMin: -8, outputMax: 8, smoothing: 0.08 },
+    } },
+  ],
+  // Light falling on what comes next.
+  rays: [{ type: "Godrays", props: {
+    center: { x: 0.5, y: -0.15 }, density: 0.35, intensity: 0.6, spotty: 0.7, speed: 0.25, rayColor: "#3d7bff",
+  } }],
+  // The hero's light again, cooler, with a beam splitting into colour behind the last call to action.
+  end: [
+    { type: "MeshGradient", props: {
+      stops: stops(["#07080a", 0], ["#0b1d3d", 0.4], ["#1468c4", 0.68], ["#4a35b0", 0.88], ["#7cc6ff", 1]),
       count: 4, smoothness: 2.8, variation: 0.25, swirl: -0.25, drift: 0.5, speed: 0.3, seed: 7,
-    },
-  }] }],
+    } },
+    { type: "Prism", props: {
+      position: { x: 0, y: 0.98 }, splitPosition: { x: 0.5, y: 0.9 }, beamWidth: 0.025, intensity: 1.1,
+      spread: 0.6, softness: 0.15, saturation: 0.85, speed: 0.12, blendMode: "screen", opacity: 0.85,
+    } },
+    { type: "FilmGrain", props: { strength: 0.25 } },
+  ],
 };
+
 async function start() {
   try {
-    if (!(await navigator.gpu.requestAdapter())) return;
-    const { createShader } = await import("https://cdn.jsdelivr.net/npm/shaders@4.0.0/dist/js/bundle.js");
+    const { createShader, createSharedDevice } = await import("https://cdn.jsdelivr.net/npm/shaders@4.0.0/dist/js/bundle.js");
+    const gpu = await createSharedDevice();
+    if (!gpu) return;
     for (const canvas of canvases) {
       const look = LOOKS[canvas.dataset.shader];
       if (!look) continue;
       const done = () => canvas.classList.add("on");
-      createShader(canvas, { components: look }, { disableTelemetry: true, onReady: done, onError: () => canvas.remove() })
-        .then(done, () => canvas.remove());
+      const drop = () => { instance?.destroy?.(); canvas.remove(); };
+      let instance;
+      instance = await createShader(canvas, { components: look }, { gpu, disableTelemetry: true, onReady: done, onError: drop })
+        .catch(() => (drop(), null));
+      if (instance) done();
     }
   } catch {
-    canvases.forEach((c) => c.remove()); // no WebGPU after all: keep the CSS glow
+    canvases.forEach((c) => c.remove()); // no WebGPU after all: keep the CSS
   }
 }
 if (wanted) (window.requestIdleCallback || ((cb) => setTimeout(cb, 300)))(start);
