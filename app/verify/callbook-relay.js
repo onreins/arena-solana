@@ -70,7 +70,7 @@ export class RelayError extends Error {
 }
 const refuse = (m) => new RelayError(400, m);
 
-export const DOMAIN = (chainId, callbook) => ({ name: "Callbook", version: "1", chainId: Number(chainId), verifyingContract: getAddress(callbook) });
+export const DOMAIN = (chainId, callbook) => ({ name: "Arena", version: "1", chainId: Number(chainId), verifyingContract: getAddress(callbook) });
 export const LOCK_TYPES = {
   LockCall: [
     { name: "account", type: "address" }, { name: "callHash", type: "bytes32" }, { name: "horizon", type: "uint32" },

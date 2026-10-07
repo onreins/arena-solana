@@ -1,5 +1,5 @@
 /**
- * The Callbook engine: period statuses, outcomes, the score, the report and
+ * The Arena engine: period statuses, outcomes, the score, the report and
  * its hash, salts, and one run against a local node (deploy, open, seal,
  * travel, reveal, read back, score, post, re-check).
  *
@@ -409,7 +409,7 @@ test("on a local node: open, seal, travel, reveal, read back, score, post and re
   const r = requestForBook(again, bookId, validator.account.address);
   const last = latestResponse(again, r.requestHash);
   assert.equal(last.score, ev.scored.score.value);
-  assert.equal(last.tag, "callbook-v1");
+  assert.equal(last.tag, "arena-v1");
   const rebuilt = await evaluateBook({ chain: again, book: again.books.get(bookId), source, asOf: asOfFromUri(last.uri) });
   assert.equal(rebuilt.report.hash, last.responseHash, "the posted hash rebuilds from chain and prices");
   // Within a day, nothing more is posted.

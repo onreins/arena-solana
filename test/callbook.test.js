@@ -1,5 +1,5 @@
 /**
- * Callbook — the notary for trading agents.
+ * Arena — the notary for trading agents.
  *
  * The contract's whole value is that a sealed call was fixed before the
  * outcome and is revealed exactly as sealed. So these tests are mostly about
@@ -121,7 +121,7 @@ function callHash({ callbook, chainId = localChain.id, bookId, p, coinIndex, sid
   );
 }
 
-/** A fresh Callbook and a book opened at a clean time. Returns its timeline. */
+/** A fresh Arena and a book opened at a clean time. Returns its timeline. */
 async function setup({
   coins = COINS,
   period = PERIOD,
@@ -798,7 +798,7 @@ const openFreeArgs = ({ agentId = NO_AGENT, caller = AGENT_KEY, coins = COINS, m
   Number(maxH),
 ];
 
-/** A fresh Callbook with one free book. */
+/** A fresh Arena with one free book. */
 async function setupFree(opts = {}) {
   const callbook = await deploy("Callbook", [opts.registry ?? identity]);
   const receipt = await send(owner, callbook, CALLBOOK.abi, "openFree", openFreeArgs(opts));
@@ -1155,7 +1155,7 @@ const SEAL_TYPES = {
     { name: "deadline", type: "uint256" },
   ],
 };
-const domainOf = (callbook) => ({ name: "Callbook", version: "1", chainId: localChain.id, verifyingContract: callbook });
+const domainOf = (callbook) => ({ name: "Arena", version: "1", chainId: localChain.id, verifyingContract: callbook });
 
 /** An any-coin call's hash: it names the account and its nonce, not a book or call id. */
 function symbolHash({ callbook, chainId = localChain.id, account: who, nonce, coin, side, horizon, salt: s }) {
@@ -1214,10 +1214,10 @@ function malleate(signature) {
 }
 
 describe("gasless (EIP-712)", () => {
-  test("the domain is Callbook v1 on this chain and contract", async () => {
+  test("the domain is Arena v1 on this chain and contract", async () => {
     const callbook = await deploy("Callbook", [identity]);
     const [, name, version, chainId, verifyingContract] = await read(callbook, "eip712Domain");
-    assert.deepEqual([name, version, chainId, verifyingContract.toLowerCase()], ["Callbook", "1", BigInt(localChain.id), callbook.toLowerCase()]);
+    assert.deepEqual([name, version, chainId, verifyingContract.toLowerCase()], ["Arena", "1", BigInt(localChain.id), callbook.toLowerCase()]);
     assert.equal(await read(callbook, "domainSeparator"), domainSeparator({ domain: domainOf(callbook) }));
     assert.equal(
       await read(callbook, "LOCK_TYPEHASH"),

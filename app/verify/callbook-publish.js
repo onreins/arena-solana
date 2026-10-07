@@ -4,10 +4,10 @@
  * A book is scored on chain only when its agent's owner asked: a
  * validationRequest naming our validator, whose request URI describes the
  * book (callbook-chain.js). We answer that same request again and again with
- * validationResponse(requestHash, score, reportURI, reportHash, "callbook-v1");
+ * validationResponse(requestHash, score, reportURI, reportHash, "arena-v1");
  * the registry keeps the latest, and every answer stays in its events. Once a
  * book has a skill score (provisional or better), it gets a second answer to
- * the same request, tagged "callbook-skill-v1", pointing to the same report.
+ * the same request, tagged "arena-skill-v1", pointing to the same report.
  *
  * Who gets an answer: only books on `allow` (our allowlist, by default our own
  * books record). Anyone can file a request naming our validator; without an

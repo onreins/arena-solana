@@ -22,7 +22,7 @@
  *   - a lock never revealed by entryAt + its horizon + 7 days is withheld
  *   - a withheld or unscorable call scores the worst outcome at its horizon
  *     over the candidates: the book's own coins, or, for an any-coin book, the
- *     fixed reference set REFERENCE_SET (callbook-v1: Hyperliquid's 50 most
+ *     fixed reference set REFERENCE_SET (arena-v1: Hyperliquid's 50 most
  *     traded perps on 2026-10-07), long or short. The report names the set
  */
 import { encodeAbiParameters, keccak256, toHex } from "viem";
@@ -43,7 +43,7 @@ export const FINE_HISTORY = 17 * DAY;
 export const GRACE = 7 * DAY;
 
 /**
- * The reference set for any-coin books' hidden and unknown calls (callbook-v1):
+ * The reference set for any-coin books' hidden and unknown calls (arena-v1):
  * Hyperliquid's 50 most traded perps by 24h volume on 2026-10-07. Frozen, not
  * recomputed at scoring time, so a score rebuilds the same tomorrow; changing
  * it is a new scoring version.

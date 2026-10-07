@@ -1,21 +1,21 @@
 #!/usr/bin/env node
 /**
- * Callbook MCP server: an honest, public trading record for any AI agent,
+ * Arena MCP server: an honest, public trading record for any AI agent,
  * with one key in its config.
  *
- *   callbook_markets     coins it can call (liquid Hyperliquid perps)
- *   callbook_lock        an open call: coin, long/short, horizon (opens your book on first use)
- *   callbook_open        open a strategy book (a call every period) or a call book
- *   callbook_seal        this round's call for a strategy book
- *   callbook_reveal_due  reveal everything that has matured
- *   callbook_status      record, score, pending calls with countdowns, next deadline
- *   callbook_verify      rebuild a score from chain events and public prices
- *   callbook_my_books    books this key owns or calls in
- *   callbook_account     this agent's address, and where its key is kept
+ *   arena_markets     coins it can call (liquid Hyperliquid perps)
+ *   arena_lock        an open call: coin, long/short, horizon (opens your book on first use)
+ *   arena_open        open a strategy book (a call every period) or a call book
+ *   arena_seal        this round's call for a strategy book
+ *   arena_reveal_due  reveal everything that has matured
+ *   arena_status      record, score, pending calls with countdowns, next deadline
+ *   arena_verify      rebuild a score from chain events and public prices
+ *   arena_my_books    books this key owns or calls in
+ *   arena_account     this agent's address, and where its key is kept
  *
  * Environment:
  *   CALLBOOK_KEY          a fresh 0x private key; unset, one is made on first start and kept
- *                         in ~/.callbook/key (CALLBOOK_KEY_FILE), so nothing is required
+ *                         in ~/.arena/key (ARENA_KEY_FILE), so nothing is required
  *   CALLBOOK_NETWORK      local | testnet | mainnet (default testnet; the published package: mainnet once deployed)
  *   CALLBOOK_ADDRESS      the contract (default deployments/callbook-<network>.json)
  *   CALLBOOK_RELAY_URL    who pays gas for gasless calls (default https://app.reins.one)
@@ -39,6 +39,7 @@ import { z } from "zod";
 
 import { CallbookClient, DEFAULT_APP_URL } from "./sdk.js";
 import { loadOrCreateKey } from "./keyfile.js";
+import { arenaEnv } from "../app/verify/callbook-network.js";
 
 // The published package sets its own version (scripts/build-reins-mcp.mjs).
 const VERSION = globalThis.__CALLBOOK_MCP_VERSION__ ?? "0.1.0";
@@ -88,29 +89,29 @@ const run = (fn) => async (args) => {
 const BOOK = z.union([z.number().int().positive(), z.string().regex(/^\d+$/)]).describe("Book id, e.g. 3");
 const DURATION = (example) => z.string().regex(/^\s*\d+(\.\d+)?\s*[a-zA-Z]+(\s*\d+(\.\d+)?\s*[a-zA-Z]+)*\s*$/, "a duration like 15m, 4h, 1d").describe(`A duration such as ${example}`);
 
-const GUIDE = `# Callbook in one page
+const GUIDE = `# Arena in one page
 
-Callbook keeps a trading record nobody can fake: every call is locked on Arc before the
+Arena keeps a trading record nobody can fake: every call is locked on Arc before the
 market moves, revealed after, and scored by open rules (ported from Vanta Network) at
 Hyperliquid's public prices. Anyone can rebuild any score from chain data.
 
 Two ways to call:
 
-- Open calls (callbook_lock): whenever you like. Coin (any Hyperliquid perp), long or
+- Open calls (arena_lock): whenever you like. Coin (any Hyperliquid perp), long or
   short, and a horizon (5m to 30d, whole minutes; under 1h it's priced on 5-minute candles, else hourly). The horizon is public from the lock;
   the coin and side stay hidden until the reveal. Entry is the first whole minute at least
   60s after locking. Your first lock opens your open-call book. Every lock counts, so
   choose when to call.
-- Strategy books (callbook_open kind=strategy, then callbook_seal): one call every period
+- Strategy books (arena_open kind=strategy, then arena_seal): one call every period
   (e.g. every 4h), long, short or flat, sealed at least 60s before the round starts. A round
   with no call is a miss; flat is a call.
 
-Reveals: after the horizon, callbook_reveal_due reveals everything matured. A call not
+Reveals: after the horizon, arena_reveal_due reveals everything matured. A call not
 revealed within 7 days of its horizon scores as its worst possible outcome.
 
 Nothing to store: each call's salt is derived from the key, so any machine with the same
 key can reveal. Without CALLBOOK_KEY the key was made on first start and is kept in a file
-(callbook_account says where): it never leaves this machine, and it's never shown to you. callbook_status shows the record, the score, a skill score with its level (unrated,
+(arena_account says where): it never leaves this machine, and it's never shown to you. arena_status shows the record, the score, a skill score with its level (unrated,
 provisional, rated, established: it builds from the number of calls, not days) and what's
 due next. Both scores are published on chain daily.`;
 
@@ -121,7 +122,7 @@ due next. Both scores are published on chain daily.`;
 export function createCallbookMcpServer({ client, keyFile = null }) {
   const server = new McpServer({ name: "reins", version: VERSION });
 
-  server.registerTool("callbook_markets", {
+  server.registerTool("arena_markets", {
     title: "Coins you can call",
     description: "Liquid Hyperliquid perpetuals you can name in a call, most traded first, with 24h volume in USD, mark price and hourly funding. Any listed perp works; this is the liquid ones.",
     inputSchema: {
@@ -133,11 +134,11 @@ export function createCallbookMcpServer({ client, keyFile = null }) {
     return { summary: `${markets.length} liquid perps: ${markets.slice(0, 10).map((m) => m.coin).join(", ")}${markets.length > 10 ? ", …" : ""}.`, markets };
   }));
 
-  server.registerTool("callbook_lock", {
+  server.registerTool("arena_lock", {
     title: "Lock a call",
     description:
       "Lock an open call on Arc: a coin, long or short, and how long (horizon, default 4h). The coin and side stay hidden until the reveal. " +
-      "Entry is the first whole minute at least 60s from now; reveal it after the horizon with callbook_reveal_due. Without `book`, it goes in your open-call book, " +
+      "Entry is the first whole minute at least 60s from now; reveal it after the horizon with arena_reveal_due. Without `book`, it goes in your open-call book, " +
       "which your first lock opens, and Reins pays the gas. Every lock counts toward your score, win or lose.",
     inputSchema: {
       coin: z.string().min(1).max(16).describe("Hyperliquid perp, e.g. ETH, BTC, SOL"),
@@ -147,7 +148,7 @@ export function createCallbookMcpServer({ client, keyFile = null }) {
     },
   }, run(({ coin, side, horizon = "4h", book }) => client.lock({ coin, side, horizon, book })));
 
-  server.registerTool("callbook_open", {
+  server.registerTool("arena_open", {
     title: "Open a book",
     description:
       "Open a strategy book (kind=strategy: one call every period, no skipping; a skipped round is a miss) or a call book (kind=calls: calls whenever you like). " +
@@ -167,7 +168,7 @@ export function createCallbookMcpServer({ client, keyFile = null }) {
     ? client.openStrategyBook({ coins, every, horizon, name, strategy, agentId })
     : client.openCallBook({ coins, minHorizon, maxHorizon, name, agentId }))));
 
-  server.registerTool("callbook_seal", {
+  server.registerTool("arena_seal", {
     title: "Lock this round's call (strategy book)",
     description:
       "Seal the next round's call for a strategy book: a coin from the book and long, short or flat. Rounds must be sealed at least 60s before they start, " +
@@ -179,25 +180,25 @@ export function createCallbookMcpServer({ client, keyFile = null }) {
     },
   }, run(({ book, coin, side }) => client.seal({ book, coin, side })));
 
-  server.registerTool("callbook_reveal_due", {
+  server.registerTool("arena_reveal_due", {
     title: "Reveal calls that are due",
     description: "Reveal every call of yours whose horizon has passed (seals and locks). Safe to run any time; it reports what isn't due yet and when it will be. Unrevealed calls score as their worst outcome after 7 days.",
     inputSchema: {},
   }, run(() => client.revealDue()));
 
-  server.registerTool("callbook_status", {
+  server.registerTool("arena_status", {
     title: "Record and score",
     description: "Your record: score (0-100) and its parts, the skill score and its level, revealed/missed/kept-hidden counts, returns, pending calls with countdowns, and the next deadline. One book, or all of yours.",
     inputSchema: { book: BOOK.optional().describe("A book id; omit for all your books") },
   }, run(({ book }) => client.status({ book })));
 
-  server.registerTool("callbook_verify", {
+  server.registerTool("arena_verify", {
     title: "Verify a score",
     description: "Rebuild any book's score from Arc events and Hyperliquid's public prices, with no trust in Reins, and compare it with the latest score posted to the ERC-8004 ValidationRegistry.",
     inputSchema: { book: BOOK },
   }, run(({ book }) => client.verify({ book })));
 
-  server.registerTool("callbook_my_books", {
+  server.registerTool("arena_my_books", {
     title: "My books",
     description: "Books this key owns (or was allowed to call in): kind, coins, timing, how many calls, what's due to reveal, and the next round to seal.",
     inputSchema: {},
@@ -207,19 +208,19 @@ export function createCallbookMcpServer({ client, keyFile = null }) {
     return { summary: r.books.length ? `${r.books.length} book${r.books.length === 1 ? "" : "s"} on ${r.network}${due ? `; ${due} call${due === 1 ? "" : "s"} ready to reveal` : ""}.` : `No books yet on ${r.network}. Lock a call to open one.`, ...r };
   }));
 
-  server.registerTool("callbook_account", {
-    title: "My Callbook account",
-    description: "This agent's Callbook address and network, and where its key is kept. The key itself is never shown: tell the person where the file is so they can back it up.",
+  server.registerTool("arena_account", {
+    title: "My Arena account",
+    description: "This agent's Arena address and network, and where its key is kept. The key itself is never shown: tell the person where the file is so they can back it up.",
     inputSchema: {},
   }, run(async () => ({
     summary: keyFile
       ? `You're ${client.address} on ${client.network}. The key is in ${keyFile}: back that file up, since it reveals your calls and keeps this record yours. Copy it to another machine to carry on there.`
-      : `You're ${client.address} on ${client.network}, with the key set in CALLBOOK_KEY.`,
+      : `You're ${client.address} on ${client.network}, with the key set in ARENA_KEY.`,
     address: client.address, network: client.network, keyFile,
   })));
 
-  server.registerResource("guide", "callbook://guide", {
-    title: "How Callbook works", description: "The rules in one page: open calls, strategy books, reveals and scores.", mimeType: "text/markdown",
+  server.registerResource("guide", "arena://guide", {
+    title: "How Arena works", description: "The rules in one page: open calls, strategy books, reveals and scores.", mimeType: "text/markdown",
   }, async (uri) => ({ contents: [{ uri: uri.href, mimeType: "text/markdown", text: GUIDE }] }));
 
   server.registerPrompt("seal_round", {
@@ -231,8 +232,8 @@ export function createCallbookMcpServer({ client, keyFile = null }) {
       role: "user",
       content: {
         type: "text",
-        text: `Use Callbook for strategy book ${book}. First call callbook_reveal_due, then callbook_status with book ${book} to see its coins and the sealing deadline. ` +
-          "Decide this round's call by your strategy (one coin, long, short or flat; flat counts as a call), then call callbook_seal before the deadline. " +
+        text: `Use Arena for strategy book ${book}. First call arena_reveal_due, then arena_status with book ${book} to see its coins and the sealing deadline. ` +
+          "Decide this round's call by your strategy (one coin, long, short or flat; flat counts as a call), then call arena_seal before the deadline. " +
           "Report the round, the call, and when it can be revealed.",
       },
     }],
@@ -245,7 +246,7 @@ export function createCallbookMcpServer({ client, keyFile = null }) {
   }, ({ coin, side, horizon }) => ({
     messages: [{
       role: "user",
-      content: { type: "text", text: `Lock a ${horizon ?? "4h"} ${side} on ${coin} in Callbook with callbook_lock, then tell me the entry time and when it can be revealed.` },
+      content: { type: "text", text: `Lock a ${horizon ?? "4h"} ${side} on ${coin} in Arena with arena_lock, then tell me the entry time and when it can be revealed.` },
     }],
   }));
 
@@ -256,13 +257,15 @@ export function createCallbookMcpServer({ client, keyFile = null }) {
 const DEFAULT_NETWORK = globalThis.__CALLBOOK_DEPLOYMENTS__?.mainnet ? "mainnet" : "testnet";
 
 /** The key: CALLBOOK_KEY, else the key file (made on first start). { key, file, created } */
-export function keyFromEnv(env = process.env) {
+export function keyFromEnv(rawEnv = process.env) {
+  const env = arenaEnv(rawEnv);
   if (env.CALLBOOK_KEY) return { key: env.CALLBOOK_KEY, file: null, created: false };
   return loadOrCreateKey(env.CALLBOOK_KEY_FILE || undefined);
 }
 
 /** A CallbookClient from the environment. Nothing is required: see keyFromEnv. */
-export function clientFromEnv(env = process.env, { key } = keyFromEnv(env)) {
+export function clientFromEnv(rawEnv = process.env, { key } = keyFromEnv(rawEnv)) {
+  const env = arenaEnv(rawEnv);
   const app = (v) => (v === "" || v === "off" || v === "none" ? undefined : v ?? DEFAULT_APP_URL);
   return new CallbookClient({
     key,

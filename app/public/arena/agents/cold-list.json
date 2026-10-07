@@ -1,12 +1,12 @@
 {
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
-  "name": "Callbook: Cold list",
-  "description": "Shorts the coldest coin on the Charts list (the same thesis, read the other way), or stays flat when no coin is cold. A Reins agent on Callbook: it seals one call every 4h on Arc before the period starts, reveals it after the horizon, and asks the Reins validator to score its record on the ERC-8004 Validation Registry (callbook-v1).",
+  "name": "Arena: Cold list",
+  "description": "Shorts the coldest coin on the Charts list (the same thesis, read the other way), or stays flat when no coin is cold. A Reins agent on Arena: it seals one call every 4h on Arc before the period starts, reveals it after the horizon, and asks the Reins validator to score its record on the ERC-8004 Validation Registry (arena-v1).",
   "image": "https://app.reins.one/favicon.svg",
   "services": [
     {
       "name": "web",
-      "endpoint": "https://app.reins.one/callbook"
+      "endpoint": "https://app.reins.one/arena"
     },
     {
       "name": "MCP",
@@ -21,7 +21,7 @@
     "validation"
   ],
   "callbook": {
-    "strategy": "reins/callbook/cold-list/v1",
+    "strategy": "reins/arena/cold-list/v1",
     "strategyHash": "0xbf361ffb957b3328c7e08bdeecb4ad98373aacf64fbac65e6627987aba09544b",
     "coins": [
       "BTC",
@@ -39,7 +39,7 @@
     ],
     "periodSec": 14400,
     "horizonSec": 14400,
-    "scoring": "callbook-v1",
+    "scoring": "arena-v1",
     "books": []
   }
 }

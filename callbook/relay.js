@@ -18,7 +18,7 @@
  * Numbers go as decimal strings. The relayer answers with the transaction hash
  * ({ txHash } or { hash } or { tx }); the SDK waits for the receipt itself and
  * reads the result from the chain, so it never has to trust the answer.
- * Signatures are EIP-712 over the domain { name: "Callbook", version: "1" }.
+ * Signatures are EIP-712 over the domain { name: "Arena", version: "1" }.
  */
 import { CallbookError } from "./errors.js";
 
@@ -39,7 +39,7 @@ export const SEAL_TYPES = {
     { name: "deadline", type: "uint256" },
   ],
 };
-export const domainOf = ({ chainId, callbook }) => ({ name: "Callbook", version: "1", chainId, verifyingContract: callbook });
+export const domainOf = ({ chainId, callbook }) => ({ name: "Arena", version: "1", chainId, verifyingContract: callbook });
 
 const RELAY_TIMEOUT_MS = 30_000;
 

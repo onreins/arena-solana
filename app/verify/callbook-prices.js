@@ -48,7 +48,7 @@ const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 export const DEFAULT_CACHE_DIR = process.env.CALLBOOK_PRICE_CACHE
   ?? (process.env.VERCEL ? "/tmp/callbook-prices"
     // The published MCP package keeps its cache in the user's home, not inside node_modules.
-    : globalThis.__CALLBOOK_PACKAGED__ ? path.join(homedir(), ".callbook", "prices")
+    : globalThis.__CALLBOOK_PACKAGED__ ? path.join(homedir(), ".arena", "prices")
     : path.join(ROOT, "data", "callbook-prices"));
 
 /** The candle size for a book: hourly, or 5-minute when calls come more often than hourly. */

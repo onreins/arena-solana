@@ -1,4 +1,4 @@
-/* Callbook: what the list page and a book's page share. Loading (the API,
+/* Arena: what the list page and a book's page share. Loading (the API,
    then the static export, then the sample data), moving sample data to the
    present, formatting, and the notary seal. Escapes everything it prints. */
 window.Callbook = (function () {
@@ -316,7 +316,7 @@ window.Callbook = (function () {
     return '<span class="cb-status' + (w.live ? " live" : "") + '" tabindex="0" data-tip="' + esc(w.tip) + '"><i aria-hidden="true"></i>' + esc(w.status) +
       '<span class="sr-only">: ' + esc(w.tip) + "</span></span>";
   }
-  var SEAL_WORDS = "CALLBOOK · ERC-8004 · VALIDATED · ";
+  var SEAL_WORDS = "ARENA · ERC-8004 · VALIDATED · ";
   var COSTS = { "hyperliquid-funding": "fees and real hourly Hyperliquid funding", "vanta-flat-carry": "fees and Vanta’s flat carry" };
   function costsText(c) { return own(COSTS, c) || (c ? String(c) : "fees"); }
 

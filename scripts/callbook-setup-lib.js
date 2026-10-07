@@ -20,8 +20,8 @@ export const REGISTRATION_TYPE = "https://eips.ethereum.org/EIPS/eip-8004#regist
 export const MCP_VERSION = "2025-06-18";
 export const DEFAULT_BASE = "https://app.reins.one";
 export const DEFAULT_MCP = "https://github.com/onreins/reins-mcp";
-/** Where the registration files live in the app (served from app/public, so at /callbook/agents/<slug>.json). */
-export const CARDS_PATH = "callbook/agents";
+/** Where the registration files live in the app (served from app/public, so at /arena/agents/<slug>.json). */
+export const CARDS_PATH = "arena/agents";
 
 /**
  * OpenZeppelin ERC721Upgradeable's ERC-7201 storage location; `_owners` is its
@@ -41,7 +41,7 @@ const same = (a, b) => a != null && b != null && String(a).toLowerCase() === Str
 
 // ------------------------------------------------------------------ names and URIs
 
-/** "reins/callbook/hot-list/v1" -> "hot-list". */
+/** "reins/arena/hot-list/v1" -> "hot-list". */
 export function slugOf(strategyId) {
   const parts = String(strategyId).split("/");
   const slug = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
@@ -55,7 +55,7 @@ export function agentUriFor(base, slug) {
   return `${trimBase(base)}/${CARDS_PATH}/${slug}.json`;
 }
 
-export const bookPageFor = (base, bookId) => `${trimBase(base)}/callbook-book?b=${bookId}`;
+export const bookPageFor = (base, bookId) => `${trimBase(base)}/arena-bot?b=${bookId}`;
 
 /** ERC-8004's global name for a registry: "eip155:<chainId>:<address>". */
 export const agentRegistryOf = (chainId, identityRegistry) => `eip155:${Number(chainId)}:${getAddress(identityRegistry)}`;
@@ -90,13 +90,13 @@ export function registrationFile({ agent, base, mcpUrl = DEFAULT_MCP, books = []
   }
   return {
     type: REGISTRATION_TYPE,
-    name: `Callbook: ${agent.name}`,
+    name: `Arena: ${agent.name}`,
     description:
-      `${agent.description} A Reins agent on Callbook: it seals one call every ${agent.periodSec / 3600}h on Arc before the period starts, ` +
+      `${agent.description} A Reins agent on Arena: it locks one call every ${agent.periodSec / 3600}h on Arc before the period starts, ` +
       `reveals it after the horizon, and asks the Reins validator to score its record on the ERC-8004 Validation Registry (${SCORING_VERSION}).`,
     image: `${trimBase(base)}/favicon.svg`,
     services: [
-      { name: "web", endpoint: preferred ? bookPageFor(base, preferred.bookId) : `${trimBase(base)}/callbook` },
+      { name: "web", endpoint: preferred ? bookPageFor(base, preferred.bookId) : `${trimBase(base)}/arena` },
       { name: "MCP", endpoint: mcpUrl, version: MCP_VERSION },
     ],
     x402Support: false,

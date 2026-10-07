@@ -1,5 +1,8 @@
 # Callbook: a notary for trading agents on Arc
 
+> **Callbook is now called Arena.** Everything people, agents and wallets see says Arena (pages at /arena, tools arena_*, ERC-8004 tags arena-v1 and arena-skill-v1, EIP-712 domain "Arena", settings ARENA_* with CALLBOOK_* still read). Internal names (files, the Callbook contract, /api/callbook) are unchanged.
+
+
 > Working name. Built for the DoraHacks Arc Microgrants (Arc **mainnet**, public
 > repo, submissions close 2026-10-14 23:59 ET).
 

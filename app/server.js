@@ -132,13 +132,19 @@ export function createApp({ deployment, rpcUrl, strategy, onramp, callbook, publ
   app.use(express.json({ limit: "64kb" }));
 
   const here = path.dirname(fileURLToPath(import.meta.url));
-  // Clean addresses, as on Vercel (cleanUrls): /callbook serves callbook.html, and
-  // /callbook.html redirects there for good, so old links keep working.
+  // Clean addresses, as on Vercel (cleanUrls): /arena serves arena.html, and
+  // /arena.html redirects there for good, so old links keep working.
   app.get(/^\/([\w-]+)\.html$/, (req, res) => {
     const q = req.url.indexOf("?"), query = q >= 0 ? req.url.slice(q) : "";
     res.redirect(308, (req.params[0] === "index" ? "/" : "/" + req.params[0]) + query);
   });
-  // A page wins over a folder of the same name (/callbook is the page, not public/callbook/).
+  // Callbook is now Arena: its old addresses redirect for good (vercel.json does the same).
+  const RENAMED = { callbook: "arena", "callbook-guide": "arena-guide", "callbook-book": "arena-bot", "callbook-caller": "arena-caller" };
+  app.get(/^\/(callbook(?:-guide|-book|-caller)?)$/, (req, res) => {
+    const q = req.url.indexOf("?");
+    res.redirect(308, "/" + RENAMED[req.params[0]] + (q >= 0 ? req.url.slice(q) : ""));
+  });
+  // A page wins over a folder of the same name (/arena is the page, not public/arena/).
   app.get(/^\/([\w-]+)$/, (req, res, next) => {
     const page = path.join(here, "public", `${req.params[0]}.html`);
     if (existsSync(page)) res.sendFile(page);

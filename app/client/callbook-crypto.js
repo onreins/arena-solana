@@ -69,7 +69,7 @@ export const saltFromSignature = (signature) => keccak256(signature);
  * Everything a gasless lock signs, in one place: the call's hash and the
  * eth_signTypedData_v4 JSON for
  *   LockCall(address account,bytes32 callHash,uint32 horizon,uint256 nonce,uint256 deadline)
- * under the domain { name: "Callbook", version: "1", chainId, verifyingContract }.
+ * under the domain { name: "Arena", version: "1", chainId, verifyingContract }.
  * The horizon is sent in the clear (lockBySig's argument) and also bound in the hash.
  */
 export function buildLock({ chainId, callbook, account, nonce, coin, side, horizon, salt, deadline }) {
@@ -83,7 +83,7 @@ export function buildLock({ chainId, callbook, account, nonce, coin, side, horiz
       ],
     },
     primaryType: "LockCall",
-    domain: { name: "Callbook", version: "1", chainId: Number(chainId), verifyingContract: getAddress(callbook) },
+    domain: { name: "Arena", version: "1", chainId: Number(chainId), verifyingContract: getAddress(callbook) },
     message: { account: getAddress(account), callHash, horizon: Number(horizon), nonce: String(nonce), deadline: String(deadline) },
   };
   return { callHash, typedData, body: { account: getAddress(account), callHash, horizon: Number(horizon), deadline: Number(deadline) } };

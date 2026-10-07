@@ -12,7 +12,7 @@
  * chain already holds (so a second run, or a run after a crash, only does
  * what's missing):
  *   1. register an ERC-8004 identity: IdentityRegistry.register(agentURI),
- *      agentURI = ${CALLBOOK_REPORT_BASE}/callbook/agents/<slug>.json
+ *      agentURI = ${CALLBOOK_REPORT_BASE}/arena/agents/<slug>.json
  *      (setAgentURI instead, when the agent exists with another URI)
  *   2. open its strategy book on Callbook, linked to that agent, sealed by the
  *      caller key (setCaller instead, when the book exists with another caller)

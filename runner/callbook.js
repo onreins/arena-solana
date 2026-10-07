@@ -43,7 +43,7 @@ import { artifact } from "../scripts/artifact.js";
 import { readCallbook, callHash, startOf, exitOf, GRACE, SEAL_LEAD, buildCallbook, snapshotText, stateFromSnapshot } from "../app/verify/callbook.js";
 import { createPriceSource, priceBook, intervalFor } from "../app/verify/callbook-prices.js";
 import { publishScores, publishSpend } from "../app/verify/callbook-publish.js";
-import { callbookNetwork, clientFor } from "../app/verify/callbook-network.js";
+import { callbookNetwork, clientFor, arenaEnv } from "../app/verify/callbook-network.js";
 import { memoryCounter, brief } from "../app/verify/callbook-util.js";
 import { agentByHash } from "./callbook-agents.js";
 
@@ -177,7 +177,8 @@ export async function tick(ctx, { now = Math.floor(Date.now() / 1000), skip } = 
 
 // ------------------------------------------------------------------ the loop
 
-function configFromEnv(env = process.env) {
+function configFromEnv(rawEnv = process.env) {
+  const env = arenaEnv(rawEnv); // ARENA_X settings are read as CALLBOOK_X
   const problems = [];
   const key = env.CALLBOOK_AGENT_KEY;
   const secret = env.CALLBOOK_SALT_SECRET;

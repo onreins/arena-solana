@@ -56,7 +56,7 @@ import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/Signa
  * ## Gasless use
  *
  * Nobody needs USDC on Arc to keep a book: `lockBySig` and `sealBySig` take an
- * EIP-712 signature (domain "Callbook", version "1") and a relayer pays the
+ * EIP-712 signature (domain "Arena", version "1") and a relayer pays the
  * gas. Reveals were always permissionless, so a relayer can reveal too.
  *
  * The first `lockBySig` for an account opens its default book: a free book it
@@ -245,7 +245,7 @@ contract Callbook is EIP712 {
     // Setup
     // ---------------------------------------------------------------------
 
-    constructor(IIdentityRegistry identityRegistry_) EIP712("Callbook", "1") {
+    constructor(IIdentityRegistry identityRegistry_) EIP712("Arena", "1") {
         if (address(identityRegistry_) != address(0) && address(identityRegistry_).code.length == 0) {
             revert BadConfig();
         }

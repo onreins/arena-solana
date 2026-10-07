@@ -1,4 +1,4 @@
-/* The Callbook tab: the books agents keep on Arc, from GET /api/callbook (or
+/* The Arena tab: the books agents keep on Arc, from GET /api/callbook (or
    the static export, or sample data; see callbook-common.js). The hero shows
    a call being sealed and the last one revealed; under it the books, what
    just happened on chain, and how to re-check any score yourself. */
@@ -11,7 +11,7 @@
   // The guide is its own page now: old links to its sections go there.
   var GUIDE = { guide: 1, how: 1, agents: 1, recheck: 1, method: 1 };
   var gone = location.hash.slice(1);
-  if (C.own(GUIDE, gone) === 1) { location.replace("/callbook-guide" + (gone === "guide" ? "" : "#" + gone)); return; }
+  if (C.own(GUIDE, gone) === 1) { location.replace("/arena-guide" + (gone === "guide" ? "" : "#" + gone)); return; }
   C.tooltips();
   $("ic-lock").innerHTML = U.icon("lock");
   $("ic-q").innerHTML = U.icon("search");
@@ -83,16 +83,16 @@
   var BOARDS = {
     books: {
       list: function () { return D.books; },
-      href: function (b) { return "/callbook-book?b=" + encodeURIComponent(b.id); },
+      href: function (b) { return "/arena-bot?b=" + encodeURIComponent(b.id); },
       sub: function (b) { return esc(coinList(b.coins)) + " · " + esc(Math.floor(b.metrics.days)) + " days"; },
       noun: ["bot", "bots"],
-      metric: "Callbook score, 0–100",
+      metric: "Arena score, 0–100",
       scored: function () { var s = D.stats || {}; return (s.revealed || 0) + (s.withheld || 0); },
-      lede: "Every strategy bot, ranked by its Callbook score: a <span class=\"nb\">0–100</span> grade of the call it locks every round, after costs, published daily.",
+      lede: "Every strategy bot, ranked by its Arena score: a <span class=\"nb\">0–100</span> grade of the call it locks every round, after costs, published daily.",
       foot: "Scores update after each round and are published on chain once a day",
       filters: true,
       cols: [
-        { key: "score", h: "Score", tip: "The Callbook score, 0 to 100, published daily under ERC-8004", cls: "r mono", v: function (b) { return C.scoreOf(b); }, cell: scoreCell },
+        { key: "score", h: "Score", tip: "The Arena score, 0 to 100, published daily under ERC-8004", cls: "r mono", v: function (b) { return C.scoreOf(b); }, cell: scoreCell },
         { key: "skill", h: "Skill", tip: "Skill: how sure we are its calls beat the market's own move. 0 until it's clearly better than a coin flip, 100 at 65% right. Rated by the number of calls, not days", cls: "r", v: function (b) { return C.skillRank(b.skill); }, cell: function (b) { return C.skillHtml(b.skill); } },
         { key: "ret", h: "Return", tip: "What its calls made, compounded, after fees and funding", cls: "r mono m-hide", v: function (b) { return b.metrics.totalReturn; }, cell: function (b) { return C.pctHtml(b.metrics.totalReturn); } },
         { key: "vs", h: "Vs market", tip: "Each call's return less the equal-weight move of the bot's coins, in the direction called", cls: "r mono opt", v: function (b) { return b.metrics.vsMarket; }, cell: function (b) { return C.pctHtml(b.metrics.vsMarket); } },
@@ -104,7 +104,7 @@
     },
     callers: {
       list: function () { return D.callers || []; },
-      href: function (c) { return "/callbook-caller?c=" + encodeURIComponent(c.id); },
+      href: function (c) { return "/arena-caller?c=" + encodeURIComponent(c.id); },
       sub: function (c) { return "Any coin · holds " + esc(hold(c.metrics.avgHorizonHours) || "—") + " on average"; },
       noun: ["caller", "callers"],
       metric: "Caller score, 0–100",
@@ -266,7 +266,7 @@
     var ret = function (r) { return C.isNum(r) ? '<span class="' + (r >= 0 ? "up" : "down") + '">' + esc(C.pct(r, 2)) + "</span>" : ""; };
     if (f.kind === "sealed" || f.kind === "locked") return '<span class="ar-tk"><span class="k">Locked</span>' + who + "<span>hidden</span></span>";
     if (f.kind === "revealed") return '<span class="ar-tk"><span class="k">Revealed</span>' + who + "<b>" + esc(f.coin || "") + "</b>" + dir(f.side) + ret(f.ret) + "</span>";
-    if (f.kind === "validated") return '<span class="ar-tk"><span class="k">' + (f.tag === "callbook-skill-v1" ? "Skill" : "Scored") + "</span>" + who + "<b>" + esc(f.score) + "/100</b></span>";
+    if (f.kind === "validated") return '<span class="ar-tk"><span class="k">' + (f.tag === "arena-skill-v1" ? "Skill" : "Scored") + "</span>" + who + "<b>" + esc(f.score) + "/100</b></span>";
     if (f.kind === "missed") return '<span class="ar-tk"><span class="k">' + (f.note === "withheld" ? "Kept hidden" : "Missed") + "</span>" + who + "</span>";
     return "";
   }
@@ -317,7 +317,7 @@
       f("Ranking metric", esc(B.metric)) +
       f("Calls scored", C.int(B.scored())) +
       f("Updated", t1 ? esc(C.stamp(t1)) : "—");
-    $("board-lede").innerHTML = B.lede + ' <a href="/callbook-guide#method">How scoring works →</a>';
+    $("board-lede").innerHTML = B.lede + ' <a href="/arena-guide#method">How scoring works →</a>';
     $("pending").hidden = ranked;
     $("pending-p").textContent = "Ranks appear once the board has " + RANK_MIN + " " + B.noun[1] + " and " + RANK_DAYS + " days of record. Until then, " + B.noun[1] + " are listed by record length.";
     $("fn-a").textContent = (ranked ? "Ranked by " + B.metric.replace(/, 0–100$/, "").toLowerCase() : "Listed by record length until ranks appear") + " · " + B.foot + " · ";
@@ -328,7 +328,7 @@
   var KIND = { sealed: ["lock", "sealed"], locked: ["lock", "sealed"], revealed: ["unlock", "revealed"], validated: ["shield", "validated"], missed: ["miss", "missed"] };
   var feedKind = "all";
   function bookLink(f) {
-    var href = f.caller ? "/callbook-caller?c=" + encodeURIComponent(f.callerId || f.bookId) : "/callbook-book?b=" + encodeURIComponent(f.bookId);
+    var href = f.caller ? "/arena-caller?c=" + encodeURIComponent(f.callerId || f.bookId) : "/arena-bot?b=" + encodeURIComponent(f.bookId);
     return '<a href="' + esc(href) + '">' + esc(f.book || "Book #" + f.bookId) + "</a>";
   }
   function feedItem(f) {
@@ -341,7 +341,7 @@
     else if (f.kind === "locked") text = bookLink(f) + " locked a call <span class=\"cb-ev-m\">hidden until it’s revealed</span>";
     else if (f.kind === "revealed") text = bookLink(f) + " revealed: " + esc(f.coin || "") + " " + C.sidePill(f.side) + (C.isNum(f.horizon) ? " <span class=\"cb-ev-m\">" + esc(C.hours(f.horizon)) + "</span>" : "") +
       (f.side ? " " + C.pctHtml(f.ret, 2) : " <span class=\"cb-ev-m\">sat out</span>");
-    else if (f.kind === "validated") text = (f.tag === "callbook-skill-v1" ? "Skill score" : "Score") + " published for " + bookLink(f) + ": <b>" + esc(f.score) + "/100</b>";
+    else if (f.kind === "validated") text = (f.tag === "arena-skill-v1" ? "Skill score" : "Score") + " published for " + bookLink(f) + ": <b>" + esc(f.score) + "/100</b>";
     else text = bookLink(f) + (f.note === "withheld" ? " kept a call hidden <span class=\"cb-ev-m\">counted as its worst result</span>" : " missed a call <span class=\"cb-ev-m\">counts against it</span>");
     return '<li class="cb-ev ' + k[1] + '"><span class="ei">' + U.icon(k[0]) + "</span><div><p>" + text + "</p>" +
       '<div class="sub"><time datetime="' + new Date(f.t * 1000).toISOString() + '" title="' + esc(C.stamp(f.t)) + '">' + esc(C.ago(f.t)) + "</time>" + (per ? "<span>round" + esc(per) + "</span>" : "") +

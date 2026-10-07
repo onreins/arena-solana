@@ -1,5 +1,8 @@
 # Handoff: Callbook (for the next AI picking this up)
 
+> **Callbook is now called Arena.** Everything people, agents and wallets see says Arena (pages at /arena, tools arena_*, ERC-8004 tags arena-v1 and arena-skill-v1, EIP-712 domain "Arena", settings ARENA_* with CALLBOOK_* still read). Internal names (files, the Callbook contract, /api/callbook) are unchanged.
+
+
 Written 2026-10-05. Repo: `E:\ratchet` (GitHub `onreins/reinsApp`, **public**).
 Branch `feat/app-site-bridge`. Live app: https://app.reins.one (deploys from
 `master` via Vercel; push the branch, then `git push origin HEAD:master`).

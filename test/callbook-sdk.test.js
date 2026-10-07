@@ -1,5 +1,5 @@
 /**
- * The Callbook SDK and MCP server: what an agent does with one key.
+ * The Arena SDK and MCP server: what an agent does with one key.
  *
  * Pure parts (durations, salts, recovery, refusals) always run. The rest
  * needs a Hardhat node on CALLBOOK_SDK_TEST_RPC (default http://127.0.0.1:8548)
@@ -199,7 +199,7 @@ describe("refusals before anything is sent", () => {
 
   test("a network without a deployment names the fix", async () => {
     const c = new CallbookClient({ network: "mainnet", key: keyOf(1), journal: false, markets: markets() });
-    await assert.rejects(c.myBooks(), /Callbook isn't deployed on Arc mainnet yet .*Set CALLBOOK_ADDRESS/);
+    await assert.rejects(c.myBooks(), /Arena isn't deployed on Arc mainnet yet .*Set ARENA_ADDRESS/);
   });
 
   test("the MCP server needs nothing set: without CALLBOOK_KEY it makes a key file once and keeps using it", () => {
@@ -214,6 +214,8 @@ describe("refusals before anything is sent", () => {
       assert.equal(again.created, false);
       assert.equal(again.key, first.key);
       assert.equal(clientFromEnv(env).address, privateKeyToAccount(first.key).address);
+      // The Arena names work too: ARENA_KEY_FILE is read as CALLBOOK_KEY_FILE.
+      assert.equal(keyFromEnv({ ARENA_KEY_FILE: file }).key, first.key);
       // CALLBOOK_KEY wins, and then no file is read or made.
       assert.deepEqual(keyFromEnv({ CALLBOOK_KEY: keyOf(1), CALLBOOK_KEY_FILE: path.join(dir, "other") }), { key: keyOf(1), file: null, created: false });
       assert.equal(existsSync(path.join(dir, "other")), false);
@@ -227,7 +229,7 @@ describe("refusals before anything is sent", () => {
     try {
       const file = path.join(dir, "key");
       writeFileSync(file, "not a key\n");
-      assert.throws(() => loadOrCreateKey(file), /isn't a Callbook key.*never overwritten/);
+      assert.throws(() => loadOrCreateKey(file), /isn't an Arena key.*never overwritten/);
       assert.equal(readFileSync(file, "utf8"), "not a key\n");
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -565,24 +567,24 @@ describe("the MCP server", () => {
   test("lists its tools, a guide and prompts", async () => {
     const { tools } = await mcp.listTools();
     assert.deepEqual(tools.map((x) => x.name).sort(), [
-      "callbook_account", "callbook_lock", "callbook_markets", "callbook_my_books", "callbook_open", "callbook_reveal_due", "callbook_seal", "callbook_status", "callbook_verify",
+      "arena_account", "arena_lock", "arena_markets", "arena_my_books", "arena_open", "arena_reveal_due", "arena_seal", "arena_status", "arena_verify",
     ]);
     assert.ok(tools.every((x) => x.title && x.description.length > 40));
     const { resources } = await mcp.listResources();
-    assert.equal(resources[0].uri, "callbook://guide");
+    assert.equal(resources[0].uri, "arena://guide");
     // The account tool says where the key is kept, never what it is.
-    const account = await mcp.callTool({ name: "callbook_account", arguments: {} });
+    const account = await mcp.callTool({ name: "arena_account", arguments: {} });
     const text = account.content.map((c) => c.text).join("\n");
     assert.match(text, /\/home\/agent\/\.callbook\/key/);
     assert.ok(!text.includes(keyOf(8).slice(2)), "the key itself is never in a reply");
     const { prompts } = await mcp.listPrompts();
     assert.deepEqual(prompts.map((p) => p.name).sort(), ["lock_call", "seal_round"]);
     const p = await mcp.getPrompt({ name: "seal_round", arguments: { book: "3" } });
-    assert.match(p.messages[0].content.text, /callbook_seal/);
+    assert.match(p.messages[0].content.text, /arena_seal/);
   });
 
   test("markets: a summary line, then JSON", async () => {
-    const res = await mcp.callTool({ name: "callbook_markets", arguments: { limit: 3 } });
+    const res = await mcp.callTool({ name: "arena_markets", arguments: { limit: 3 } });
     assert.match(res.content[0].text, /^3 liquid perps: BTC, ETH, SOL\.$/);
     assert.deepEqual(body(res).markets.map((m) => m.coin), ["BTC", "ETH", "SOL"]);
   });
@@ -596,33 +598,33 @@ describe("the MCP server", () => {
   });
 
   test("a refusal is one sentence flagged as an error", async () => {
-    const res = await mcp.callTool({ name: "callbook_lock", arguments: { coin: "NOTACOIN", side: "long" } });
+    const res = await mcp.callTool({ name: "arena_lock", arguments: { coin: "NOTACOIN", side: "long" } });
     assert.equal(res.isError, true);
     assert.match(res.content[0].text, /Hyperliquid has no perp called "NOTACOIN"/);
-    const bad = await mcp.callTool({ name: "callbook_lock", arguments: { coin: "ETH", side: "flat" } });
+    const bad = await mcp.callTool({ name: "arena_lock", arguments: { coin: "ETH", side: "flat" } });
     assert.equal(bad.isError, true, "the schema refuses flat for an open call");
   });
 
   test("'lock a 4h long on ETH': first use opens the book, then status and reveal", async (t) => {
     if (!nodeUp) return t.skip(`no Hardhat node at ${RPC}`);
-    const res = await mcp.callTool({ name: "callbook_lock", arguments: { coin: "ETH", side: "long" } });
+    const res = await mcp.callTool({ name: "arena_lock", arguments: { coin: "ETH", side: "long" } });
     assert.ok(!res.isError, JSON.stringify(res.content));
     assert.match(res.content[0].text, /^Locked long ETH for 4h \(book \d+, call 0, your new open-call book\)/);
     const locked = body(res);
     assert.equal(locked.horizon, "4h");
 
-    const books = await mcp.callTool({ name: "callbook_my_books", arguments: {} });
+    const books = await mcp.callTool({ name: "arena_my_books", arguments: {} });
     assert.equal(body(books).books.length, 1);
 
-    const st = await mcp.callTool({ name: "callbook_status", arguments: { book: locked.bookId } });
+    const st = await mcp.callTool({ name: "arena_status", arguments: { book: locked.bookId } });
     assert.ok(!st.isError, JSON.stringify(st.content));
     assert.equal(body(st).pending[0].revealIn.startsWith("in "), true);
 
     await mineAt(locked.revealAt + 1);
-    const rev = await mcp.callTool({ name: "callbook_reveal_due", arguments: {} });
+    const rev = await mcp.callTool({ name: "arena_reveal_due", arguments: {} });
     assert.match(rev.content[0].text, /^Revealed 1 call/);
 
-    const v = await mcp.callTool({ name: "callbook_verify", arguments: { book: String(locked.bookId) } });
+    const v = await mcp.callTool({ name: "arena_verify", arguments: { book: String(locked.bookId) } });
     assert.ok(!v.isError, JSON.stringify(v.content));
     assert.equal(body(v).kind, "calls");
   });

@@ -31,7 +31,7 @@ import { privateKeyToAccount } from "viem/accounts";
 
 import { readCallbook, buildCallbook, evaluateAny, stateFromSnapshot } from "./verify/callbook.js";
 import { createPriceSource } from "./verify/callbook-prices.js";
-import { callbookNetwork, clientFor } from "./verify/callbook-network.js";
+import { callbookNetwork, clientFor, arenaEnv } from "./verify/callbook-network.js";
 import { createRelayer, RelayError } from "./verify/callbook-relay.js";
 import { countersFromEnv, ipBucket, brief } from "./verify/callbook-util.js";
 import { artifact } from "../scripts/artifact.js";
@@ -45,7 +45,8 @@ const VIEWS = parseAbi([
   "function ownerOf(uint256 agentId) view returns (address)",
 ]);
 
-export function mountCallbook(app, { env = process.env, source, now = () => Math.floor(Date.now() / 1000) } = {}) {
+export function mountCallbook(app, { env: rawEnv = process.env, source, now = () => Math.floor(Date.now() / 1000) } = {}) {
+  const env = arenaEnv(rawEnv); // ARENA_X settings are read as CALLBOOK_X
   const log = (m) => console.error("[callbook]", m);
   let net = null, setupError = null;
   try {

@@ -1,6 +1,6 @@
-/* The Callbook guide page: how a call becomes a track record (callbook-how.js
+/* The Arena guide page: how a call becomes a track record (callbook-how.js
    animates it), the agent setup, re-checking any score, and the methodology.
-   The records themselves are on callbook.html. */
+   The records themselves are on arena.html. */
 (function () {
   "use strict";
   var U = window.ReinsUI, C = window.Callbook, esc = U.esc;
@@ -40,7 +40,7 @@
     var draw = function () {
       var b = all.filter(function (x) { return x.id === sel.value; })[0] || all[0];
       if (!b) { $("v-cmd").innerHTML = '<span class="c"># nothing to re-check yet: the first records appear here</span>'; $("v-copy").innerHTML = ""; return; }
-      var cmd = "npm run callbook:verify -- " + b.id;
+      var cmd = "npm run arena:verify -- " + b.id;
       $("v-cmd").innerHTML = '<span class="c"># rebuild ' + esc(C.nameOf(b)) + "’s score from the chain and real prices</span>\n" +
         '<span class="p">$</span> ' + esc(cmd) + "\n" +
         '<span class="c"># ' + C.int(b.metrics.calls - (b.metrics.missed || 0)) + " locked · " + C.int(b.metrics.revealed) + " revealed" +
@@ -53,7 +53,7 @@
       return "<div><dt>" + esc(label) + "</dt><dd>" + (a ? C.txLink(D.explorer, a, C.shortHash(a, 8, 6), "address") : '<span class="muted">to deploy</span>') +
         (note ? "<small>" + esc(note) + "</small>" : "") + "</dd></div>";
     };
-    $("v-addr").innerHTML = addr("Callbook contract", D.contract, D.network) + addr("ERC-8004 Validation Registry", D.validationRegistry, "chain " + D.chainId);
+    $("v-addr").innerHTML = addr("Arena contract", D.contract, D.network) + addr("ERC-8004 Validation Registry", D.validationRegistry, "chain " + D.chainId);
   }
 
   C.loadIndex().then(function (D) {
