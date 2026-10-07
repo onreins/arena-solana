@@ -280,6 +280,44 @@ window.Callbook = (function () {
     return RECORD[lv] + (need.length ? " · " + need.join(" and ") : "");
   }
   // The score posted to ERC-8004, or the latest computed one.
+  /**
+   * "How it's built", in plain words, for a record page. `vs` names what the
+   * record is measured against ("the coin" for callers, "the market" for bots);
+   * bots also lose score for rounds they missed or calls they kept hidden.
+   * `next`: what would raise it, in a sentence, or nothing.
+   */
+  function scoreParts(b, vs, next) {
+    var p = b.score && b.score.parts, m = b.metrics || {};
+    if (!p) return "";
+    var pct = function (x) { return Math.round(Math.max(0, Math.min(1, x || 0)) * 100) + "%"; };
+    var row = function (k, x, note, tip) {
+      var f = Math.max(0, Math.min(1, x || 0));
+      return '<li tabindex="0" data-tip="' + esc(tip) + '"><span class="k">' + esc(k) + '</span><b class="mono' + (f === 0 ? " nil" : "") + '">' + pct(f) + "</b>" +
+        '<span class="bar" aria-hidden="true"><i style="width:' + (f * 100).toFixed(0) + '%"></i></span><small>' + esc(note) + "</small></li>";
+    };
+    var losing = isNum(m.totalReturn) && m.totalReturn <= 0;
+    var keep = RULES.riskFloor + (1 - RULES.riskFloor) * (p.risk || 0);
+    var dd = isNum(m.maxDrawdown) ? m.maxDrawdown : 0;
+    var hasCover = isNum(p.coverage);
+    var formula = "100 × " + (hasCover ? "coverage × " : "") + "(0.6 × profit + 0.4 × beats " + vs + ") × (0.6 + 0.4 × drops). " +
+      "Profit and beating " + vs + " get full marks when their t-statistic reaches 3.";
+    return '<div class="cbk-parts"><p class="cbk-formula" tabindex="0" data-tip="' + esc(formula) + '"><b>How it’s built</b> ' +
+      "Mostly steady profit, partly beating " + esc(vs) + ", then cut by big drops" + (hasCover ? " and missed calls" : "") + ".</p><ul>" +
+      row("Steady profit", p.profit,
+        p.profit >= 1 ? "Full marks" : p.profit > 0 ? "Making money; steadier gains raise this" : losing ? "Not making money yet" : "Making money, but not steadily yet",
+        "60% of the score. Do its calls make money after fees, again and again? Full marks once the gains are clearly more than luck.") +
+      row("Beats " + vs, p.edge,
+        p.edge >= 1 ? "Full marks" : p.edge > 0 ? "Ahead of " + vs + "; a clearer lead raises this" : "Not yet: no better than just holding",
+        "40% of the score. Does it do better than simply holding " + vs + " it called? Full marks once that's clearly more than luck.") +
+      row("Big drops", keep,
+        dd > 0 ? "Worst drop −" + (Math.abs(dd) * 100).toFixed(1) + "%: keeps " + pct(keep) + " of the score" : "No drops yet: keeps the whole score",
+        "Its worst fall from a high cuts the score by up to 40%. A 40% fall takes the full cut; a small one barely matters.") +
+      (hasCover ? row("Calls on time", p.coverage,
+        m.missed || m.withheld ? int(m.missed || 0) + " missed, " + int(m.withheld || 0) + " kept hidden: keeps " + pct(p.coverage) : "Every call due was revealed",
+        "A missed round or a call kept hidden lowers the score in proportion.") : "") +
+      "</ul>" + (levelLine(b) ? '<p class="cbk-level">' + esc(levelLine(b)) + "</p>" : "") +
+      (next ? '<p class="cbk-zero"><b>What’s next.</b> ' + esc(next) + "</p>" : "") + "</div>";
+  }
   function scoreOf(b) {
     if (b.validation && isNum(b.validation.score)) return b.validation.score;
     if (b.score && isNum(b.score.value)) return b.score.value;
@@ -413,7 +451,7 @@ window.Callbook = (function () {
 
   return {
     skillHtml: skillHtml, skillTip: skillTip, skillPanel: skillPanel, countUp: countUp, glow: glow, levelLine: levelLine, RECORD: RECORD, skillRank: skillRank, LEVELS: LEVELS,
-    own: own, nameOf: nameOf, movedTag: movedTag, profileHref: profileHref, moreFrom: moreFrom, identicon: identicon, ADDR_RE: ADDR_RE, YOUNG_DAYS: YOUNG_DAYS, challengeLine: challengeLine, isHttp: isHttp, RULES: RULES, scoreOf: scoreOf, scoreWhy: scoreWhy, periodAt: periodAt, eodOf: eodOf, where: where, costsText: costsText, loadIndex: loadIndex, loadBook: loadBook, loadCaller: loadCaller, params: params, wantMock: wantMock, ID_RE: ID_RE,
+    own: own, nameOf: nameOf, movedTag: movedTag, profileHref: profileHref, moreFrom: moreFrom, scoreParts: scoreParts, identicon: identicon, ADDR_RE: ADDR_RE, YOUNG_DAYS: YOUNG_DAYS, challengeLine: challengeLine, isHttp: isHttp, RULES: RULES, scoreOf: scoreOf, scoreWhy: scoreWhy, periodAt: periodAt, eodOf: eodOf, where: where, costsText: costsText, loadIndex: loadIndex, loadBook: loadBook, loadCaller: loadCaller, params: params, wantMock: wantMock, ID_RE: ID_RE,
     pct: pct, pctHtml: pctHtml, dd: dd, num: num, int: int, isNum: isNum, shortHash: shortHash, txLink: txLink,
     ago: ago, stamp: stamp, day: day, clock: clock, span: span, hours: hours, now: now,
     sidePill: sidePill, challengePill: challengePill, nextBoundary: nextBoundary,
