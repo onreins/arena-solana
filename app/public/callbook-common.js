@@ -77,21 +77,8 @@ window.Callbook = (function () {
     var href = profileHref(x && x.owner);
     return href ? ' · <a class="cb-more-from" href="' + esc(href) + '">More from this person</a>' : "";
   }
-  // A small avatar drawn from an address: a mirrored 5×5 grid in one hue. Nothing is fetched,
-  // so it can’t track anyone or be swapped for something else.
-  function identicon(addr, size) {
-    var a = String(addr || "").toLowerCase().replace(/^0x/, ""), px = size || 40;
-    if (!/^[0-9a-f]{40}$/.test(a)) return "";
-    var hue = parseInt(a.slice(0, 4), 16) % 360, cells = "";
-    for (var i = 0; i < 15; i++) {
-      if (parseInt(a.charAt(4 + i), 16) % 2) continue;
-      var row = Math.floor(i / 3), col = i % 3;
-      cells += '<rect x="' + (col + 1) + '" y="' + (row + 1) + '" width="1" height="1"/>';
-      if (col < 2) cells += '<rect x="' + (5 - col) + '" y="' + (row + 1) + '" width="1" height="1"/>';
-    }
-    return '<svg class="cb-avatar" viewBox="0 0 7 7" width="' + px + '" height="' + px + '" aria-hidden="true">' +
-      '<rect width="7" height="7" rx="1.6" fill="hsl(' + hue + ' 45% 14%)"/><g fill="hsl(' + hue + ' 80% 66%)" shape-rendering="crispEdges">' + cells + "</g></svg>";
-  }
+  // A person’s avatar, drawn from their address (ui.js).
+  function identicon(addr, size) { return U.identicon(addr, size); }
   function movedTag(x) {
     return x && x.agentMoved ? '<span class="cb-tag" tabindex="0" data-tip="The ERC-8004 agent this book points to has changed hands since the book opened">Agent changed hands</span>' : "";
   }

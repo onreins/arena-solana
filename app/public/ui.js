@@ -93,10 +93,27 @@ window.ReinsUI = (function () {
     miss: '<circle cx="12" cy="12" r="8.5" stroke-dasharray="2.6 2.4"/><path d="M9 12h6"/>',
     terminal: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="m7.5 9.5 3 2.5-3 2.5M12.5 15h4"/>',
   };
-  var ALIAS = { external: "ext", chev: "right", sort: "updown", trend: "strategies", gauge: "shield", coins: "wallet" };
+  PATHS.copy = '<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6.5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/>';
+  var ALIAS = { external: "ext", chev: "right", sort: "updown", trend: "strategies", gauge: "shield", coins: "wallet", x: "close", user: "agent", logout: "exit" };
   function icon(name, size) {
     return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"' + (size ? ' style="width:' + size + "px;height:" + size + 'px"' : "") + ">" +
       (PATHS[ALIAS[name] || name] || "") + "</svg>";
+  }
+
+  // A person's avatar, drawn from their address: a mirrored 5×5 grid in one hue.
+  // Nothing is fetched, so it can't track anyone or be swapped for something else.
+  function identicon(addr, size) {
+    var a = String(addr || "").toLowerCase().replace(/^0x/, ""), px = size || 40;
+    if (!/^[0-9a-f]{40}$/.test(a)) return "";
+    var hue = parseInt(a.slice(0, 4), 16) % 360, cells = "";
+    for (var i = 0; i < 15; i++) {
+      if (parseInt(a.charAt(4 + i), 16) % 2) continue;
+      var row = Math.floor(i / 3), col = i % 3;
+      cells += '<rect x="' + (col + 1) + '" y="' + (row + 1) + '" width="1" height="1"/>';
+      if (col < 2) cells += '<rect x="' + (5 - col) + '" y="' + (row + 1) + '" width="1" height="1"/>';
+    }
+    return '<svg class="cb-avatar" viewBox="0 0 7 7" width="' + px + '" height="' + px + '" aria-hidden="true">' +
+      '<rect width="7" height="7" rx="1.6" fill="hsl(' + hue + ' 45% 14%)"/><g fill="hsl(' + hue + ' 80% 66%)" shape-rendering="crispEdges">' + cells + "</g></svg>";
   }
 
   // ---------------------------------------------------------------- avatars
@@ -168,7 +185,7 @@ window.ReinsUI = (function () {
       '<label class="search">' + icon("search") + '<span class="sr-only">Search agents and strategies</span>' +
       '<input id="gsearch" type="search" placeholder="Search agents and strategies" autocomplete="off"><kbd>/</kbd></label>' +
       '<div class="top-r"><span class="net" id="net"><i></i><span id="net-text">Arc</span></span>' +
-      '<button class="btn-white" id="wallet" type="button">Connect Wallet</button></div>';
+      '<button class="btn-white" id="wallet" type="button" aria-haspopup="true">Sign in</button></div>';
     tabbar(page);
     if ($("promo-x")) $("promo-x").addEventListener("click", function () {
       $("promo").remove();
@@ -183,9 +200,21 @@ window.ReinsUI = (function () {
       var t = document.activeElement && document.activeElement.tagName;
       if (e.key === "/" && t !== "INPUT" && t !== "TEXTAREA" && t !== "SELECT") { e.preventDefault(); $("gsearch").focus(); }
     });
+    // Signed in, the button is your avatar and opens your menu; signed out, it opens the sign-in panel.
+    drawAccount(savedSession());
     $("wallet").addEventListener("click", function () {
-      connect().catch(function (err) { $("wallet").textContent = "No wallet"; $("wallet").title = W.explain(err); });
+      withAuth().then(function (A) {
+        if (A.session()) A.menu($("wallet"));
+        else A.open().catch(function () { /* closed */ });
+      }).catch(function (err) { $("wallet").title = W.explain(err); });
     });
+    withAuth().then(function (A) {
+      A.onChange(function (s) {
+        drawAccount(s);
+        if (s) listeners.forEach(function (fn) { fn(s.address); });
+      });
+      return A.restore();
+    }).then(function (s) { if (s) listeners.forEach(function (fn) { fn(s.address); }); }).catch(function () { /* sign-in unavailable */ });
     W.config().then(function (c) {
       $("nav-explorer").href = c.explorer;
       setNet(true, "Arc " + c.network);
@@ -204,11 +233,46 @@ window.ReinsUI = (function () {
     $("net").classList.toggle("off", !ok);
     if (text) $("net-text").textContent = text;
   }
+  // The sign-in module (auth.js) and its styles load once, on every page.
+  var authLoad = null;
+  function withAuth() {
+    if (window.ReinsAuth) return Promise.resolve(window.ReinsAuth);
+    authLoad = authLoad || new Promise(function (resolve, reject) {
+      var css = document.createElement("link");
+      css.rel = "stylesheet";
+      css.href = "/auth.css";
+      document.head.appendChild(css);
+      var s = document.createElement("script");
+      s.src = "/auth.js";
+      s.onload = function () { resolve(window.ReinsAuth); };
+      s.onerror = function () { authLoad = null; reject(new Error("Sign-in couldn't load. Reload the page.")); };
+      document.head.appendChild(s);
+    });
+    return authLoad;
+  }
+  function savedSession() {
+    try {
+      var s = JSON.parse(localStorage.getItem("reins.session.v1") || "null");
+      return s && /^0x[0-9a-fA-F]{40}$/.test(s.address || "") ? s : null;
+    } catch (e) { return null; }
+  }
+  function drawAccount(s) {
+    var b = $("wallet");
+    if (!b) return;
+    b.classList.toggle("signed", !!s);
+    b.innerHTML = s ? identicon(s.address, 24) + '<span class="who">' + esc(short(s.address)) + "</span>" + icon("down") : "Sign in";
+    b.setAttribute("aria-label", s ? "Your account, " + short(s.address) : "Sign in");
+  }
+  /** Signed in, the address; otherwise the sign-in panel first. Pages await this before acting. */
   async function connect() {
-    var acct = await W.connect();
-    $("wallet").textContent = short(acct);
-    listeners.forEach(function (fn) { fn(acct); });
-    return acct;
+    if (W.account) return W.account;
+    var A = await withAuth();
+    var s = A.session();
+    if (s) {
+      await A.restore();
+      if (W.account) return W.account;
+    }
+    return A.open();
   }
   var onAccount = function (fn) { listeners.push(fn); };
 
@@ -503,7 +567,7 @@ window.ReinsUI = (function () {
 
   return {
     FLAT: FLAT, esc: esc, short: short, money: money, compact: compact, bigMoneyHtml: bigMoneyHtml, dirOf: dirOf,
-    pct: pct, pctHtml: pctHtml, stateOf: stateOf, riskOf: riskOf, icon: icon, avatar: avatar, coins: coins, coinCount: coinCount, ring: ring, RANGES: RANGES,
+    pct: pct, pctHtml: pctHtml, stateOf: stateOf, riskOf: riskOf, icon: icon, identicon: identicon, avatar: avatar, coins: coins, coinCount: coinCount, ring: ring, RANGES: RANGES,
     topbar: topbar, tabbar: tabbar, TABS: TABS, MARK: MARK, setNet: setNet, connect: connect, onAccount: onAccount,
     change: change, periodReturns: periodReturns, combine: combine, areaSvg: areaSvg, Chart: Chart, getJson: getJson,
     curvePoints: curvePoints, pseudoAddress: pseudoAddress, strategyRisk: strategyRisk, spark: spark, indexOf: indexOf, windowed: windowed,

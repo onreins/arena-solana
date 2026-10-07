@@ -39,6 +39,7 @@ import { mountStrategy } from "./strategy/routes.js";
 import { mountOnramp } from "./onramp.js";
 import { buildActivity } from "./activity.js";
 import { mountCallbook } from "./callbook-routes.js";
+import { mountAuth } from "./arena-auth-routes.js";
 
 const ERC20 = parseAbi(["function balanceOf(address) view returns (uint256)"]);
 
@@ -192,6 +193,8 @@ export function createApp({ deployment, rpcUrl, strategy, onramp, callbook, publ
 
   // Callbook: sealed calls, their scores and reports (404 until CALLBOOK_NETWORK is set).
   mountCallbook(app, callbook);
+  // Google sign-in through Circle wallets (off until CIRCLE_API_KEY, CIRCLE_APP_ID and GOOGLE_CLIENT_ID are set).
+  mountAuth(app);
 
   // A wallet's USDC, so the page can show it and see a card purchase land.
   app.get("/api/usdc/:address", async (req, res) => {

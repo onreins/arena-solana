@@ -15,6 +15,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { mountCallbook } from "./callbook-routes.js";
+import { mountAuth } from "./arena-auth-routes.js";
 import { arenaEnv } from "./verify/callbook-network.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -40,6 +41,8 @@ export function createApp(env = process.env) {
   }));
 
   mountCallbook(app, { env });
+  // Google sign-in through Circle wallets (off until CIRCLE_API_KEY, CIRCLE_APP_ID and GOOGLE_CLIENT_ID are set).
+  mountAuth(app, { env });
 
   app.get("/", (_req, res) => res.redirect(302, "/arena"));
   // Clean addresses: /arena serves arena.html, and /arena.html redirects there.
