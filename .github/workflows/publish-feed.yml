@@ -1,4 +1,13 @@
-# Keeps the testnet price feed fresh.
+# Keeps the testnet price feeds fresh.
+#
+# New agents read a RedStonePriceFeed: every trade pushes a RedStone price
+# signed seconds earlier before it trades, so trades never wait on this job.
+# Between trades this job pushes one every 30 minutes, so agents' values and
+# the public stop-loss read a recent price. The contract checks RedStone's
+# signatures, not the sender, so any key with a little testnet USDC for gas
+# will do: FEED_UPDATER_KEY, or FEED_PUBLISHER_KEY if that's the one set.
+#
+# Agents created before it read PinnedFeed, described below.
 #
 # Testnet mandates price EURC through PinnedFeed, a copy of the mainnet
 # Chainlink answer that only moves when someone publishes it. Agents refuse a
@@ -20,7 +29,7 @@ name: Refresh testnet price feed
 
 on:
   schedule:
-    - cron: "17 */6 * * *"
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -42,6 +51,15 @@ jobs:
           cache: npm
       - run: npm ci --omit=dev --ignore-scripts
       - run: npm run build
+      - name: Push the latest signed RedStone price
+        env:
+          RATCHET_DEPLOYER_KEY: ${{ secrets.FEED_UPDATER_KEY || secrets.FEED_PUBLISHER_KEY }}
+        run: |
+          if [ -z "$RATCHET_DEPLOYER_KEY" ]; then
+            echo "::warning::Neither FEED_UPDATER_KEY nor FEED_PUBLISHER_KEY is set, so the RedStone feed was not refreshed."
+            exit 0
+          fi
+          node scripts/update-redstone-feed.js
       - name: Publish the mainnet answer to the testnet feed
         env:
           RATCHET_DEPLOYER_KEY: ${{ secrets.FEED_PUBLISHER_KEY }}

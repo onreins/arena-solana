@@ -186,7 +186,7 @@ export function createApp({ deployment, rpcUrl, strategy, onramp, publicClient, 
       contracts: dep.contracts,
       tokens: {
         USDC: { address: dep.external.usdc, decimals: USDC_DECIMALS },
-        EURC: { address: dep.external.eurc, decimals: 6, feed: dep.contracts.pinnedFeed },
+        EURC: { address: dep.external.eurc, decimals: 6, feed: (dep.contracts.priceFeed ?? dep.contracts.pinnedFeed) },
       },
     });
   });
@@ -363,7 +363,7 @@ export function createApp({ deployment, rpcUrl, strategy, onramp, publicClient, 
           getAddress(dep.contracts.uniswapV4Venue),
           compiled,
           [getAddress(dep.external.eurc)],
-          [getAddress(dep.contracts.pinnedFeed)],
+          [getAddress((dep.contracts.priceFeed ?? dep.contracts.pinnedFeed))],
         ],
       });
       res.json({ to: dep.contracts.mandateFactory, data, chainId: dep.chainId });
