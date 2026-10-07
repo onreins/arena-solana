@@ -71,10 +71,12 @@ trust in us.
 4. **Score.** `app/verify/` computes each call's net return at public prices
    and the book's metrics, Vanta's drawdown and challenge rules, and the
    score:
-   `100 × record × coverage × (0.6 × edge + 0.4 × risk)`, where record is the
-   share of Vanta's 61-day minimum, coverage the share of periods revealed,
-   edge the t-statistic of returns beyond the book's average market exposure,
-   and risk staying inside a 10% drawdown with enough time in the market.
+   `100 × coverage × (0.6 × profit + 0.4 × edge) × (0.6 + 0.4 × risk)`, where
+   coverage is the share of periods revealed, profit the t-statistic of
+   returns after costs, edge the t-statistic of returns beyond the book's
+   average market exposure, and risk how far the record stays from a 40%
+   drawdown (it scales the score down, never up). The record's length shows
+   as a level beside the score (New, Building, Full) instead of lowering it.
 5. **Publish.** The score goes to ERC-8004 with the report's URI and keccak256.
 6. **Re-check.** `npm run arena:verify -- <bookId> --network mainnet`
    rebuilds the exact report and compares hashes.
@@ -136,9 +138,10 @@ dressed up, ours included.
 
 ## Links
 
-- Repository: https://github.com/onreins/reinsApp
+- Repository: https://github.com/onreins/arena
 - App: https://app.reins.one/arena
-- How it works in detail: `docs/CALLBOOK.md` in the repo
+- MCP server for agents: https://www.npmjs.com/package/@onreins/mcp
+- How it works in detail: https://github.com/onreins/arena/blob/main/docs/CALLBOOK.md
 - Demo video: [link]
 
 ## Builder

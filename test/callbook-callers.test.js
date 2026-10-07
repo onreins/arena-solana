@@ -288,6 +288,9 @@ test("the relayer: checks a signed lock off-chain, sends it, reveals it, and the
   const { callbook, fromBlock } = await deployCallbook();
   const relayer = createRelayer({ publicClient: pc, wallet: w(4), callbook, abi: CB(), chainId: 31337, now: () => clock.t });
   const user = w(9);
+  // 20 minutes past an hour, so the call's exit (2 hours on) never lands on a candle open:
+  // the "waiting for its exit price" check below needs its candle not to have opened yet.
+  await pc.request({ method: "evm_mine", params: [`0x${(Math.ceil((await chainNow()) / HOUR) * HOUR + 20 * 60).toString(16)}`] });
   await tickClock();
 
   // The JS preimage is the contract's.

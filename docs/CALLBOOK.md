@@ -410,8 +410,7 @@ the key that opens it.
 
 Our own bots (labelled Reins) lock a call every round and are scored by the
 same rules as everyone, including how many of them fail. Today they run in a
-replay over real Hyperliquid prices; on mainnet they run live. Where things
-stand is in `docs/HANDOFF-CALLBOOK.md`.
+replay over real Hyperliquid prices; on mainnet they run live.
 
 ## Credits
 
