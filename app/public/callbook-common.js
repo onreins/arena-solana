@@ -314,7 +314,44 @@ window.Callbook = (function () {
   // Under two weeks of record, ratios like Sharpe are shown but greyed.
   var YOUNG_DAYS = 14;
 
+  // The skill score (docs/CALLBOOK-IDENTITY-PLAN.md): how often calls beat the market's own move,
+  // credible by the number of calls. Levels in order, and what each says.
+  var LEVELS = { unrated: "Unrated", provisional: "Provisional", rated: "Rated", established: "Established" };
+  var LEVEL_RANK = { unrated: 1, provisional: 2, rated: 3, established: 4 };
+  function skillRank(s) { return s ? LEVEL_RANK[s.level] * 1000 + (isNum(s.score) ? s.score : -1) : null; }
+  function skillTip(s) {
+    if (!s || !s.calls) return "No calls scored yet";
+    var right = isNum(s.hitRate) ? Math.round(s.hitRate * 100) + "% of calls beat the market’s own move" : "";
+    var range = s.range ? " (somewhere between " + Math.round(s.range[0] * 100) + "% and " + Math.round(s.range[1] * 100) + "%)" : "";
+    var basis = " over " + int(Math.floor(s.effective)) + " independent calls (calls that overlap in time share one vote).";
+    var next = s.next ? s.next.days ? " Established after " + s.next.days + " days of record." :
+      " " + own(LEVELS, s.next.level) + " at " + int(s.next.calls) + " independent calls over " + (s.next.spanHours >= 48 ? Math.round(s.next.spanHours / 24) + " days" : s.next.spanHours + " hours") + "." : "";
+    return right + range + basis + (isNum(s.score) ? " The score is the cautious end of that range: 50% right is 0, 65% is 100." : "") + next;
+  }
+  /** The skill score as a panel for a bot's or caller's page: score or progress, level, and what it means. */
+  function skillPanel(s) {
+    if (!s) return "";
+    var goal = s.next && s.next.calls ? s.next.calls : null;
+    var f = goal ? Math.min(1, s.effective / goal) : 1;
+    var head = s.level === "unrated"
+      ? '<b class="mono">' + int(Math.floor(s.effective)) + '</b><span class="of"> of ' + int(goal || 150) + " calls</span>"
+      : '<b class="mono">' + esc(s.score) + '</b><span class="of">/100</span>';
+    return '<section class="cbk-skillbox" aria-label="Skill score"><p class="cbk-skill-k">Skill score <span class="cb-skill ' + esc(s.level) + '"><span class="cb-skill-l">' +
+      esc(own(LEVELS, s.level)) + "</span></span></p><div class='cbk-skill-v'>" + head + "</div>" +
+      (goal ? '<span class="bar" aria-hidden="true"><i style="width:' + (f * 100).toFixed(0) + '%"></i></span>' : "") +
+      "<p>" + esc(skillTip(s)) + "</p></section>";
+  }
+
+  /** The skill score as a small inline badge: the score and its level, or progress while unrated. */
+  function skillHtml(s) {
+    if (!s) return '<span class="muted">—</span>';
+    var body = s.level === "unrated" ? '<span class="cb-skill-n">' + int(Math.floor(s.effective)) + "/" + int(s.next ? s.next.calls : 150) + "</span>" :
+      '<span class="cb-skill-n">' + esc(s.score) + "</span>";
+    return '<span class="cb-skill ' + esc(s.level) + '" tabindex="0" data-tip="' + esc(skillTip(s)) + '">' + body + '<span class="cb-skill-l">' + esc(own(LEVELS, s.level)) + "</span></span>";
+  }
+
   return {
+    skillHtml: skillHtml, skillTip: skillTip, skillPanel: skillPanel, skillRank: skillRank, LEVELS: LEVELS,
     own: own, nameOf: nameOf, movedTag: movedTag, YOUNG_DAYS: YOUNG_DAYS, challengeLine: challengeLine, isHttp: isHttp, RULES: RULES, scoreOf: scoreOf, scoreWhy: scoreWhy, periodAt: periodAt, eodOf: eodOf, where: where, costsText: costsText, loadIndex: loadIndex, loadBook: loadBook, loadCaller: loadCaller, params: params, wantMock: wantMock, ID_RE: ID_RE,
     pct: pct, pctHtml: pctHtml, dd: dd, num: num, int: int, isNum: isNum, shortHash: shortHash, txLink: txLink,
     ago: ago, stamp: stamp, day: day, clock: clock, span: span, hours: hours, now: now,

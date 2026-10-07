@@ -241,16 +241,23 @@
     revealing = true;
     toast("Revealing " + list.length + (list.length === 1 ? " call…" : " calls…"), true);
     var done = 0;
-    for (var i = 0; i < list.length; i++) {
-      var l = list[i];
-      var r = await post("/api/callbook/relay/reveal", { kind: "symbol", bookId: l.bookId, callId: l.callId, coin: l.coin, side: l.side, salt: l.salt });
-      if (r.status === 503) break;
-      if (r.ok || /AlreadyRevealed/.test(r.body.error || "")) {
-        done++;
-        remember(Object.assign({}, l, { revealed: true }));
+    try {
+      for (var i = 0; i < list.length; i++) {
+        var l = list[i], r;
+        try {
+          r = await post("/api/callbook/relay/reveal", { kind: "symbol", bookId: l.bookId, callId: l.callId, coin: l.coin, side: l.side, salt: l.salt });
+        } catch (e) {
+          continue; // offline or the server is down: this one waits for the next try
+        }
+        if (r.status === 503) break;
+        if (r.ok || /AlreadyRevealed/.test((r.body && r.body.error) || "")) {
+          done++;
+          remember(Object.assign({}, l, { revealed: true }));
+        }
       }
+    } finally {
+      revealing = false;
     }
-    revealing = false;
     toast(done ? "Revealed " + done + (done === 1 ? " call ✓" : " calls ✓") : list.length ? "Couldn’t reveal yet. This page tries again on your next visit." : "");
     schedule();
   }

@@ -24,18 +24,18 @@ const HOUR = 3600, DAY = 86400;
 const T0 = 1_790_000_000 - (1_790_000_000 % DAY);
 const NAMES = ["BTC", "ETH", "SOL", "kPEPE", "HYPE"];
 
-function synthetic(coins, t0, t1, price, fundingRate = 0) {
+function synthetic(coins, t0, t1, price, fundingRate = 0, step = HOUR) {
   const candles = {}, funding = {};
   for (const c of coins) {
     candles[c] = [];
     funding[c] = [];
-    for (let t = Math.floor(t0 / HOUR) * HOUR; t <= t1; t += HOUR) {
-      const o = price(c, t), cl = price(c, t + HOUR);
+    for (let t = Math.floor(t0 / HOUR) * HOUR; t <= t1; t += step) {
+      const o = price(c, t), cl = price(c, t + step);
       candles[c].push({ t, o, h: Math.max(o, cl), l: Math.min(o, cl), c: cl, v: 1000 });
-      funding[c].push([t, fundingRate]);
+      if (t % HOUR === 0) funding[c].push([t, fundingRate]);
     }
   }
-  return { interval: "1h", candles, funding, fundingOk: true };
+  return { interval: step === HOUR ? "1h" : "5m", candles, funding, fundingOk: true };
 }
 const sourceOf = (price, fundingRate = 0) => ({
   perpNames: async () => NAMES,
@@ -92,6 +92,56 @@ describe("locks", () => {
     const move = c.exit / c.entry - 1;
     assert.ok(Math.abs(c.ret - netOf(-1, move).net) < 1e-12);
     assert.ok(c.ret < 0);
+  });
+
+  test("a call under an hour is priced on 5-minute candles while Hyperliquid has them, else on hourly ones", async () => {
+    const price = (c, t) => 100 + (t - T0) / 60; // up 1 a minute
+    const hourly = priceBook(synthetic(["BTC"], T0 - DAY, T0 + DAY, price));
+    const fine = priceBook(synthetic(["BTC"], T0 - HOUR, T0 + 2 * HOUR, price, 0, 300));
+    // Entry at T0 + 2m, 5 minutes long: priced from the 5-minute opens at T0 + 5m and T0 + 10m.
+    const b = anyCoinBook([lock(0, T0 + 120, 300, rev("BTC", 1, 300, T0 + 900))]);
+    const ls = deriveLocks(b, T0 + HOUR, NAMES);
+    const [c] = priceLocks(b, ls, hourly, NAMES, fine);
+    assert.equal(c.candles, "5m");
+    assert.equal(c.entry, price("BTC", T0 + 300), "entry rounds up to the next 5 minutes, never back");
+    assert.equal(c.exit, price("BTC", T0 + 600));
+    assert.ok(c.ret > 0);
+    // With no 5-minute prices left (older than Hyperliquid keeps), it falls back to hourly ones.
+    const [h] = priceLocks(b, ls, hourly, NAMES, null);
+    assert.equal(h.candles, "1h");
+    assert.equal(h.entry, price("BTC", T0 + HOUR));
+    // Calls of an hour or more always use hourly candles.
+    const long = anyCoinBook([lock(0, T0 + 120, HOUR, rev("BTC", 1, HOUR, T0 + 2 * HOUR))]);
+    assert.equal(priceLocks(long, deriveLocks(long, T0 + 3 * HOUR, NAMES), hourly, NAMES, fine)[0].candles, "1h");
+    // evaluateCaller fetches 5-minute candles only when there's a short call.
+    const asked = [];
+    const source = { perpNames: async () => NAMES, load: async (coins, from, to, interval = "1h") => { asked.push(interval); return synthetic(coins, from, to, price, 0, interval === "5m" ? 300 : HOUR); } };
+    const ev = await evaluateCaller({ chain: { chainId: 1, address: "0x01" }, book: b, source, asOf: T0 + HOUR, reportUri: () => "x" });
+    assert.deepEqual(asked, ["1h", "5m"]);
+    assert.equal(ev.scored.periods[0].candles, "5m");
+    asked.length = 0;
+    await evaluateCaller({ chain: { chainId: 1, address: "0x01" }, book: long, source, asOf: T0 + 3 * HOUR, reportUri: () => "x" });
+    assert.deepEqual(asked, ["1h"]);
+  });
+
+  test("the skill score: always long on a rising coin isn't skill, and a hidden call counts as wrong", async () => {
+    const source = (price) => ({ perpNames: async () => NAMES, load: async (coins, from, to) => synthetic(coins, from, to, price) });
+    const evaluate = (book, price, asOf) => evaluateCaller({ chain: { chainId: 1, address: "0x01" }, book, source: source(price), asOf, reportUri: () => "x" });
+
+    // Long BTC every 2 hours while it rises steadily: judged against its own drift, about half are "right".
+    const rising = (c, t) => 100 * (1 + Math.max(0, t - T0) / (100 * HOUR));
+    const always = anyCoinBook(Array.from({ length: 30 }, (_, i) => lock(i, T0 + i * 2 * HOUR, HOUR, rev("BTC", 1, HOUR, T0 + i * 2 * HOUR + 2 * HOUR))));
+    const a = (await evaluate(always, rising, T0 + 62 * HOUR)).scored.skill;
+    assert.equal(a.calls, 30);
+    assert.ok(a.hitRate > 0.3 && a.hitRate < 0.7, `hit rate ${a.hitRate}`);
+    assert.equal(a.level, "unrated");
+
+    // One long that caught a jump, one call never revealed: half right.
+    const jump = (c, t) => (c === "BTC" && t >= T0 + HOUR ? 110 : 100);
+    const two = anyCoinBook([lock(0, T0, 2 * HOUR, rev("BTC", 1, 2 * HOUR, T0 + 3 * HOUR)), lock(1, T0 + 5 * HOUR, HOUR, null)]);
+    const ev = await evaluate(two, jump, T0 + 6 * HOUR + GRACE + 1);
+    assert.deepEqual([ev.scored.skill.calls, ev.scored.skill.hitRate], [2, 0.5]);
+    assert.deepEqual(ev.report.report.skill, ev.scored.skill, "the published report carries the skill score");
   });
 
   test("H6: withheld and unscorable any-coin calls score the worst over the 50-perp reference set at their horizon", () => {
@@ -274,7 +324,11 @@ test("the relayer: checks a signed lock off-chain, sends it, reveals it, and the
   assert.equal(book.kind, "free");
   assert.equal(book.anyCoin, true);
   assert.equal(book.owner, s.account.toLowerCase());
-  const ev = await evaluateCaller({ chain, book, source: sourceOf((c, x) => 100 + (x % 7)), asOf: await chainNow(), reportUri: () => "x" });
+  // Scored once the hourly candle its exit is priced at has opened; before that it waits.
+  const early = await evaluateCaller({ chain, book, source: sourceOf((c, x) => 100 + (x % 7)), asOf: await chainNow(), reportUri: () => "x" });
+  assert.equal(early.scored.periods[0].status, "pending");
+  assert.match(early.scored.periods[0].note, /waiting for its exit price/);
+  const ev = await evaluateCaller({ chain, book, source: sourceOf((c, x) => 100 + (x % 7)), asOf: (await chainNow()) + HOUR, reportUri: () => "x" });
   assert.equal(ev.scored.periods[0].status, "revealed");
   assert.equal(ev.scored.periods[0].coin, "kPEPE");
   assert.equal(ev.scored.metrics.calls, 1);

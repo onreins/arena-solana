@@ -178,6 +178,8 @@ export function mountCallbook(app, { env = process.env, source, now = () => Math
   let relayer = null, relayOff = null;
   if (!net) relayOff = "Callbook isn't configured on this server";
   else if (!/^0x[0-9a-fA-F]{64}$/.test(env.CALLBOOK_RELAYER_KEY ?? "")) relayOff = "the gasless relayer is off on this server (no relayer key configured)";
+  // On Vercel each instance has its own memory: limits and the gas budget only hold with shared counters.
+  else if (env.VERCEL && counter.kind !== "rest") { relayOff = "the gasless relayer is off on this server (no shared rate-limit store configured)"; log("relay off: set KV_REST_API_URL and KV_REST_API_TOKEN for shared rate limits on Vercel"); }
   const getRelayer = async () => {
     if (relayer) return relayer;
     client ??= clientFor(net);

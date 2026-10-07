@@ -7,12 +7,14 @@
  * Rules (docs/CALLBOOK.md, "Open calls" and "The caller score"):
  *
  *   - every lock counts; there is no flat and no period to miss
- *   - prices are Hyperliquid hourly candle opens: entry at the first hour at
- *     or after the lock's entryAt, exit at the first hour at or after
- *     entryAt + horizon. Hourly candles are the only Hyperliquid prices with
- *     months of history, so a score can always be rebuilt; the cost is that a
- *     call can enter up to 59 minutes after its entryAt (never earlier, so it
- *     can't see its own entry)
+ *   - prices are Hyperliquid candle opens: entry at the first candle open at
+ *     or after the lock's entryAt, exit at the first one at or after
+ *     entryAt + horizon (never earlier, so a call can't see its own entry).
+ *     Calls of 1 hour or more use hourly candles, which Hyperliquid keeps for
+ *     months, so their score can always be rebuilt (a call can enter up to 59
+ *     minutes after its entryAt). Shorter calls use 5-minute candles (entry
+ *     within 4 minutes); Hyperliquid keeps those for about 17 days, and a short
+ *     call with no 5-minute prices left falls back to hourly ones
  *   - fees: Vanta's 0.03% each way; funding: Hyperliquid's, as for books
  *   - a symbol is matched to a Hyperliquid perp without regard to case,
  *     before any price is fetched; one Hyperliquid doesn't list makes the call
@@ -30,9 +32,14 @@ import { canonicalJson, hashText, SCORING_VERSION, requestForBook, latestRespons
 import { priceBook, resolveSymbol } from "./callbook-prices.js";
 import { callerInfo } from "./callbook-agents.js";
 import { maxOf, minOf } from "./callbook-util.js";
+import { skillScore, hitOf } from "./callbook-skill.js";
 
 const HOUR = 3_600;
 const DAY = 86_400;
+/** Calls shorter than this are priced on 5-minute candles, longer ones on hourly candles. */
+export const FINE_BELOW = HOUR;
+/** About how far back Hyperliquid serves 5-minute candles (its most recent 5,000). */
+export const FINE_HISTORY = 17 * DAY;
 export const GRACE = 7 * DAY;
 
 /**
@@ -149,43 +156,63 @@ export function candidatesFor(book, perpNames) {
   return book.coins.map((c) => resolveSymbol(c, perpNames)).filter(Boolean);
 }
 
-/** Each lock with its outcome: revealed at prices; withheld and unscorable at their worst. */
-export function priceLocks(book, locks, prices, perpNames = book.coins) {
+/**
+ * Each lock with its outcome: revealed at prices; withheld and unscorable at their worst.
+ * `prices`: hourly; `fine`: 5-minute, for calls shorter than FINE_BELOW (else they use hourly too).
+ * `asOf`: the moment scored. A revealed call whose exit candle hadn't opened yet stays pending.
+ */
+export function priceLocks(book, locks, prices, perpNames = book.coins, fine = null, asOf = Infinity) {
   const candidates = candidatesFor(book, perpNames);
+  // The finest prices a call can use: 5-minute ones for a recent short call while Hyperliquid has them.
+  const recent = (c) => !Number.isFinite(asOf) || c.exitAt > asOf - FINE_HISTORY;
+  const gridFor = (c, coins) => {
+    if (fine && c.horizon < FINE_BELOW && recent(c) && coins.some((coin) => moveOf(fine, coin, c.entryAt, c.exitAt) != null)) return { p: fine, candles: "5m" };
+    return { p: prices, candles: "1h" };
+  };
+  // The open the exit is priced at, on a grid: until it has opened, the call isn't done.
+  const exitOpens = (c, step) => Math.ceil(c.exitAt / step) * step;
   return locks.map((c) => {
     if (c.status === "revealed") {
-      const move = moveOf(prices, c.coin, c.entryAt, c.exitAt);
-      if (move == null) return { ...c, status: "unscorable", note: "no Hyperliquid price for this window", ...worstPriced(prices, candidates, c) };
+      const { p, candles } = gridFor(c, [c.coin]);
+      const move = moveOf(p, c.coin, c.entryAt, c.exitAt);
+      if (move == null && exitOpens(c, candles === "5m" ? 300 : HOUR) > asOf) return { ...c, status: "pending", note: "revealed; waiting for its exit price" };
+      if (move == null) return { ...c, status: "unscorable", note: "no Hyperliquid price for this window", ...worstPriced(gridFor(c, candidates), candidates, c) };
       const r = netOf(c.side, move);
-      return { ...c, move, ret: r.net, fee: r.fee, entry: prices.price(c.coin, c.entryAt), exit: prices.price(c.coin, c.exitAt), resolvedAt: c.exitAt };
+      return { ...c, move, ret: r.net, fee: r.fee, entry: p.price(c.coin, c.entryAt), exit: p.price(c.coin, c.exitAt), candles, resolvedAt: c.exitAt };
     }
-    if (c.status === "unscorable") return { ...c, note: `Hyperliquid lists no perp "${c.symbol}"`, ...worstPriced(prices, candidates, c) };
-    if (c.status === "withheld") return { ...c, ...worstPriced(prices, candidates, c), resolvedAt: c.withheldAfter };
+    if (c.status === "unscorable") return { ...c, note: `Hyperliquid lists no perp "${c.symbol}"`, ...worstPriced(gridFor(c, candidates), candidates, c) };
+    if (c.status === "withheld") return { ...c, ...worstPriced(gridFor(c, candidates), candidates, c), resolvedAt: c.withheldAfter };
     return { ...c };
   });
 }
 
 /** A hidden or unknown call's worst: its own horizon, on the candidate coins, either side. */
-function worstPriced(prices, coins, c) {
-  const w = worstOver(prices, coins, c.entryAt, c.horizon);
-  return { ret: w.net, fee: w.fee, move: 0, worst: { coin: w.coin, side: w.side, horizon: w.horizon }, resolvedAt: c.exitAt };
+function worstPriced({ p, candles }, coins, c) {
+  const w = worstOver(p, coins, c.entryAt, c.horizon);
+  return { ret: w.net, fee: w.fee, move: 0, worst: { coin: w.coin, side: w.side, horizon: w.horizon }, candles, resolvedAt: c.exitAt };
 }
 
 /**
- * Each coin's passive drift per second over the caller's record: what simply
- * holding it would have earned on average. The edge is measured against
- * beta × this drift times the call's horizon, so an always-long caller is
- * judged on *when* it was long, not on the coin going up.
+ * Each coin's passive drift over the caller's record, as a compounding
+ * (log) growth rate per second: what simply holding it would have earned on
+ * average. A call's expected move is expectedMove(rate, horizon), and the edge
+ * is measured against beta × that, so an always-long caller is judged on
+ * *when* it was long, not on the coin going up. (Compounding matters: a plain
+ * total-move-per-second rate overstates the typical move in a long rise and
+ * makes every long look worse than holding.)
  */
 export function driftRates(prices, coins, from, to) {
   const rates = new Map();
   if (!(to > from)) return rates;
   for (const coin of coins) {
     const m = moveOf(prices, coin, from, to);
-    if (m != null) rates.set(coin, m / (to - from));
+    if (m != null && m > -1) rates.set(coin, Math.log1p(m) / (to - from));
   }
   return rates;
 }
+
+/** The move holding a coin would have made over `horizon` seconds at a driftRates rate. */
+export const expectedMove = (rate, horizon) => Math.expm1((rate ?? 0) * horizon);
 
 // ------------------------------------------------------------------ the caller score
 
@@ -232,7 +259,7 @@ export function callerScore({ days, outcomes, maxDrawdown }) {
 
 /**
  * Metrics, curve and score for a caller's priced locks, as of `asOf`.
- * `drift`: Map coin -> passive move per second (driftRates); without it the
+ * `drift`: Map coin -> passive log growth per second (driftRates); without it the
  * edge is measured against nothing (expected 0).
  */
 export function scoreCaller(book, priced, { asOf, drift = new Map() }) {
@@ -245,7 +272,7 @@ export function scoreCaller(book, priced, { asOf, drift = new Map() }) {
   const maxDrawdown = curveDrawdown(rets);
   const outcomes = resolved.map((c) => {
     const real = c.status === "revealed";
-    return { side: real ? c.side : 0, ret: c.ret, move: real ? c.move : 0, expected: real ? (drift.get(c.coin) ?? 0) * c.horizon : 0 };
+    return { side: real ? c.side : 0, ret: c.ret, move: real ? c.move : 0, expected: real ? expectedMove(drift.get(c.coin), c.horizon) : 0 };
   });
   const score = callerScore({ days, outcomes, maxDrawdown });
   const pick = (c) => (c ? { callId: c.callId, coin: c.coin ?? c.worst?.coin ?? null, side: c.side ?? c.worst?.side ?? null, ret: round(c.ret, 5), status: c.status } : null);
@@ -268,10 +295,16 @@ export function scoreCaller(book, priced, { asOf, drift = new Map() }) {
     tStat: score.tStat,
     maxDrawdown,
     avgHorizonHours: revealed.length ? mean(revealed.map((c) => c.horizon)) / HOUR : null,
+    // Short calls priced on hourly candles because Hyperliquid no longer serves their 5-minute ones.
+    shortOnHourly: priced.filter((c) => c.horizon < FINE_BELOW && c.candles === "1h").length,
     best: pick(byRet[byRet.length - 1]),
     worst: pick(byRet[0]),
   };
-  return { periods: priced, metrics, score, curve: curveOf(resolved, first, asOf) };
+  // The skill score: each resolved call right or wrong against its coin's drift; hidden and unpriced ones wrong.
+  const skill = skillScore(resolved.map((c, i) => ({
+    start: c.entryAt, end: c.exitAt, hit: c.status === "revealed" ? hitOf(c.side, c.move, outcomes[i].expected) : 0,
+  })), { recordDays: days });
+  return { periods: priced, metrics, score, skill, curve: curveOf(resolved, first, asOf) };
 }
 
 /** The record as daily points: 1 + every resolved call's return, counted on the day it resolved. */
@@ -304,11 +337,12 @@ export function buildCallerReport({ chainId, callbook, book, asOf, scored }) {
       minHorizon: book.minHorizon, maxHorizon: book.maxHorizon, metaHash: book.strategyHash,
       closedAt: book.closedAt != null && book.closedAt <= asOf ? book.closedAt : null,
     },
-    prices: { source: "hyperliquid", interval: "1h", price: "candle open", costs: "hyperliquid-funding", fees: VANTA.fees, reference: REFERENCE_SET_NAME, referenceSet: book.anyCoin ? REFERENCE_SET : null },
-    // [callId, status, coin, side, horizon, net return]
-    calls: scored.periods.map((c) => [c.callId, c.status, c.coin ?? c.worst?.coin ?? null, c.side ?? c.worst?.side ?? null, c.horizon ?? c.worst?.horizon ?? null, c.ret == null ? null : round(c.ret)]),
+    prices: { source: "hyperliquid", interval: "1h; 5m for calls under 1h", price: "candle open", costs: "hyperliquid-funding", fees: VANTA.fees, reference: REFERENCE_SET_NAME, referenceSet: book.anyCoin ? REFERENCE_SET : null },
+    // [callId, status, coin, side, horizon, net return, candles ("5m" or "1h") it was priced on]
+    calls: scored.periods.map((c) => [c.callId, c.status, c.coin ?? c.worst?.coin ?? null, c.side ?? c.worst?.side ?? null, c.horizon ?? c.worst?.horizon ?? null, c.ret == null ? null : round(c.ret), c.candles ?? null]),
     metrics: Object.fromEntries(Object.entries(scored.metrics).map(([k, v]) => [k, typeof v === "number" ? round(v) : v])),
     score: Object.fromEntries(Object.entries(scored.score).map(([k, v]) => [k, round(v)])),
+    skill: scored.skill ?? null,
   };
   const text = canonicalJson(report);
   return { report, text, hash: hashText(text) };
@@ -339,10 +373,23 @@ export async function evaluateCaller({ chain, book, source, asOf, reportBase, re
   if (locks.length && coins.size) {
     first = minOf(locks.map((c) => c.entryAt));
     const data = await source.load([...coins], first - DAY, asOf + HOUR, "1h");
-    prices = priceBook({ ...data, interval: "1h" }, { useFunding: true });
+    prices = priceBook({ ...data, interval: "1h" }, { useFunding: true, openBy: asOf });
   }
-  const drift = first == null ? new Map() : driftRates(prices, [...own], first, asOf);
-  const scored = scoreCaller(book, priceLocks(book, locks, prices, names), { asOf, drift });
+  // Short calls get 5-minute prices too: only their coins (and the candidates, for a
+  // hidden one), only over their own span, and only as far back as Hyperliquid keeps them.
+  let fine = null;
+  const short = locks.filter((c) => c.status !== "pending" && c.horizon < FINE_BELOW && c.exitAt > asOf - FINE_HISTORY);
+  if (short.length) {
+    const fineCoins = new Set(short.map((c) => c.coin).filter(Boolean));
+    if (short.some((c) => c.status !== "revealed")) for (const c of candidatesFor(book, names)) fineCoins.add(c);
+    const from = Math.max(minOf(short.map((c) => c.entryAt)) - HOUR, asOf - FINE_HISTORY - DAY);
+    const to = Math.min(maxOf(short.map((c) => c.exitAt)) + HOUR, asOf + HOUR);
+    fine = priceBook({ ...(await source.load([...fineCoins], from, to, "5m")), interval: "5m" }, { useFunding: true, openBy: asOf });
+  }
+  // Drift runs to the last hourly open at or before asOf: the same candle for whoever rebuilds this later.
+  const driftEnd = Math.floor(asOf / HOUR) * HOUR;
+  const drift = first == null || driftEnd <= first ? new Map() : driftRates(prices, [...own], first, driftEnd);
+  const scored = scoreCaller(book, priceLocks(book, locks, prices, names, fine, asOf), { asOf, drift });
   scored.truncated = book.locks.size > MAX_LOCKS_PER_BOOK;
   const report = buildCallerReport({ chainId: chain.chainId, callbook: chain.address, book, asOf, scored });
   return { book, scored, report, uri: reportUri({ base: reportBase, chainId: chain.chainId, callbook: chain.address, bookId: book.id, asOf }) };
@@ -381,6 +428,7 @@ export function callerToApi({ chain, ev, validator, asOf }) {
     minHorizon: book.minHorizon, maxHorizon: book.maxHorizon, openedAt: book.openedAt, closed: book.closedAt != null && book.closedAt <= asOf,
     metrics: metricsOut(scored.metrics),
     score: { value: scored.score.value, asOf, reportHash: ev.report.hash, parts: Object.fromEntries(Object.entries(scored.score).map(([k, v]) => [k, round(v, 4)])) },
+    skill: scored.skill ?? null,
     validation: last ? { score: last.score, tag: last.tag, responseHash: last.responseHash, txHash: last.tx, at: last.at, uri: last.uri } : null,
     curve: scored.curve,
     pending: scored.metrics.pending,
@@ -399,7 +447,7 @@ export function callerToApi({ chain, ev, validator, asOf }) {
     if (c.status === "withheld") feed.push({ ...base, t: c.withheldAfter, kind: "missed", note: "withheld", callId: c.callId, hash: c.hash, ret: round(c.ret, 5), tx: null });
   }
   for (const r of req ? chain.validation.responses.get(req.requestHash) ?? [] : []) {
-    feed.push({ ...base, t: r.at, kind: "validated", hash: r.responseHash, score: r.score, tx: r.tx });
+    feed.push({ ...base, t: r.at, kind: "validated", hash: r.responseHash, score: r.score, tag: r.tag ?? null, tx: r.tx });
   }
   return { summary, detail, feed };
 }

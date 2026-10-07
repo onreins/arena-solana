@@ -167,6 +167,14 @@ reveals, one score, `callbook:verify` matching), then repeat it with
 Mainnet only, after step 9: update `docs/DORAHACKS.md` with the addresses and
 links.
 
+Then **publish the MCP package**, so agents get the deployed address without
+setting `CALLBOOK_ADDRESS`: `npm run build:callbook-mcp` must print "with
+testnet + mainnet addresses" (it reads `deployments/callbook-<network>.json`),
+then `cd packages/callbook-mcp && npm publish` (needs an npm account; bump
+`version` in its `package.json` for every later publish). Check it from an
+empty folder: `CALLBOOK_KEY=<fresh key> CALLBOOK_NETWORK=mainnet npx -y callbook-mcp`
+prints the key's address and "on mainnet" to stderr.
+
 ## 5. Keeping the runner running
 
 `runner/callbook.js` is a long-running loop (one pass every 30 seconds). It

@@ -29,6 +29,7 @@ import { priceBook, intervalFor, resolveSymbol } from "./callbook-prices.js";
 import { maxOf, brief } from "./callbook-util.js";
 import { agentInfo } from "./callbook-agents.js";
 import { evaluateCaller, callerToApi } from "./callbook-callers.js";
+import { skillScore, hitOf } from "./callbook-skill.js";
 
 export * from "./callbook-chain.js";
 export {
@@ -313,7 +314,18 @@ export function scoreBook(book, calls, prices, { asOf }) {
     days, revealed: metrics.revealed, missed: metrics.missed, withheld: metrics.withheld + metrics.unscorable, maxDrawdown: metrics.maxDrawdown,
     outcomes: inPosition.map((c) => ({ side: c.status === "revealed" ? c.side : c.worst.side, ret: c.ret, market: c.market })),
   });
-  return { periods, metrics, score, challenge: challengeOf(run.challengeRaw), curve: run.curve, costs, interval: prices.interval };
+  // The skill score: each round with a call right or wrong against the book's market move; a missed,
+  // hidden or unpriced round wrong; flat rounds aren't forecasts.
+  // Times come from `calls`: a priced round's `entry` and `exit` are prices.
+  const skill = skillScore(calls.flatMap((c, i) => {
+    if (c.status === "pending" || c.exit > asOf || (c.status === "revealed" && !c.side)) return [];
+    // The coin's move on the same funding-adjusted prices as the market move it's compared with.
+    const s = run.perPeriod?.get(c.period);
+    const a = s && periods[i].status === "revealed" ? prices.index(s.coin, c.start) : null;
+    const b = a ? prices.index(s.coin, c.exit) : null;
+    return [{ start: c.start, end: c.exit, hit: a > 0 && b > 0 ? hitOf(c.side, b / a - 1, s.market ?? 0) : 0 }];
+  }), { recordDays: days });
+  return { periods, metrics, score, skill, challenge: challengeOf(run.challengeRaw), curve: run.curve, costs, interval: prices.interval };
 }
 
 const pctText = (x) => `${(x * 100).toFixed(1)}%`;
@@ -367,6 +379,7 @@ export function buildReport({ chainId, callbook, book, asOf, scored }) {
     metrics: Object.fromEntries(Object.entries(m).map(([k, v]) => [k, typeof v === "number" ? round(v) : v])),
     challenge: scored.challenge,
     score: Object.fromEntries(Object.entries(scored.score).map(([k, v]) => [k, round(v)])),
+    skill: scored.skill ?? null,
   };
   const text = canonicalJson(report);
   return { report, text, hash: hashText(text) };
@@ -394,7 +407,7 @@ export async function pricesForBook(source, book, asOf, priceCoins = book.coins)
   const coins = [...new Set(priceCoins.filter(Boolean))];
   // A day before the start (strategies look back) to one candle past now.
   const data = await source.load(coins, book.start - DAY, Math.max(book.start, asOf) + step, interval);
-  return priceBook({ ...data, interval });
+  return priceBook({ ...data, interval }, { openBy: asOf });
 }
 
 /**
@@ -467,6 +480,7 @@ export function bookToApi({ chain, ev, validator, asOf, ours = null }) {
     validation: v.api ? { ...v.api, score: v.api.score } : null,
     // The score as of now; `validation` is the latest one posted on chain, which can be up to a day older.
     score: { value: scored.score.value, asOf, reportHash: ev.report.hash, parts: roundAll(scored.score, 4) },
+    skill: scored.skill ?? null,
     curve: scored.curve,
     next: nextPeriod(book, book.seals, asOf),
   };
@@ -491,7 +505,7 @@ function feedOf(book, info, periods, chain, v) {
   }
   if (v.request) {
     for (const r of chain.validation.responses.get(v.request.requestHash) ?? []) {
-      out.push({ ...base, t: r.at, kind: "validated", period: null, hash: r.responseHash, score: r.score, tx: r.tx });
+      out.push({ ...base, t: r.at, kind: "validated", period: null, hash: r.responseHash, score: r.score, tag: r.tag ?? null, tx: r.tx });
     }
   }
   return out;

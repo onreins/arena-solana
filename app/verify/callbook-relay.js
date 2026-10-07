@@ -47,6 +47,9 @@ export const RELAY_LIMITS = Object.freeze({
   requestsPerIpHour: 120,
   failuresPerIpHour: 60,
   failuresPerAccountHour: 60,
+  // Accounts cost nothing to make, so sending is also capped per client address.
+  sendsPerIpHour: 30,
+  newBooksPerIpDay: 10,
   dailyBudgetUsdc: 5,
   minDeadlineAheadSec: 30,
   maxDeadlineAheadSec: 7 * DAY,
@@ -129,7 +132,7 @@ export function createRelayer({ publicClient, wallet, callbook, abi, chainId, li
    * Simulate; if it passes, take a global slot and check the budget; send with
    * a gas cap; wait a short while for the receipt. One send at a time.
    */
-  function submit(functionName, args, { onSimulated } = {}) {
+  function submit(functionName, args, { onSimulated, bucket } = {}) {
     if (waiting >= L.maxQueue) return Promise.reject(new RelayError(503, "the relayer is busy; try again in a minute"));
     waiting++;
     const run = queue.then(async () => {
@@ -143,6 +146,7 @@ export function createRelayer({ publicClient, wallet, callbook, abi, chainId, li
       }
       if (gas > L.gasCap) throw new RelayError(422, `that would need ${gas} gas, over the relayer's ${L.gasCap} cap`, { simulated: false });
       await onSimulated?.();
+      if (bucket) await limit(`send:ip:${bucket}`, L.sendsPerIpHour, `this address has had ${L.sendsPerIpHour} transactions relayed in the last hour; try again later`);
       await limit("global", L.txPerHour, "the relayer is busy; try again in a few minutes");
       const price = await publicClient.getGasPrice();
       const capGas = gas + gas / 5n > L.gasCap ? L.gasCap : gas + gas / 5n;
@@ -180,15 +184,20 @@ export function createRelayer({ publicClient, wallet, callbook, abi, chainId, li
     return h;
   };
 
-  /** Run a request, counting it as a failure if it was refused. */
+  /**
+   * Run a request, counting it as a failure if it was refused. A failure counts
+   * against the account only once its signature checked out (`ctx.verified()`):
+   * anyone can name any account, and shouldn't be able to lock it out.
+   */
   async function guarded(ip, account, fn) {
     const bucket = ip ? ipBucket(ip) : null;
     if (bucket) await limit(`ip:${bucket}`, L.requestsPerIpHour, "too many requests from this address; try again later");
     await notTooManyFailures(bucket, account);
+    let verified = false;
     try {
-      return await fn();
+      return await fn({ bucket, verified: () => { verified = true; } });
     } catch (err) {
-      if (err instanceof RelayError && err.status !== 202 && err.status !== 503) await failed(bucket, account);
+      if (err instanceof RelayError && err.status !== 202 && err.status !== 503) await failed(bucket, verified ? account : null);
       throw err;
     }
   }
@@ -196,7 +205,7 @@ export function createRelayer({ publicClient, wallet, callbook, abi, chainId, li
   /** POST /relay/lock: { account, callHash, horizon, deadline, signature } -> { bookId, callId, entryAt, horizon, txHash } */
   async function lock(body = {}, { ip } = {}) {
     const account = isAddress(body.account ?? "") ? getAddress(body.account) : null;
-    return guarded(ip, account, async () => {
+    return guarded(ip, account, async (ctx) => {
       if (!account) throw refuse("account must be an address");
       const callHash = checkHash(body.callHash);
       const signature = checkSig(body.signature);
@@ -208,9 +217,16 @@ export function createRelayer({ publicClient, wallet, callbook, abi, chainId, li
       const nonce = await read("nonces", [account]);
       const valid = await signedBy(account, { domain, types: LOCK_TYPES, primaryType: "LockCall", message: { account, callHash, horizon, nonce, deadline }, signature });
       if (!valid) throw new RelayError(401, `the signature isn't the account's LockCall for its next nonce (${nonce})`);
+      ctx.verified();
 
+      // A first lock opens the account's open-call book: those are capped per client address too.
+      const opensBook = (await read("defaultBookOf", [account])) === 0n;
       const { hash, receipt } = await submit("lockBySig", [account, callHash, horizon, deadline, signature], {
-        onSimulated: () => limit(`lock:${account.toLowerCase()}`, L.locksPerAccountHour, "this account has locked 30 calls in the last hour; try again later"),
+        bucket: ctx.bucket,
+        onSimulated: async () => {
+          await limit(`lock:${account.toLowerCase()}`, L.locksPerAccountHour, "this account has locked 30 calls in the last hour; try again later");
+          if (opensBook && ctx.bucket) await limit(`newbook:ip:${ctx.bucket}`, L.newBooksPerIpDay, `this address has opened ${L.newBooksPerIpDay} new books today; try again tomorrow`, DAY);
+        },
       });
       const ev = parseEventLogs({ abi, logs: receipt.logs, eventName: "Locked" })[0];
       return { bookId: String(ev.args.bookId), callId: String(ev.args.callId), entryAt: Number(ev.args.entryAt), horizon: Number(ev.args.horizon), nonce: String(nonce), txHash: hash };
@@ -219,7 +235,7 @@ export function createRelayer({ publicClient, wallet, callbook, abi, chainId, li
 
   /** POST /relay/seal: { bookId, p, callHash, deadline, signature } -> { bookId, p, txHash } */
   async function seal(body = {}, { ip } = {}) {
-    return guarded(ip, null, async () => {
+    return guarded(ip, null, async (ctx) => {
       const bookId = asBigInt(body.bookId, "bookId");
       const p = asBigInt(body.p, "p");
       const callHash = checkHash(body.callHash);
@@ -244,6 +260,7 @@ export function createRelayer({ publicClient, wallet, callbook, abi, chainId, li
       }
       if (!signer) throw new RelayError(401, "the signature isn't a plain-key SealCall by the book's caller or owner");
       const { hash } = await submit("sealBySig", [bookId, p, callHash, deadline, signature], {
+        bucket: ctx.bucket,
         onSimulated: () => limit(`seal:${bookId}`, L.sealsPerBookHour, "this book has sealed 30 calls in the last hour; try again later"),
       });
       return { bookId: String(bookId), p: String(p), txHash: hash };
@@ -257,7 +274,7 @@ export function createRelayer({ publicClient, wallet, callbook, abi, chainId, li
    *   { kind: "symbol", bookId, callId, coin, side, salt }
    */
   async function reveal(body = {}, { ip } = {}) {
-    return guarded(ip, null, async () => {
+    return guarded(ip, null, async (ctx) => {
       const bookId = asBigInt(body.bookId, "bookId");
       const side = Number(body.side);
       if (![-1, 0, 1].includes(side)) throw refuse("side must be -1, 0 or 1");
@@ -278,7 +295,7 @@ export function createRelayer({ publicClient, wallet, callbook, abi, chainId, li
       } else {
         throw refuse('kind must be "seal", "lock" or "symbol"');
       }
-      const { hash } = await submit(fn, args);
+      const { hash } = await submit(fn, args, { bucket: ctx.bucket });
       return { kind: body.kind, bookId: String(bookId), txHash: hash };
     });
   }

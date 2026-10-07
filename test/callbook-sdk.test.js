@@ -13,7 +13,7 @@
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
-import { mkdtempSync, rmSync, existsSync, readFileSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createPublicClient, createWalletClient, http as viemHttp, defineChain, toHex, parseEventLogs } from "viem";
@@ -22,7 +22,8 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 
 import { CallbookClient } from "../callbook/sdk.js";
-import { createCallbookMcpServer, clientFromEnv, cleanText, cleanValue } from "../callbook/mcp-server.js";
+import { createCallbookMcpServer, clientFromEnv, keyFromEnv, cleanText, cleanValue } from "../callbook/mcp-server.js";
+import { loadOrCreateKey } from "../callbook/keyfile.js";
 import { createMarkets, parsePerps } from "../callbook/markets.js";
 import {
   saltSecretFromKey, sealSalt, symbolSalt, lockSalt, symbolHash, lockedHash, recoverSymbolCall, recoverLockedCall,
@@ -92,10 +93,13 @@ describe("durations", () => {
   });
 
   test("a call's horizon is any whole number of minutes in range (it's public, so nothing has to search it)", () => {
-    assert.equal(callHorizon("7m"), 7 * 60);
+    assert.equal(callHorizon("67m"), 67 * 60);
     assert.equal(callHorizon("25h5m"), 25 * HOUR + 300);
-    assert.throws(() => callHorizon("7m30s"), /whole number of minutes/);
+    assert.throws(() => callHorizon("61.5m"), /whole number of minutes/);
+    assert.equal(callHorizon("5m"), 300);
+    assert.equal(callHorizon("15m"), 900);
     assert.throws(() => callHorizon("2m"), /between 5m and 30d/);
+    assert.throws(() => callHorizon("15m", { min: HOUR }), /between 1h and 30d/, "a book's own bounds still apply");
     assert.throws(() => callHorizon("31d"), /between 5m and 30d/);
     // The old search grid is still there for anyone who wants it.
     const grid = horizonGrid();
@@ -198,8 +202,39 @@ describe("refusals before anything is sent", () => {
     await assert.rejects(c.myBooks(), /Callbook isn't deployed on Arc mainnet yet .*Set CALLBOOK_ADDRESS/);
   });
 
-  test("the MCP server needs only CALLBOOK_KEY, and defaults to testnet and the Reins app", () => {
-    assert.throws(() => clientFromEnv({}), /CALLBOOK_KEY/);
+  test("the MCP server needs nothing set: without CALLBOOK_KEY it makes a key file once and keeps using it", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "callbook-key-"));
+    try {
+      const file = path.join(dir, "nested", "key");
+      const env = { CALLBOOK_KEY_FILE: file, CALLBOOK_JOURNAL: "off" };
+      const first = keyFromEnv(env);
+      assert.equal(first.created, true);
+      assert.match(readFileSync(file, "utf8"), /^0x[0-9a-f]{64}\n$/);
+      const again = keyFromEnv(env);
+      assert.equal(again.created, false);
+      assert.equal(again.key, first.key);
+      assert.equal(clientFromEnv(env).address, privateKeyToAccount(first.key).address);
+      // CALLBOOK_KEY wins, and then no file is read or made.
+      assert.deepEqual(keyFromEnv({ CALLBOOK_KEY: keyOf(1), CALLBOOK_KEY_FILE: path.join(dir, "other") }), { key: keyOf(1), file: null, created: false });
+      assert.equal(existsSync(path.join(dir, "other")), false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("a damaged key file is refused, never replaced", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "callbook-key-"));
+    try {
+      const file = path.join(dir, "key");
+      writeFileSync(file, "not a key\n");
+      assert.throws(() => loadOrCreateKey(file), /isn't a Callbook key.*never overwritten/);
+      assert.equal(readFileSync(file, "utf8"), "not a key\n");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("the MCP server defaults to testnet and the Reins app", () => {
     const c = clientFromEnv({ CALLBOOK_KEY: keyOf(1), CALLBOOK_JOURNAL: "off" });
     assert.equal(c.network, "testnet");
     assert.equal(c.opts.relayUrl, "https://app.reins.one");
@@ -351,11 +386,11 @@ describe("on a local node", () => {
   test("a call book with a coin list: open, lock, reveal by search with no journal", async (t) => {
     if (!nodeUp) return t.skip(`no Hardhat node at ${RPC}`);
     const cb = sdk(keyOf(3), { journal: false });
-    const opened = await cb.openCallBook({ coins: ["BTC", "SOL"], minHorizon: "15m", maxHorizon: "2d" });
+    const opened = await cb.openCallBook({ coins: ["BTC", "SOL"], minHorizon: "2h", maxHorizon: "2d" });
     assert.equal(opened.anyCoin, false);
     const locked = await cb.lock({ book: opened.bookId, coin: "SOL", side: "short", horizon: "26h" });
     assert.equal(locked.callId, 0);
-    await assert.rejects(cb.lock({ book: opened.bookId, coin: "SOL", side: "long", horizon: "3d" }), /between 15m and 2d/);
+    await assert.rejects(cb.lock({ book: opened.bookId, coin: "SOL", side: "long", horizon: "3d" }), /between 2h and 2d/);
     await assert.rejects(cb.seal({ book: opened.bookId, coin: "SOL", side: "long" }), /is a call book: lock calls in it/);
 
     await mineAt(locked.revealAt + 1);
@@ -375,7 +410,7 @@ describe("on a local node", () => {
     const first = await cb.lock({ coin: "eth", side: "long", horizon: "1h" });
     assert.equal(first.openedBook, true);
     assert.equal(first.coin, "ETH");
-    assert.match(first.summary, /your new any-coin book/);
+    assert.match(first.summary, /your new open-call book/);
     const second = await cb.lock({ coin: "COIN150", side: "short", horizon: "2h" });
     assert.equal(second.bookId, first.bookId);
     assert.equal(second.openedBook, false);
@@ -404,6 +439,7 @@ describe("on a local node", () => {
     t.diagnostic(`revealDue with no journal (search over ${NAMES.length} coins): ${(performance.now() - t0).toFixed(0)} ms`);
     assert.deepEqual(b.revealed.map((r) => [r.coin, r.side, r.horizon]), [["COIN150", "short", "2h"]]);
 
+    await mineAt(second.revealAt + HOUR + 1); // the hourly candle its exit is priced at has opened
     const st = await fresh.status({ book: first.bookId });
     assert.equal(st.kind, "calls");
     assert.equal(st.record.revealed, 2);
@@ -413,7 +449,7 @@ describe("on a local node", () => {
   test("a call made with another secret is reported, not guessed", async (t) => {
     if (!nodeUp) return t.skip(`no Hardhat node at ${RPC}`);
     const key = keyOf(5);
-    const locked = await sdk(key, { saltSecret: "5a17".repeat(16), journal: false }).lock({ coin: "BTC", side: "long", horizon: "15m" });
+    const locked = await sdk(key, { saltSecret: "5a17".repeat(16), journal: false }).lock({ coin: "BTC", side: "long", horizon: "1h" });
     await mineAt(locked.revealAt + 1);
     const r = await sdk(key, { journal: false }).revealDue();
     assert.equal(r.revealed.length, 0);
@@ -428,7 +464,7 @@ describe("on a local node", () => {
     const cb = sdk(key, { relayUrl: relayStub.url });
     const before = relayStub.calls.length;
 
-    const locked = await cb.lock({ coin: "SOL", side: "long", horizon: "30m" });
+    const locked = await cb.lock({ coin: "SOL", side: "long", horizon: "1h" });
     assert.equal(locked.gasless, true);
     assert.equal(locked.openedBook, true);
 
@@ -447,7 +483,7 @@ describe("on a local node", () => {
     assert.equal(await pc.getBalance({ address }), 0n, "the key never paid gas");
 
     // Without a relay, the same key gets told how to fix it.
-    await assert.rejects(sdk(key).lock({ coin: "SOL", side: "long", horizon: "30m" }), /no USDC for gas on Local chain.*set a relay URL/);
+    await assert.rejects(sdk(key).lock({ coin: "SOL", side: "long", horizon: "1h" }), /no USDC for gas on Local chain.*set a relay URL/);
     // A relay that doesn't take calls says so.
     await assert.rejects(sdk(key, { relayUrl: `${relayStub.url}/nowhere` }).lock({ coin: "SOL", side: "long" }), /doesn't take lock requests \(HTTP 404\)/);
   });
@@ -477,23 +513,23 @@ describe("on a local node", () => {
     const a = sdk(key, { journal: false }), b = sdk(key, { journal: false });
     // Two clients and three calls at once, all into the same any-coin book.
     const locked = await Promise.all([
-      a.lock({ coin: "BTC", side: "long", horizon: "10m" }),
-      b.lock({ coin: "ETH", side: "short", horizon: "10m" }),
-      a.lock({ coin: "SOL", side: "long", horizon: "10m" }),
+      a.lock({ coin: "BTC", side: "long", horizon: "1h" }),
+      b.lock({ coin: "ETH", side: "short", horizon: "1h" }),
+      a.lock({ coin: "SOL", side: "long", horizon: "1h" }),
     ]);
     assert.deepEqual(locked.map((l) => l.callId).sort(), [0, 1, 2]);
     assert.equal(new Set(locked.map((l) => l.bookId)).size, 1);
 
     // A coin-list book: concurrent locks also get consecutive call ids.
-    const list = await a.openCallBook({ coins: ["BTC", "ETH"], minHorizon: "5m", maxHorizon: "1d" });
-    const inList = await Promise.all([1, 2, 3].map(() => b.lock({ book: list.bookId, coin: "ETH", side: "long", horizon: "7m" })));
+    const list = await a.openCallBook({ coins: ["BTC", "ETH"], minHorizon: "1h", maxHorizon: "1d" });
+    const inList = await Promise.all([1, 2, 3].map(() => b.lock({ book: list.bookId, coin: "ETH", side: "long", horizon: "67m" })));
     assert.deepEqual(inList.map((l) => l.callId).sort(), [0, 1, 2]);
 
     await mineAt(Math.max(...[...locked, ...inList].map((l) => l.revealAt)) + 1);
     const done = await sdk(key, { journal: false }).revealDue();
     assert.equal(done.revealed.length, 6, JSON.stringify(done.failed));
-    // 7 minutes is off the old search grid: the public horizon makes it recoverable anyway.
-    assert.ok(done.revealed.some((r) => r.horizon === "7m"));
+    // 67 minutes is off the old search grid: the public horizon makes it recoverable anyway.
+    assert.ok(done.revealed.some((r) => r.horizon === "1h7m"));
   });
 
   test("unknown books and coins are sentences", async (t) => {
@@ -502,7 +538,9 @@ describe("on a local node", () => {
     await assert.rejects(cb.seal({ book: 999, coin: "BTC", side: "long" }), /There's no book 999 on Local chain/);
     await assert.rejects(cb.lock({ coin: "NOTACOIN", side: "long" }), /Hyperliquid has no perp called "NOTACOIN"/);
     await assert.rejects(cb.lock({ coin: "OLDCOIN", side: "long" }), /Hyperliquid has no perp called "OLDCOIN"/);
-    await assert.rejects(cb.lock({ coin: "BTC", side: "long", horizon: "7m30s" }), /whole number of minutes/);
+    await assert.rejects(cb.lock({ coin: "BTC", side: "long", horizon: "61.5m" }), /whole number of minutes/);
+    await assert.rejects(cb.lock({ coin: "BTC", side: "long", horizon: "2m" }), /between 5m and 30d/);
+    await assert.rejects(cb.openCallBook({ coins: ["BTC"], minHorizon: "2m" }), /Calls run from 5m to 30d/);
     await assert.rejects(cb.openStrategyBook({ coins: ["BTC"], every: "2m" }), /every 5m to 7d/);
   });
 });
@@ -515,7 +553,7 @@ describe("the MCP server", () => {
 
   before(async () => {
     const client = nodeUp ? sdk(keyOf(8)) : new CallbookClient({ network: "local", key: keyOf(8), address: "0x0000000000000000000000000000000000000001", journal: false, markets: markets() });
-    server = createCallbookMcpServer({ client });
+    server = createCallbookMcpServer({ client, keyFile: "/home/agent/.callbook/key" });
     const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
     mcp = new Client({ name: "test-agent", version: "1.0.0" });
     await Promise.all([server.connect(serverSide), mcp.connect(clientSide)]);
@@ -527,11 +565,16 @@ describe("the MCP server", () => {
   test("lists its tools, a guide and prompts", async () => {
     const { tools } = await mcp.listTools();
     assert.deepEqual(tools.map((x) => x.name).sort(), [
-      "callbook_lock", "callbook_markets", "callbook_my_books", "callbook_open", "callbook_reveal_due", "callbook_seal", "callbook_status", "callbook_verify",
+      "callbook_account", "callbook_lock", "callbook_markets", "callbook_my_books", "callbook_open", "callbook_reveal_due", "callbook_seal", "callbook_status", "callbook_verify",
     ]);
     assert.ok(tools.every((x) => x.title && x.description.length > 40));
     const { resources } = await mcp.listResources();
     assert.equal(resources[0].uri, "callbook://guide");
+    // The account tool says where the key is kept, never what it is.
+    const account = await mcp.callTool({ name: "callbook_account", arguments: {} });
+    const text = account.content.map((c) => c.text).join("\n");
+    assert.match(text, /\/home\/agent\/\.callbook\/key/);
+    assert.ok(!text.includes(keyOf(8).slice(2)), "the key itself is never in a reply");
     const { prompts } = await mcp.listPrompts();
     assert.deepEqual(prompts.map((p) => p.name).sort(), ["lock_call", "seal_round"]);
     const p = await mcp.getPrompt({ name: "seal_round", arguments: { book: "3" } });
@@ -564,7 +607,7 @@ describe("the MCP server", () => {
     if (!nodeUp) return t.skip(`no Hardhat node at ${RPC}`);
     const res = await mcp.callTool({ name: "callbook_lock", arguments: { coin: "ETH", side: "long" } });
     assert.ok(!res.isError, JSON.stringify(res.content));
-    assert.match(res.content[0].text, /^Locked long ETH for 4h \(book \d+, call 0, your new any-coin book\)/);
+    assert.match(res.content[0].text, /^Locked long ETH for 4h \(book \d+, call 0, your new open-call book\)/);
     const locked = body(res);
     assert.equal(locked.horizon, "4h");
 

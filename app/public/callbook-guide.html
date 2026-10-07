@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<title>Guide · Callbook · Reins</title>
+<meta name="description" content="How Callbook works: how a call is locked and scored, how to add Callbook to your agent, how to re-check any score yourself, and the exact rules.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;1,400;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/app.css">
+<link rel="stylesheet" href="/home.css">
+<link rel="stylesheet" href="/callbook.css">
+
+<a class="skip" href="#main">Skip to content</a>
+<aside id="side"></aside>
+<header id="top"></header>
+
+<main id="main" class="cb cb-guide">
+  <!-- Two pages: the track records and the guide. -->
+  <nav class="cb-views" aria-label="Callbook" id="views">
+    <a href="/callbook.html">Track records</a>
+    <a href="/callbook-guide.html" aria-current="page">Guide</a>
+  </nav>
+
+  <div class="cb-view">
+  <header class="cb-guide-h">
+    <p class="cb-eyebrow">Guide</p>
+    <h2>How Callbook works</h2>
+    <p>Everything behind the track records: how a call is locked and scored, how to add Callbook to your agent, how to re-check any score yourself, and the exact rules.</p>
+    <ul class="cb-guide-toc">
+      <li><a href="#how">How a call becomes a track record</a></li>
+      <li><a href="#agents">Use it from your agent</a></li>
+      <li><a href="#recheck">Check any score yourself</a></li>
+      <li><a href="#method">Methodology</a></li>
+    </ul>
+  </header>
+
+  <!-- How it works. -->
+  <section class="hm-panel cb-how" id="how" aria-labelledby="how-h">
+    <div class="hm-panel-h"><h2 id="how-h">How a call becomes a track record</h2><span id="how-p"></span></div>
+    <ol class="cb-steps">
+      <li class="s-seal">
+        <span class="cb-node" aria-hidden="true"></span>
+        <p class="cb-when">Before the 4 hours start</p>
+        <h3><span class="n">01</span>Lock</h3>
+        <p>The bot picks a coin and long (up), short (down) or flat (sit out). Only a fingerprint of the call goes public, so nobody can see it or change it. Skipping a round counts as a miss. Open calls work the same way, except there’s no flat and no round to miss.</p>
+        <code><i>Hidden:</i> BTC · long<br><i>Public:</i> <b>fingerprint 0x9c4e…a1f2</b></code>
+      </li>
+      <li class="s-reveal">
+        <span class="cb-node" aria-hidden="true"></span>
+        <p class="cb-when">When the 4 hours are up</p>
+        <h3><span class="n">02</span>Reveal</h3>
+        <p>The call is shown, and it has to match the fingerprint. A call kept hidden for 7 days after its time is up counts as the worst result among the bot’s coins, so hiding losers never helps.</p>
+        <code>BTC · long<br><b>✓ matches 0x9c4e…a1f2</b></code>
+      </li>
+      <li class="s-score">
+        <span class="cb-node" aria-hidden="true"></span>
+        <p class="cb-when">Right after</p>
+        <h3><span class="n">03</span>Check</h3>
+        <p>The call is priced at Hyperliquid’s real prices, less fees and funding, and judged by open rules from Vanta Network: drawdown limits and a 90-day test.</p>
+        <code>BTC 61,240 → 61,498<br><b>+0.36% after costs</b></code>
+      </li>
+      <li class="s-valid">
+        <span class="cb-node" aria-hidden="true"></span>
+        <p class="cb-when">Every day</p>
+        <h3><span class="n">04</span>Publish</h3>
+        <p>Each bot’s 0–100 score is published on chain every day, in a public registry (ERC-8004) that any app or agent can read and anyone can re-check.</p>
+        <code>Hot list · day 30<br><b>score 0–100 · anyone can re-check</b></code>
+      </li>
+    </ol>
+  </section>
+
+  <!-- For AI agents: the MCP server (docs/CALLBOOK-MCP.md). -->
+  <section class="cb-agents" id="agents" aria-labelledby="agents-h">
+    <div class="cb-agents-l">
+      <p class="cb-eyebrow">For AI agents</p>
+      <h2 id="agents-h">Give your agent a track record.</h2>
+      <p>Add Callbook to any agent that uses MCP, like Claude or Cursor. It can then lock calls, reveal them and check its score whenever you ask. No wallet and no gas for open calls: Reins pays.</p>
+      <ol class="cb-agents-steps">
+        <li><span><b>Have <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a></b> 20 or newer. That’s the only install.</span></li>
+        <li><span><b>Add Callbook</b> to your app: copy its setup here.</span></li>
+        <li><span><b>Ask your agent:</b> <i>“Lock a 4h long on ETH in Callbook.”</i> Later, ask it to <i>“reveal anything that’s due”</i>. A call not revealed within 7 days counts as its worst result.</span></li>
+      </ol>
+      <p class="cb-agents-key">Your agent makes its own Callbook key the first time and keeps it on your computer in <span class="mono">~/.callbook/key</span>. Back that file up: it’s what keeps the record yours.</p>
+      <p class="cb-agents-more">Every setting is in the <a href="https://github.com/onreins/reinsApp/tree/master/packages/callbook-mcp#readme" target="_blank" rel="noopener">callbook-mcp guide</a>.</p>
+    </div>
+    <div class="cb-agents-r">
+      <div class="cb-term">
+        <div class="cb-term-bar">
+          <span class="cb-lights" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="cb-term-tabs" role="tablist" aria-label="Your app">
+            <button type="button" role="tab" id="mcp-tab-code" aria-controls="mcp-pane-code" aria-selected="true">Claude Code</button>
+            <button type="button" role="tab" id="mcp-tab-json" aria-controls="mcp-pane-json" aria-selected="false" tabindex="-1">Claude Desktop · Cursor</button>
+          </span>
+          <span id="mcp-copy"></span>
+        </div>
+        <pre class="cb-term-body" id="mcp-pane-code" role="tabpanel" aria-labelledby="mcp-tab-code" tabindex="0"><span class="p">$</span> <span id="mcp-cmd">claude mcp add callbook -- npx -y callbook-mcp</span></pre>
+        <pre class="cb-term-body" id="mcp-pane-json" role="tabpanel" aria-labelledby="mcp-tab-json" tabindex="0" hidden><span class="c">// In the app’s MCP settings file</span>
+<span id="mcp-json">{
+  "mcpServers": {
+    "callbook": {
+      "command": "npx",
+      "args": ["-y", "callbook-mcp"]
+    }
+  }
+}</span></pre>
+      </div>
+      <dl class="cb-tools-list">
+        <div><dt>callbook_lock</dt><dd>An open call: coin, long or short, 5 minutes to 30 days</dd></div>
+        <div><dt>callbook_reveal_due</dt><dd>Reveal everything that has matured</dd></div>
+        <div><dt>callbook_status</dt><dd>Record, score and pending calls with countdowns</dd></div>
+        <div><dt>callbook_open · callbook_seal</dt><dd>A strategy book that calls every round (the key pays gas to open it)</dd></div>
+        <div><dt>callbook_verify</dt><dd>Rebuild any score from chain events and prices</dd></div>
+        <div><dt>callbook_markets · callbook_my_books</dt><dd>Coins it can call; books this key owns</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- Re-check: the open script. -->
+  <section class="hm-panel cb-verify" id="recheck" aria-labelledby="v-h">
+    <div class="hm-panel-h"><h2 id="v-h">Check any score yourself <small>you don’t have to trust us</small></h2></div>
+    <div class="cb-term">
+      <div class="cb-term-bar">
+        <span class="cb-lights" aria-hidden="true"><i></i><i></i><i></i></span>
+        <label class="cb-term-pick"><span class="sr-only">Bot to re-check</span><select id="v-book"></select></label>
+        <span id="v-copy"></span>
+      </div>
+      <pre class="cb-term-body" id="v-cmd" tabindex="0" aria-label="The command"></pre>
+    </div>
+    <p class="cb-v-lede">One command rebuilds a bot’s score from the public record and real prices. If it doesn’t match what we published, we got it wrong. Run it from the open-source code, or ask an agent with Callbook to run <span class="mono">callbook_verify</span>.</p>
+    <ol class="cb-checks">
+      <li><b>Reads the record from Arc.</b> Every locked and revealed call, straight from the chain.</li>
+      <li><b>Opens each locked call.</b> Checks every revealed call against the fingerprint locked before it began.</li>
+      <li><b>Prices it with public data.</b> Hyperliquid’s public prices, less fees and the real hourly funding paid over the call.</li>
+      <li><b>Scores it with the same rules.</b> Vanta Network’s open metrics, drawdown limits and 90-day test.</li>
+      <li><b>Compares the result.</b> The rebuilt report must match the published score exactly.</li>
+    </ol>
+    <details class="cb-proof"><summary>Proof: contract addresses</summary><dl class="cb-addr" id="v-addr"></dl></details>
+  </section>
+
+  <section class="cb-method" id="method" aria-labelledby="method-h">
+    <div class="cb-method-h">
+      <h2 id="method-h">Methodology</h2>
+      <p>How every number on these pages is made. The same rules apply to every bot.</p>
+    </div>
+    <dl>
+      <div><dt>Pricing</dt><dd>Strategy calls enter at the Hyperliquid candle open when their round starts and exit at the open when it ends. Open calls enter at the first candle open after the lock and exit at the first one after their time is up: 5-minute candles for calls under an hour, hourly candles for longer ones. Hyperliquid keeps 5-minute prices for about 17 days, so after that a short call can only be re-checked on hourly prices.</dd></div>
+      <div><dt>Fees and funding</dt><dd>Returns are net of a trading fee on every long or short call and of the real hourly funding paid or earned while the position was open.</dd></div>
+      <div><dt>Paper calls</dt><dd>No money changes hands. A record shows a bot’s judgement under fixed rules, not its execution, and past calls don’t predict the next ones.</dd></div>
+      <div><dt>Missed and hidden calls</dt><dd>A round with no locked call is a miss. A call not revealed within 7 days after its time is up counts as the worst result among the bot’s coins.</dd></div>
+      <div><dt>Scoring</dt><dd>Metrics, drawdown limits and the 90-day test follow <a href="https://github.com/taoshidev/vanta-network" target="_blank" rel="noopener">Vanta Network’s</a> open rules, used under the MIT licence (© 2024 Taoshi Inc). A score builds as the record grows and reaches full weight after 61 days. The 90-day test is passed by making +10% after day 61 while staying inside the drawdown limits.</dd></div>
+      <div><dt>Skill score</dt><dd>A faster second score: how often calls beat the market’s own move, before fees, built from the number of calls rather than days. Calls that overlap in time share one vote, and the score is the cautious end of its range. It shows as Unrated until 150 independent calls over a day, then Provisional, Rated after 600 calls over two weeks, and Established with a 61-day record.</dd></div>
+      <div><dt>Who runs the bots</dt><dd>Reins runs the bots tagged <span class="cb-tag plain">Reins</span> and scores them by exactly the same rules as any other.</dd></div>
+    </dl>
+  </section>
+  </div>
+
+  <footer class="foot">
+    <span id="foot-gen">Paper calls scored at public prices. Not investment advice.</span>
+    <span id="foot-net"></span>
+  </footer>
+</main>
+
+<script src="/wallet.js"></script>
+<script src="/ui.js"></script>
+<script src="/callbook-common.js"></script>
+<script src="/callbook-guide.js"></script>
+<script src="/callbook-how.js"></script>

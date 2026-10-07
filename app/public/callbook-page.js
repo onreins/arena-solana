@@ -7,10 +7,14 @@
   var U = window.ReinsUI, C = window.Callbook, esc = U.esc;
   var $ = function (id) { return document.getElementById(id); };
   U.topbar("callbook");
+
+  // The guide is its own page now: old links to its sections go there.
+  var GUIDE = { guide: 1, how: 1, agents: 1, recheck: 1, method: 1 };
+  var gone = location.hash.slice(1);
+  if (C.own(GUIDE, gone) === 1) { location.replace("/callbook-guide.html" + (gone === "guide" ? "" : "#" + gone)); return; }
   C.tooltips();
   $("ic-lock").innerHTML = U.icon("lock");
   $("ic-q").innerHTML = U.icon("search");
-  $("mcp-copy").innerHTML = C.copyButton($("mcp-cmd").textContent, "Copy the command");
   $("seal").innerHTML = C.seal("big", C.SEAL_WORDS);
   $("guil").innerHTML = C.guilloche(1200, 560);
 
@@ -43,7 +47,7 @@
   };
   function scoreCell(x) {
     var v = C.scoreOf(x);
-    if (!C.isNum(v)) return '<span class="muted" tabindex="0" data-tip="Scored after its first full day of calls">—</span>';
+    if (!C.isNum(v)) return '<span class="muted" tabindex="0" data-tip="Not scored yet: the first score comes with its first revealed calls">—</span>';
     var why = C.scoreWhy(x);
     return '<span class="cb-sc' + (v === 0 ? " zero" : "") + '"' + (why && why.long ? ' tabindex="0" data-tip="' + esc(why.long) + '"' : "") + ">" + esc(Math.round(v)) + "</span>";
   }
@@ -83,15 +87,16 @@
       metric: "Callbook score, 0–100",
       scored: function () { var s = D.stats || {}; return (s.revealed || 0) + (s.withheld || 0); },
       lede: "Every strategy bot, ranked by its Callbook score: a <span class=\"nb\">0–100</span> grade of the call it locks every round, after costs, published daily.",
-      foot: "Scores recompute every 4 hours, after each round",
+      foot: "Scores update after each round and are published on chain once a day",
       filters: true,
       cols: [
         { key: "score", h: "Score", tip: "The Callbook score, 0 to 100, published daily under ERC-8004", cls: "r mono", v: function (b) { return C.scoreOf(b); }, cell: scoreCell },
+        { key: "skill", h: "Skill", tip: "Skill: how sure we are its calls beat the market's own move. 0 until it's clearly better than a coin flip, 100 at 65% right. Rated by the number of calls, not days", cls: "r", v: function (b) { return C.skillRank(b.skill); }, cell: function (b) { return C.skillHtml(b.skill); } },
         { key: "ret", h: "Return", tip: "What its calls made, compounded, after fees and funding", cls: "r mono m-hide", v: function (b) { return b.metrics.totalReturn; }, cell: function (b) { return C.pctHtml(b.metrics.totalReturn); } },
         { key: "vs", h: "Vs market", tip: "Each call's return less the equal-weight move of the bot's coins, in the direction called", cls: "r mono opt", v: function (b) { return b.metrics.vsMarket; }, cell: function (b) { return C.pctHtml(b.metrics.vsMarket); } },
         { key: "dd", h: "Worst drop", tip: "Worst fall from a high at a day's close. The 90-day test allows 5%", cls: "r mono opt", v: function (b) { return C.eodOf(b.metrics); }, cell: function (b) { return C.dd(C.eodOf(b.metrics)); } },
         { key: "test", h: "90-day test", cls: "opt", cell: testCell },
-        { key: "cov", h: "Coverage", tip: "Calls revealed, and their share of the calls that were due", cls: "r mono", v: function (b) { return coverageOf(b.metrics).share; }, cell: function (b) { return covCell(b.metrics); } },
+        { key: "cov", h: "Coverage", tip: "Calls revealed, and their share of the calls that were due", cls: "r mono c-cov", v: function (b) { return coverageOf(b.metrics).share; }, cell: function (b) { return covCell(b.metrics); } },
         { key: "curve", h: "Record", cls: "c-curve opt", cell: curve },
       ],
     },
@@ -102,17 +107,18 @@
       noun: ["caller", "callers"],
       metric: "Caller score, 0–100",
       scored: function () { var s = D.stats || {}; return (s.lockedRevealed || 0) + (s.lockedWithheld || 0); },
-      lede: "Everyone who locks open calls, ranked by caller score: how much their calls beat each coin’s own move, after costs. <span class=\"nb\">0–100</span>, published daily.",
+      lede: "Everyone who locks open calls, ranked by caller score: how much their calls beat each coin’s own move, after costs. <span class=\"nb\">0–100</span>, updated after every reveal and published on chain daily.",
       foot: "Open calls are ranked separately from strategies, because choosing when to call is part of the skill",
       filters: false,
       cols: [
         { key: "score", h: "Score", tip: "The caller score, 0 to 100", cls: "r mono", v: function (c) { return C.scoreOf(c); }, cell: scoreCell },
+        { key: "skill", h: "Skill", tip: "Skill: how sure we are its calls beat the coin's own move. 0 until it's clearly better than a coin flip, 100 at 65% right. Rated by the number of calls, not days", cls: "r", v: function (c) { return C.skillRank(c.skill); }, cell: function (c) { return C.skillHtml(c.skill); } },
         { key: "calls", h: "Calls", tip: "Calls locked, including the ones still hidden", cls: "r mono m-hide", v: function (c) { return c.metrics.calls; }, cell: function (c) { return C.int(c.metrics.calls); } },
         { key: "hit", h: "Hit rate", tip: "Share of calls that made money after costs", cls: "r mono opt", v: function (c) { return c.metrics.hitRate; }, cell: function (c) { return C.isNum(c.metrics.hitRate) ? Math.round(c.metrics.hitRate * 100) + "%" : "—"; } },
         { key: "vs", h: "Vs coin", tip: "Average per call, after costs, less the coin's own move over the same hours", cls: "r mono m-hide", v: function (c) { return c.metrics.vsCoin; }, cell: function (c) { return C.pctHtml(c.metrics.vsCoin, 2); } },
         { key: "worst", h: "Worst call", tip: "Its single worst call, after costs", cls: "opt", v: function (c) { return c.metrics.worst ? c.metrics.worst.ret : null; }, cell: function (c) { return worstCall(c.metrics); } },
         { key: "days", h: "Record", tip: "Days since its first call", cls: "r mono opt", v: function (c) { return c.metrics.days; }, cell: function (c) { return C.int(Math.floor(c.metrics.days)) + '<span class="muted">d</span>'; } },
-        { key: "cov", h: "Coverage", tip: "Calls revealed, and their share of the calls that were due", cls: "r mono", v: function (c) { return coverageOf(c.metrics).share; }, cell: function (c) { return covCell(c.metrics); } },
+        { key: "cov", h: "Coverage", tip: "Calls revealed, and their share of the calls that were due", cls: "r mono c-cov", v: function (c) { return coverageOf(c.metrics).share; }, cell: function (c) { return covCell(c.metrics); } },
       ],
     },
   };
@@ -208,6 +214,33 @@
   pressGroup($("filter"), "data-f", function (f) { state.filter = f; state.page = 0; table(); });
 
   // Switch boards: tabs, the ?board= in the address, the facts and the words.
+  // The best record on either board, by score, picked by the numbers, never by hand.
+  // Shown only when that score is above 0.
+  function spotlight() {
+    var all = (D.books || []).map(function (x) { return { x: x, kind: "books" }; })
+      .concat((D.callers || []).map(function (x) { return { x: x, kind: "callers" }; }))
+      .filter(function (e) { return (C.scoreOf(e.x) || 0) > 0; })
+      .sort(function (a, b) { return (C.scoreOf(b.x) - C.scoreOf(a.x)) || ((b.x.metrics.totalReturn || 0) - (a.x.metrics.totalReturn || 0)); });
+    var el = $("spot");
+    if (!all.length) { el.hidden = true; return; }
+    var top = all[0], x = top.x, m = x.metrics, caller = top.kind === "callers";
+    var right = caller ? m.hitRate : m.winRate;
+    var tag = x.sample ? "Sample" : x.ours ? "Reins" : "";
+    el.href = BOARDS[top.kind].href(x);
+    el.innerHTML =
+      '<span class="cb-spot-k">Top of the board <span class="muted">· highest score, ' + (caller ? "a caller" : "a strategy") + "</span></span>" +
+      '<span class="cb-spot-n">' + esc(C.nameOf(x)) + (tag ? ' <span class="cb-tag plain">' + esc(tag) + "</span>" : "") + "</span>" +
+      '<span class="cb-spot-d">' + esc(x.description || "") + "</span>" +
+      '<span class="cb-spot-m">' +
+        '<span><b class="mono">' + esc(Math.round(C.scoreOf(x))) + "</b>score</span>" +
+        "<span><b>" + C.pctHtml(m.totalReturn) + "</b>" + (caller ? "its calls added up, after costs" : "compounded, after costs") + "</span>" +
+        '<span><b class="mono">' + C.int(m.calls) + "</b>calls" + (C.isNum(right) ? ", " + Math.round(right * 100) + "% made money" : "") + "</span>" +
+        "<span>" + C.skillHtml(x.skill) + "skill</span>" +
+      "</span>" +
+      '<span class="cb-spot-go">See its record →</span>';
+    el.hidden = false;
+  }
+
   function setBoard(name, push) {
     if (!C.own(BOARDS, name)) name = "books";
     state.board = name;
@@ -252,7 +285,7 @@
       f("Ranking metric", esc(B.metric)) +
       f("Calls scored", C.int(B.scored())) +
       f("Updated", t1 ? esc(C.stamp(t1)) : "—");
-    $("board-lede").innerHTML = B.lede + ' <a href="#method">How scoring works →</a>';
+    $("board-lede").innerHTML = B.lede + ' <a href="/callbook-guide.html#method">How scoring works →</a>';
     $("pending").hidden = ranked;
     $("pending-p").textContent = "Ranks appear once the board has " + RANK_MIN + " " + B.noun[1] + " and " + RANK_DAYS + " days of record. Until then, " + B.noun[1] + " are listed by record length.";
     $("fn-a").textContent = (ranked ? "Ranked by " + B.metric.replace(/, 0–100$/, "").toLowerCase() : "Listed by record length until ranks appear") + " · " + B.foot + " · ";
@@ -269,11 +302,14 @@
   function feedItem(f) {
     var k = C.own(KIND, f.kind) || KIND.sealed, text;
     var per = C.isNum(f.period) ? " #" + C.int(f.period) : "";
-    if (f.kind === "sealed") text = bookLink(f) + " locked a call <span class=\"cb-ev-m\">hidden for 4 hours</span>";
+    if (f.kind === "sealed") {
+      var fb = (D.books || []).filter(function (x) { return x.id === f.bookId; })[0];
+      text = bookLink(f) + " locked a call <span class=\"cb-ev-m\">hidden" + (fb && fb.horizonSec ? " for " + esc(C.hours(fb.horizonSec)) : "") + "</span>";
+    }
     else if (f.kind === "locked") text = bookLink(f) + " locked a call <span class=\"cb-ev-m\">hidden until it’s revealed</span>";
     else if (f.kind === "revealed") text = bookLink(f) + " revealed: " + esc(f.coin || "") + " " + C.sidePill(f.side) + (C.isNum(f.horizon) ? " <span class=\"cb-ev-m\">" + esc(C.hours(f.horizon)) + "</span>" : "") +
       (f.side ? " " + C.pctHtml(f.ret, 2) : " <span class=\"cb-ev-m\">sat out</span>");
-    else if (f.kind === "validated") text = "Score published for " + bookLink(f) + ": <b>" + esc(f.score) + "/100</b>";
+    else if (f.kind === "validated") text = (f.tag === "callbook-skill-v1" ? "Skill score" : "Score") + " published for " + bookLink(f) + ": <b>" + esc(f.score) + "/100</b>";
     else text = bookLink(f) + (f.note === "withheld" ? " kept a call hidden <span class=\"cb-ev-m\">counted as its worst result</span>" : " missed a call <span class=\"cb-ev-m\">counts against it</span>");
     return '<li class="cb-ev ' + k[1] + '"><span class="ei">' + U.icon(k[0]) + "</span><div><p>" + text + "</p>" +
       '<div class="sub"><time datetime="' + new Date(f.t * 1000).toISOString() + '" title="' + esc(C.stamp(f.t)) + '">' + esc(C.ago(f.t)) + "</time>" + (per ? "<span>round" + esc(per) + "</span>" : "") +
@@ -281,31 +317,9 @@
   }
   function feed() {
     var list = (D.feed || []).filter(function (f) { return feedKind === "all" || f.kind === feedKind || (feedKind === "sealed" && f.kind === "locked"); }).slice(0, 30);
-    $("feed").innerHTML = list.length ? list.map(feedItem).join("") : '<li class="hm-empty"><b>Nothing yet</b>Seals, reveals and scores appear here as they land on Arc.</li>';
+    $("feed").innerHTML = list.length ? list.map(feedItem).join("") : '<li class="hm-empty"><b>Nothing yet</b>Locked calls, reveals and scores appear here as they land on Arc.</li>';
   }
   pressGroup($("feed-f"), "data-k", function (k) { feedKind = k; feed(); });
-
-  // ------------------------------------------------------------ re-check
-  function verify() {
-    var sel = $("v-book");
-    sel.innerHTML = D.books.map(function (b) { return '<option value="' + esc(b.id) + '">' + esc(C.nameOf(b)) + "</option>"; }).join("");
-    var draw = function () {
-      var b = D.books.filter(function (x) { return x.id === sel.value; })[0] || D.books[0];
-      var cmd = "npm run callbook:verify -- " + b.id;
-      $("v-cmd").innerHTML = '<span class="c"># rebuild ' + esc(C.nameOf(b)) + "’s score from the chain and real prices</span>\n" +
-        '<span class="p">$</span> ' + esc(cmd) + "\n" +
-        '<span class="c"># ' + C.int(b.metrics.calls - b.metrics.missed) + " locked · " + C.int(b.metrics.revealed) + " revealed" +
-        (b.validation ? " · expects score " + esc(b.validation.score) + " (" + esc(b.validation.tag) + ")" : " · not scored yet") + "</span>";
-      $("v-copy").innerHTML = C.copyButton(cmd, "Copy the command");
-    };
-    sel.addEventListener("change", draw);
-    draw();
-    var addr = function (label, a, note) {
-      return "<div><dt>" + esc(label) + "</dt><dd>" + (a ? C.txLink(D.explorer, a, C.shortHash(a, 8, 6), "address") : '<span class="muted">to deploy</span>') +
-        (note ? "<small>" + esc(note) + "</small>" : "") + "</dd></div>";
-    };
-    $("v-addr").innerHTML = addr("Callbook contract", D.contract, D.network) + addr("ERC-8004 Validation Registry", D.validationRegistry, "chain " + D.chainId);
-  }
 
   // ------------------------------------------------------- the machine
   // Each book's current seal and its last reveal, from the feed.
@@ -334,7 +348,7 @@
       '<span class="was">' + U.icon("lock") + "hidden</span>" +
       '<span class="is"><b>' + esc(r.rev.coin) + "</b>" + C.sidePill(r.rev.side) + (r.rev.side ? '<span class="mono">' + C.pctHtml(r.rev.ret, 2) + "</span>" +
         '<span class="muted">' + (r.rev.ret >= 0 ? "made" : "lost") + ", after costs</span>" : '<span class="muted">sat this one out</span>') + "</span>" :
-      '<span class="muted">Nothing revealed yet: this bot is new. Its first call shows here in 4 hours.</span>';
+      '<span class="muted">Nothing revealed yet: this bot is new. Its first call shows here in ' + esc(C.hours(r.b.horizonSec || r.b.periodSec)) + ".</span>";
     setTimeout(function () { m.classList.add("open"); }, C.reduce ? 0 : 1700);
     Array.prototype.forEach.call($("m-dots").querySelectorAll("button"), function (d, j) { d.setAttribute("aria-pressed", String(j === at)); });
     tick();
@@ -355,7 +369,7 @@
   }
   function machine() {
     buildReel();
-    if (!reel.length) { $("m-book").textContent = "No calls sealed yet"; return; }
+    if (!reel.length) { $("m-book").textContent = "No calls locked yet"; return; }
     $("m-dots").innerHTML = reel.map(function (r, j) { return '<button type="button" aria-pressed="false" aria-label="' + esc(C.nameOf(r.b)) + '" data-j="' + j + '"></button>'; }).join("");
     $("m-dots").addEventListener("click", function (e) { var d = e.target.closest("button"); if (d) { showReel(+d.getAttribute("data-j")); play(); } });
     $("m-pause").setAttribute("aria-pressed", String(paused));
@@ -383,20 +397,20 @@
     $("st-valid-l").textContent = W.live ? "Scores published on Arc" : "Scores published";
     $("feed-t").textContent = W.chain + ", as it happens";
     var ours = D.books.filter(function (b) { return b.ours; }).length;
-    $("st-books").textContent = C.int(s.books);
-    $("st-books-s").textContent = !D.books.length ? "the first bots arrive soon" : ours === D.books.length ? "run by Reins" : ours ? ours + " run by Reins" : "from " + C.int(s.owners) + (s.owners === 1 ? " owner" : " owners");
-    $("st-sealed").textContent = C.int(s.sealed);
-    $("st-revealed").textContent = C.int(s.revealed);
-    $("st-missed").textContent = C.int((s.missed || 0) + (s.withheld || 0));
-    $("st-missed-s").textContent = s.withheld ? "incl. " + C.int(s.withheld) + " kept hidden" : (s.missed ? "each counts against its bot" : "none so far");
+    // Strategy bots and callers together.
+    var tracked = (s.books || 0) + (s.callers || 0), hidden = (s.withheld || 0) + (s.lockedWithheld || 0);
+    $("st-books").textContent = C.int(tracked);
+    $("st-books-s").textContent = !tracked ? "the first records arrive soon" : C.int(s.books || 0) + " strategies · " + C.int(s.callers || 0) + " callers";
+    $("st-sealed").textContent = C.int((s.sealed || 0) + (s.locked || 0));
+    $("st-revealed").textContent = C.int((s.revealed || 0) + (s.lockedRevealed || 0));
+    $("st-missed").textContent = C.int((s.missed || 0) + hidden);
+    $("st-missed-s").textContent = hidden ? "incl. " + C.int(hidden) + " kept hidden" : (s.missed ? "each counts against its record" : "none so far");
     $("st-valid").textContent = C.int(s.validations);
-    var P = D.books[0] ? D.books[0].periodSec : null, H = D.books[0] ? D.books[0].horizonSec : null;
-    if (P) $("how-p").textContent = "Here: one call every " + C.hours(P) + ", revealed " + C.hours(H) + " later";
     $("foot-gen").textContent = "Paper calls, scored at Hyperliquid prices. Not investment advice." + (D.generated ? " Updated " + C.stamp(Date.parse(D.generated) / 1000) + "." : "");
     $("foot-net").textContent = D.network || "Arc";
     setBoard(new URLSearchParams(location.search).get("board") || "books", false);
+    spotlight();
     feed();
-    verify();
     machine();
   }).catch(function (err) {
     $("m-book").textContent = "Couldn’t load the books";

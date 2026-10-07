@@ -25,7 +25,7 @@ import { createPublicClient, createWalletClient, http, defineChain, parseEventLo
 import { mnemonicToAccount } from "viem/accounts";
 
 import {
-  deriveCalls, scoreBook, evaluateBook, buildCallbook, readCallbook, snapshotText, stateFromSnapshot, MAX_PERIODS,
+  deriveCalls, scoreBook, evaluateBook, buildCallbook, readCallbook, snapshotText, stateFromSnapshot, MAX_PERIODS, latestResponse,
 } from "../app/verify/callbook.js";
 import { priceBook } from "../app/verify/callbook-prices.js";
 import { agentInfo, isOurBook, strategyHashOf } from "../app/verify/callbook-agents.js";
@@ -192,6 +192,36 @@ describe("H3/M2: scoring guards", () => {
     assert.equal(built.index.stats.books, 3);
   });
 
+  test("a strategy's skill compares like with like: funding alone doesn't make every long right", async () => {
+    // BTC flat at 100 while longs pay funding; a long every round is neither right nor wrong.
+    const withFunding = (coins, from, to) => {
+      const d = synthetic(coins, from, to);
+      for (const c of coins) d.funding[c] = d.funding[c].map(([t]) => [t, 0.0001]);
+      return d;
+    };
+    const source = { perpNames: async () => ["BTC"], load: async (coins, f, t) => withFunding(coins, f, t) };
+    const b = bookOf({ coins: ["BTC"] });
+    for (let p = 0; p < 5; p++) b.seals.set(p, { p, hash: `0x0${p}`, sealedAt: T0 + p * P - 300, reveal: { coinIndex: 0, side: 1, at: T0 + (p + 1) * P + 5 } });
+    const chain = { chainId: 1, address: "0x01", books: new Map([[1, b]]), validation: { requests: new Map(), responses: new Map() } };
+    const ev = await evaluateBook({ chain, book: b, source, asOf: T0 + 5 * P + 10 });
+    assert.equal(ev.scored.skill.calls, 5);
+    assert.equal(ev.scored.skill.hitRate, 0.5, "each long only matched the market: a tie, not a hit");
+  });
+
+  test("a score as of a moment rebuilds the same later, when more prices exist", async () => {
+    const rising = (c, t) => 100 + (t - T0) / HOUR;
+    const source = { perpNames: async () => ["BTC", "ETH"], load: async (coins, f, t) => synthetic(coins, f, t, rising) };
+    const b = bookOf();
+    b.seals.set(0, { p: 0, hash: "0x01", sealedAt: T0 - 300, reveal: { coinIndex: 0, side: 1, at: T0 + P + 5 } });
+    const chain = { chainId: 1, address: "0x01", books: new Map([[1, b]]), validation: { requests: new Map(), responses: new Map() } };
+    const asOf = T0 + P + 1234; // not on an hour
+    const now = await evaluateBook({ chain, book: b, source, asOf });
+    // The same source later returns candles past asOf too; the rebuild must not use them.
+    const later = { ...source, load: async (coins, f, t) => synthetic(coins, f, t + 5 * DAY, rising) };
+    const again = await evaluateBook({ chain, book: b, source: later, asOf });
+    assert.equal(again.report.hash, now.report.hash);
+  });
+
   test("periods per book are capped at the latest MAX_PERIODS", () => {
     const b = bookOf({ periodSec: 300, horizonSec: 300 });
     const calls = deriveCalls(b, b.seals, T0 + (MAX_PERIODS + 10) * 300);
@@ -230,6 +260,27 @@ describe("M3: publishing", () => {
     const out = await publishScores({ chain, evaluated: [evOf(1), evOf(2)], wallet, publicClient, registry: "0x02", validator: OWNER, now: T0, allow: new Set([1]) });
     assert.deepEqual(out.map((r) => r.bookId), [1]);
     assert.deepEqual(sent, ["0xr1"]);
+  });
+
+  test("a skill score gets its own answer, tagged, and the two never stand in for each other", async () => {
+    const args = [];
+    const tagged = { ...wallet, writeContract: async (x) => { args.push(x.args); return `0xtx${args.length}`; } };
+    const chain = chainWith([1, 2]);
+    const withSkill = { ...evOf(1), scored: { score: { value: 5 }, skill: { score: 41, level: "provisional" } } };
+    const unrated = { ...evOf(2), scored: { score: { value: 7 }, skill: { score: null, level: "unrated" } } };
+    const out = await publishScores({ chain, evaluated: [withSkill, unrated], wallet: tagged, publicClient, registry: "0x02", validator: OWNER, now: T0, allow: new Set([1, 2]) });
+    // Skill first, so the registry's latest answer is the track record score.
+    assert.deepEqual(out.map((r) => [r.bookId, r.tag, r.score]), [[1, "callbook-skill-v1", 41], [1, "callbook-v1", 5], [2, "callbook-v1", 7]]);
+    assert.deepEqual(args.map((a) => [a[0], a[1], a[4]]), [["0xr1", 41, "callbook-skill-v1"], ["0xr1", 5, "callbook-v1"], ["0xr2", 7, "callbook-v1"]]);
+
+    // Read back: each tag has its own latest answer.
+    chain.validation.responses.set("0xr1", [
+      { score: 5, tag: "callbook-v1", at: T0, responseHash: "0xa" },
+      { score: 41, tag: "callbook-skill-v1", at: T0, responseHash: "0xa" },
+    ]);
+    assert.equal(latestResponse(chain, "0xr1").score, 5, "the track record score by default, not the later skill answer");
+    assert.equal(latestResponse(chain, "0xr1", "callbook-skill-v1").score, 41);
+    assert.equal(latestResponse(chain, "0xr1", "someone-else"), null);
   });
 
   test("a daily gas cap stops posting until the next day", async () => {

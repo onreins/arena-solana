@@ -63,8 +63,8 @@
   function validation(x) {
     var v = x.validation, sc = C.scoreOf(x);
     if (!C.isNum(sc)) {
-      $("val").innerHTML = '<div class="cbk-stampcol"><div class="cbk-stampw">' + C.seal("cbk-stamp idle", C.SEAL_WORDS) +
-        "</div><figcaption><b>Not scored yet</b><span>The first score comes after its first revealed call.</span></figcaption></div>";
+      $("val").innerHTML = '<div class="cbk-stampcol"><div class="cbk-stampw">' + C.seal("cbk-stamp idle", "CALLBOOK · ERC-8004 · AWAITING SCORE · ") +
+        "</div><figcaption><b>Not scored yet</b><span>The first score comes after its first revealed call.</span></figcaption></div>" + C.skillPanel(x.skill);
       return;
     }
     var s = Math.max(0, Math.min(100, sc)), r = 30, c = 2 * Math.PI * r, p = x.score && x.score.parts, m = x.metrics;
@@ -86,7 +86,7 @@
         part("Record", p.record, esc(Math.floor(m.days || 0)) + " of " + R.recordDays + " days · " + (resolved >= R.recordCalls ? esc(resolved) + " calls, enough" : esc(resolved) + " of " + R.recordCalls + " calls"), "min(1, days ÷ 61) × min(1, calls ÷ 30)") +
         part("Edge", p.edge, "t = " + esc(C.num(p.tStat)) + (p.edge <= 0 ? ", needs above 0" : ", full credit at 3"), "clamp(t ÷ 3, 0, 1): the t-statistic of each call's return after costs, less beta × the coin's own move") +
         part("Risk", p.risk, "drawdown " + C.dd(m.maxDrawdown) + (m.maxDrawdown >= R.maxDrawdown ? ", past 10%" : ""), "clamp(1 − drawdown ÷ 10%, 0, 1), on the call-by-call curve") +
-        "</ul>" + (why ? '<p class="cbk-zero"><b>What’s next.</b> ' + esc(why) + "</p>" : "") + "</div>" : "");
+        "</ul>" + (why ? '<p class="cbk-zero"><b>What’s next.</b> ' + esc(why) + "</p>" : "") + "</div>" : "") + C.skillPanel(x.skill);
   }
 
   // ------------------------------------------------------------- numbers
@@ -101,7 +101,7 @@
     $("stats").innerHTML =
       card("Calls", C.int(m.calls), (m.pending ? esc(C.int(m.pending)) + " still locked · " : "") + esc(C.int(m.revealed)) + " revealed") +
       card("Hit rate", C.isNum(m.hitRate) ? Math.round(m.hitRate * 100) + "%" : "—", "of its calls made money after costs") +
-      card("Vs the coin", C.pctHtml(m.vsCoin, 2), "per call, " + (m.vsCoin >= 0 ? "ahead of" : "behind") + " the coin’s own move", "Average per call, after costs, less the coin's own move over the same hours") +
+      card("Vs the coin", C.pctHtml(m.vsCoin, 2), (!C.isNum(m.vsCoin) ? "no revealed calls yet" : "per call, " + (m.vsCoin >= 0 ? "ahead of" : "behind") + " the coin’s own move"), "Average per call, after costs, less the coin's own move over the same hours") +
       card("Average call", C.pctHtml(m.meanReturn, 2), "after fees and funding") +
       card("Best call", C.pctHtml(m.best && m.best.ret, 1), call(m.best)) +
       card("Worst call", C.pctHtml(m.worst && m.worst.ret, 1), call(m.worst)) +
@@ -224,7 +224,7 @@
       row("Report hash", r.hash ? '<span class="cb-hash">' + esc(C.shortHash(r.hash, 12, 8)) + "</span>" + C.copyButton(r.hash, "Copy the report hash") : '<span class="muted">—</span>') +
       (r.uri ? row("Report URI", C.isHttp(r.uri) ? '<a class="cb-hash" href="' + esc(r.uri) + '" target="_blank" rel="noopener">' + esc(r.uri) + U.icon("ext") + "</a>" : '<span class="cb-hash cbk-uri">' + esc(r.uri) + "</span>") : "") +
       (v ? row("Posted to ERC-8004", '<span class="cb-hash">' + esc(C.shortHash(v.responseHash, 12, 8)) + "</span><small>score " + esc(v.score) + " · " + esc(C.stamp(v.at)) + "</small>") : "") +
-      row("Prices", "Hyperliquid hourly candle opens<small>entry at the first hour at or after the lock, exit at the first hour after its horizon, less fees and funding</small>") +
+      row("Prices", "Hyperliquid candle opens: 5-minute candles for calls under an hour, hourly for longer<small>entry at the first open at or after the entry time, exit at the first open at or after entry + horizon, less fees and funding</small>") +
       (r.reference ? row("Reference coins", esc(Array.isArray(r.reference) ? r.reference.join(", ") : String(r.reference)) + "<small>for a call that can’t be priced</small>") : "") +
       row("Rules", '<span class="mono">' + esc(r.version || "callbook-v1") + "</span><small>caller score: 100 × record × (0.6·edge + 0.4·risk)</small>");
   }

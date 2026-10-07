@@ -1,20 +1,23 @@
 # Callbook for AI agents (MCP)
 
-Give your agent a trading record nobody can fake, with **one key** in its config.
-Every call is sealed on Arc before the market moves, revealed after, and scored
+Give your agent a trading record nobody can fake, with **nothing** in its config.
+Every call is locked on Arc before the market moves, revealed after, and scored
 by open rules at Hyperliquid's prices.
 
 ## 60-second setup
 
-1. Make a **fresh** key for your agent (never a key that holds real money):
-   ```bash
-   node -e "import('viem/accounts').then(a=>console.log(a.generatePrivateKey()))"
-   ```
-2. Add the server to your MCP client (below), with that key as `CALLBOOK_KEY`.
-3. Ask your agent: *"Lock a 4h long on ETH in Callbook."*
+You need [Node.js](https://nodejs.org) 20 or newer. Nothing else: the server
+is the npm package [`callbook-mcp`](../packages/callbook-mcp), and `npx`
+fetches it the first time your app starts it.
 
-No USDC needed: the key signs, and the Reins relayer submits the transaction
-and pays the gas. Your agent's book opens automatically on its first call.
+1. Add the server to your MCP client (below).
+2. Ask your agent: *"Lock a 4h long on ETH in Callbook."*
+
+On first start the server makes the agent a key and keeps it in
+`~/.callbook/key` (back it up: it reveals your calls and keeps the record
+yours). No USDC needed for open calls: the key signs, and the Reins relayer submits the
+transaction and pays the gas. Your agent's book opens automatically on its
+first call. To use a key of your own, set `CALLBOOK_KEY`.
 
 ## Claude Desktop
 
@@ -24,9 +27,8 @@ and pays the gas. Your agent's book opens automatically on its first call.
 {
   "mcpServers": {
     "callbook": {
-      "command": "node",
-      "args": ["/path/to/reinsApp/callbook/mcp-server.js"],
-      "env": { "CALLBOOK_KEY": "0x…", "CALLBOOK_NETWORK": "mainnet" }
+      "command": "npx",
+      "args": ["-y", "callbook-mcp"]
     }
   }
 }
@@ -35,7 +37,7 @@ and pays the gas. Your agent's book opens automatically on its first call.
 ## Claude Code
 
 ```bash
-claude mcp add callbook -e CALLBOOK_KEY=0x… -e CALLBOOK_NETWORK=mainnet -- node /path/to/reinsApp/callbook/mcp-server.js
+claude mcp add callbook -- npx -y callbook-mcp
 ```
 
 ## Cursor
@@ -46,9 +48,8 @@ claude mcp add callbook -e CALLBOOK_KEY=0x… -e CALLBOOK_NETWORK=mainnet -- nod
 {
   "mcpServers": {
     "callbook": {
-      "command": "node",
-      "args": ["/path/to/reinsApp/callbook/mcp-server.js"],
-      "env": { "CALLBOOK_KEY": "0x…", "CALLBOOK_NETWORK": "mainnet" }
+      "command": "npx",
+      "args": ["-y", "callbook-mcp"]
     }
   }
 }
@@ -59,10 +60,13 @@ claude mcp add callbook -e CALLBOOK_KEY=0x… -e CALLBOOK_NETWORK=mainnet -- nod
 It speaks MCP over stdio:
 
 ```bash
-CALLBOOK_KEY=0x… CALLBOOK_NETWORK=mainnet node callbook/mcp-server.js
+npx -y callbook-mcp
 ```
 
-Inside this repo, `npm run callbook:mcp` does the same and reads `.env`.
+Inside this repo, `npm run callbook:mcp` runs it from source and reads `.env`.
+`npm run build:callbook-mcp` builds the package (one bundled file, no
+dependencies, with the deployed contract addresses written in); `npm publish`
+from `packages/callbook-mcp` rebuilds it first.
 
 ## Tools
 
@@ -75,6 +79,7 @@ Inside this repo, `npm run callbook:mcp` does the same and reads `.env`.
 | `callbook_status` | Record, score, pending calls with countdowns, the next deadline |
 | `callbook_verify` | Rebuild a score from chain events and public prices |
 | `callbook_my_books` | Books this key owns (or was allowed to call in, see `CALLBOOK_BOOKS`) |
+| `callbook_account` | This agent's address, and where its key is kept (never the key itself) |
 | `callbook_markets` | Coins it can call (liquid Hyperliquid perps) |
 
 Also a `callbook://guide` resource (the rules in one page) and two prompts,
@@ -114,15 +119,15 @@ recorded) and the SDK retries once with fresh ids.
 
 | Variable | Default | |
 |---|---|---|
-| `CALLBOOK_KEY` | (required) | The agent's key |
-| `CALLBOOK_NETWORK` | `testnet` | `local`, `testnet` or `mainnet` |
+| `CALLBOOK_KEY` | made on first start | The agent's key; unset, it's kept in `CALLBOOK_KEY_FILE` (default `~/.callbook/key`) |
+| `CALLBOOK_NETWORK` | mainnet once Callbook is live there, testnet until then | `local`, `testnet` or `mainnet` |
 | `CALLBOOK_RELAY_URL` | `https://app.reins.one` | Pays gas for gasless calls; `off` to always pay your own |
 | `CALLBOOK_API_URL` | `https://app.reins.one` | Where status comes from; computed locally if unreachable |
-| `CALLBOOK_ADDRESS` | from `deployments/` | The Callbook contract |
+| `CALLBOOK_ADDRESS` | built into the package (from source: `deployments/`) | The Callbook contract |
 | `CALLBOOK_SALT_SECRET` | derived from the key | 32 random bytes as 64 hex digits (`openssl rand -hex 32`); keeps salts independent of the key |
 | `CALLBOOK_BOOKS` | (none) | Other books to act in as their caller, e.g. `12,15`; by default only books the key owns |
-| `CALLBOOK_VALIDATOR` | (none) | Reins' validator address; `callbook_verify` needs it on testnet and mainnet |
-| `CALLBOOK_JOURNAL` | `~/.callbook/` | A path, or `off` |
+| `CALLBOOK_VALIDATOR` | built into the package once Reins validates there | Reins' validator address; without it `callbook_verify` rebuilds the score but has nothing posted to compare |
+| `CALLBOOK_JOURNAL` | `~/.callbook/<address>.json` | A path, or `off` |
 
 ## Safety
 

@@ -100,18 +100,26 @@ export function parseValidationRequest(requestURI, requestHash) {
 
 // ------------------------------------------------------------------ logs
 
+// Arc's RPC takes at most 10 event signatures in one getLogs and answers
+// "requested range too large" for more, even over a single block.
+export const MAX_EVENTS_PER_QUERY = 10;
+
+/** Logs in unsorted order: block chunks, and event groups the RPC accepts. Callers sort. */
 async function getLogsChunked(client, { address, events, fromBlock, toBlock, chunk }) {
   const out = [];
-  let size = chunk;
-  for (let from = fromBlock; from <= toBlock;) {
-    const to = from + size - 1n < toBlock ? from + size - 1n : toBlock;
-    try {
-      out.push(...(await client.getLogs({ address, events, fromBlock: from, toBlock: to, strict: false })));
-      from = to + 1n;
-    } catch (err) {
-      // A range the RPC won't serve in one go: halve it and try again.
-      if (size <= 1n) throw err;
-      size /= 2n;
+  for (let i = 0; i < events.length; i += MAX_EVENTS_PER_QUERY) {
+    const group = events.slice(i, i + MAX_EVENTS_PER_QUERY);
+    let size = chunk;
+    for (let from = fromBlock; from <= toBlock;) {
+      const to = from + size - 1n < toBlock ? from + size - 1n : toBlock;
+      try {
+        out.push(...(await client.getLogs({ address, events: group, fromBlock: from, toBlock: to, strict: false })));
+        from = to + 1n;
+      } catch (err) {
+        // A range the RPC won't serve in one go: halve it and try again.
+        if (size <= 1n) throw err;
+        size /= 2n;
+      }
     }
   }
   return out;
@@ -175,10 +183,15 @@ function applyCallbookLog(books, log, at) {
   }
 }
 
+/** The longest request URI kept: a book descriptor is a few hundred characters. */
+export const MAX_REQUEST_URI = 8_192;
+
 function applyValidationLog(v, log, at, validator) {
   const a = log.args;
   if (validator && !same(a.validatorAddress, validator)) return;
   if (log.eventName === "ValidationRequest") {
+    // Anyone can file a request naming our validator; ours are small, so a huge URI is ignored, not kept.
+    if (String(a.requestURI ?? "").length > MAX_REQUEST_URI) return;
     v.requests.set(a.requestHash, {
       requestHash: a.requestHash, validator: a.validatorAddress.toLowerCase(), agentId: agentOf(a.agentId),
       uri: a.requestURI, book: parseValidationRequest(a.requestURI, a.requestHash), at, tx: log.transactionHash,
@@ -289,7 +302,12 @@ export function requestForBook(chain, bookId, validator) {
 }
 
 /** The latest response to a request (by block and log order), or null. */
-export function latestResponse(chain, requestHash) {
-  const list = chain.validation.responses.get(requestHash) ?? [];
+/**
+ * The latest response to a request with this tag: the track record score
+ * (SCORING_VERSION, the default) and the skill score (callbook-skill-v1) are
+ * posted to the same request under their own tags, and never stand in for each other.
+ */
+export function latestResponse(chain, requestHash, tag = SCORING_VERSION) {
+  const list = (chain.validation.responses.get(requestHash) ?? []).filter((r) => r.tag === tag);
   return list.length ? list[list.length - 1] : null;
 }

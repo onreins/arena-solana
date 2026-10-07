@@ -5,7 +5,9 @@
  * validationRequest naming our validator, whose request URI describes the
  * book (callbook-chain.js). We answer that same request again and again with
  * validationResponse(requestHash, score, reportURI, reportHash, "callbook-v1");
- * the registry keeps the latest, and every answer stays in its events.
+ * the registry keeps the latest, and every answer stays in its events. Once a
+ * book has a skill score (provisional or better), it gets a second answer to
+ * the same request, tagged "callbook-skill-v1", pointing to the same report.
  *
  * Who gets an answer: only books on `allow` (our allowlist, by default our own
  * books record). Anyone can file a request naming our validator; without an
@@ -19,6 +21,7 @@
  */
 import { VALIDATION_REGISTRY_ABI } from "../../evaluator/abi.js";
 import { requestForBook, latestResponse, SCORING_VERSION } from "./callbook-chain.js";
+import { SKILL_RULES } from "./callbook-skill.js";
 import { memoryCounter } from "./callbook-util.js";
 
 const DAY = 86_400;
@@ -45,7 +48,8 @@ export const publishSpend = (now) => memoryCounter({ now });
 
 /**
  * For every evaluated book on `allow` with a request naming `validator`, post
- * the score if it is due. Returns [{ bookId, score, due, why, tx? }].
+ * each score that is due: the track record score, and the skill score once it
+ * has one. Returns [{ bookId, tag, score, due, why, tx? }].
  *
  * p: { chain, evaluated: [evaluate results], wallet, publicClient, registry, validator, now,
  *      allow: Set<bookId> (required), budgetUsdc?, spend? (publishSpend), dryRun?, log? }
@@ -60,30 +64,34 @@ export async function publishScores({ chain, evaluated, wallet, publicClient, re
     if (book.agentId == null || !allow.has(Number(book.id))) continue;
     const req = requestForBook(chain, book.id, validator);
     if (!req) continue;
-    const score = ev.scored.score.value;
-    const decision = shouldPublish({ last: latestResponse(chain, req.requestHash), score, reportHash: ev.report.hash, now });
-    const row = { bookId: book.id, score, reportHash: ev.report.hash, ...decision };
-    if (decision.due && !dryRun) {
-      const day = `publish:${Math.floor(now / DAY)}`;
-      const price = await publicClient.getGasPrice();
-      const worst = Number((PUBLISH_GAS_CAP * price) / 10n ** 12n) + 1;
-      if ((await counter.peek(day, DAY)) + worst > budgetMicro) {
-        out.push({ ...row, due: false, why: "daily gas budget used up" });
-        log?.(`book ${book.id}: not posted, the daily gas budget is used up`);
-        continue;
+    // The skill answer goes first, so the registry's latest answer to the request is the track record score.
+    const answers = [{ tag: SCORING_VERSION, score: ev.scored.score.value }];
+    if (Number.isInteger(ev.scored.skill?.score)) answers.unshift({ tag: SKILL_RULES.version, score: ev.scored.skill.score });
+    for (const { tag, score } of answers) {
+      const decision = shouldPublish({ last: latestResponse(chain, req.requestHash, tag), score, reportHash: ev.report.hash, now });
+      const row = { bookId: book.id, tag, score, reportHash: ev.report.hash, ...decision };
+      if (decision.due && !dryRun) {
+        const day = `publish:${Math.floor(now / DAY)}`;
+        const price = await publicClient.getGasPrice();
+        const worst = Number((PUBLISH_GAS_CAP * price) / 10n ** 12n) + 1;
+        if ((await counter.peek(day, DAY)) + worst > budgetMicro) {
+          out.push({ ...row, due: false, why: "daily gas budget used up" });
+          log?.(`book ${book.id}: not posted, the daily gas budget is used up`);
+          continue;
+        }
+        await counter.hit(day, DAY, worst);
+        const hash = await wallet.writeContract({
+          address: registry, abi: VALIDATION_REGISTRY_ABI, functionName: "validationResponse",
+          args: [req.requestHash, score, ev.uri, ev.report.hash, tag],
+          account: wallet.account, chain: wallet.chain, gas: PUBLISH_GAS_CAP,
+        });
+        const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: 60_000 });
+        if (receipt.status !== "success") throw new Error(`validationResponse for book ${book.id} reverted (${hash})`);
+        row.tx = hash;
+        log?.(`book ${book.id}: ${tag} ${score} (${decision.why}) ${hash}`);
       }
-      await counter.hit(day, DAY, worst);
-      const hash = await wallet.writeContract({
-        address: registry, abi: VALIDATION_REGISTRY_ABI, functionName: "validationResponse",
-        args: [req.requestHash, score, ev.uri, ev.report.hash, SCORING_VERSION],
-        account: wallet.account, chain: wallet.chain, gas: PUBLISH_GAS_CAP,
-      });
-      const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: 60_000 });
-      if (receipt.status !== "success") throw new Error(`validationResponse for book ${book.id} reverted (${hash})`);
-      row.tx = hash;
-      log?.(`book ${book.id}: scored ${score} (${decision.why}) ${hash}`);
+      out.push(row);
     }
-    out.push(row);
   }
   return out;
 }

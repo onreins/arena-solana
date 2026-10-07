@@ -28,6 +28,7 @@
  */
 import { mkdirSync, readFileSync, writeFileSync, existsSync, renameSync } from "node:fs";
 import path from "node:path";
+import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 import { brief } from "./callbook-util.js";
@@ -45,7 +46,10 @@ const RETRIES = 5;
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 /** Where fetched prices are kept. On Vercel only /tmp is writable. */
 export const DEFAULT_CACHE_DIR = process.env.CALLBOOK_PRICE_CACHE
-  ?? (process.env.VERCEL ? "/tmp/callbook-prices" : path.join(ROOT, "data", "callbook-prices"));
+  ?? (process.env.VERCEL ? "/tmp/callbook-prices"
+    // The published MCP package keeps its cache in the user's home, not inside node_modules.
+    : globalThis.__CALLBOOK_PACKAGED__ ? path.join(homedir(), ".callbook", "prices")
+    : path.join(ROOT, "data", "callbook-prices"));
 
 /** The candle size for a book: hourly, or 5-minute when calls come more often than hourly. */
 export function intervalFor(periodSec, horizonSec = periodSec) {
@@ -236,15 +240,21 @@ export function resolveSymbol(symbol, names) {
 /**
  * Lookups over loaded data. `upTo` (seconds) hides everything not yet known at
  * that moment: candles that hadn't closed, funding not yet paid. Strategies get
- * that view, so a replay can't see the future.
+ * that view, so a replay can't see the future. `openBy` (seconds) keeps only
+ * candles that had opened by then, and funding paid by then: scoring as of a
+ * moment uses it, so whoever rebuilds a score later sees exactly the same prices.
+ *
+ * A lookup at t takes the first candle opening at or after t, and only within
+ * one candle of t: a gap or a delisting gives null, never a price from later.
  */
-export function priceBook(data, { upTo = Infinity, useFunding = data.fundingOk } = {}) {
+export function priceBook(data, { upTo = Infinity, openBy = Infinity, useFunding = data.fundingOk } = {}) {
   const step = INTERVAL_SEC[data.interval] ?? HOUR;
   const table = {}, index = {}, funding = {};
+  const paidBy = Math.min(upTo, openBy);
   for (const [coin, rows] of Object.entries(data.candles)) {
-    const visible = rows.filter((r) => r.t + step <= upTo || upTo === Infinity);
+    const visible = rows.filter((r) => (r.t + step <= upTo || upTo === Infinity) && r.t <= openBy);
     table[coin] = visible;
-    const f = (data.funding[coin] ?? []).filter((r) => r[0] <= upTo);
+    const f = (data.funding[coin] ?? []).filter((r) => r[0] <= paidBy);
     funding[coin] = f;
     // F(t): funding paid at hours <= t, so a position held over (S, E] pays F(E) - F(S).
     let j = 0, cum = 0;
@@ -259,12 +269,13 @@ export function priceBook(data, { upTo = Infinity, useFunding = data.fundingOk }
       const mid = (lo + hi) >> 1;
       if ((rows[mid].t ?? rows[mid][0]) < t) lo = mid + 1; else hi = mid;
     }
-    return rows[lo];
+    const r = rows[lo];
+    return r && (r.t ?? r[0]) - t < step ? r : undefined;
   };
   return {
     interval: data.interval,
     useFunding,
-    /** The raw open of the first candle at or after t, or null. */
+    /** The raw open of the first candle at or after t (within one candle), or null. */
     price(coin, t) {
       const r = first(table[coin] ?? [], t);
       return r ? r.o : null;

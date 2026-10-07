@@ -49,7 +49,7 @@ import {
   saltSecretFromKey, sealSalt, lockSalt, symbolSalt, callHash, lockedHash, symbolHash,
   recoverSealedCall, recoverLockedCall, recoverSymbolCall, SIDES,
 } from "./proof.js";
-import { strategyTiming, callHorizon, parseDuration, formatDuration, countdown, utc, MIN_HORIZON, MAX_HORIZON } from "./durations.js";
+import { strategyTiming, callHorizon, parseDuration, formatDuration, countdown, utc, MAX_HORIZON, MIN_CALL_HORIZON } from "./durations.js";
 import { bookLine, strategyStatus, callsStatus, sealableRound, SIDE_WORD } from "./view.js";
 
 const CALLBOOK = artifact("Callbook");
@@ -354,17 +354,17 @@ export class CallbookClient {
   async openCallBook({ coins, minHorizon = "5m", maxHorizon = "30d", agentId, name, meta } = {}) {
     const list = coinList(coins);
     if (!list.length) {
-      if (agentId != null) fail("An any-coin book can't link an ERC-8004 agent. Give a coin list to open a linked call book.", "BadAgent");
+      if (agentId != null) fail("An open-call book can't link an ERC-8004 agent. Give a coin list to open a linked call book.", "BadAgent");
       const id = Number(await this.view("defaultBookOf", [this.address]));
       const open = id && !(await this.myBook(id)).closedAt;
       return open
-        ? { bookId: id, kind: "calls", anyCoin: true, existing: true, summary: `Your any-coin call book is book ${id}. Lock a call on any Hyperliquid perp any time.` }
-        : { bookId: null, kind: "calls", anyCoin: true, opensOnFirstLock: true, summary: "Your any-coin call book opens with your first lock, and the relayer can pay for it. Lock a call to start." };
+        ? { bookId: id, kind: "calls", anyCoin: true, existing: true, summary: `Your open-call book is book ${id}. Lock a call on any Hyperliquid perp any time.` }
+        : { bookId: null, kind: "calls", anyCoin: true, opensOnFirstLock: true, summary: "Your open-call book opens with your first lock, and Reins pays the gas. Lock a call to start." };
     }
     const min = this.wrap(() => parseDuration(minHorizon, "horizon"));
     const max = this.wrap(() => parseDuration(maxHorizon, "horizon"));
-    if (min < MIN_HORIZON || max < min || max > MAX_HORIZON || min % 60 || max % 60) {
-      fail(`Horizons run from 5m to 30d in whole minutes, shortest first; got ${minHorizon} to ${maxHorizon}.`, "BadHorizon");
+    if (min < MIN_CALL_HORIZON || max < min || max > MAX_HORIZON || min % 60 || max % 60) {
+      fail(`Calls run from 5m to 30d in whole minutes, shortest first; got ${minHorizon} to ${maxHorizon}.`, "BadHorizon");
     }
     const checked = await this.checkedCoins(list);
     const metaHash = keccak256(toHex(meta ?? name ?? `calls on ${checked.join(",")}`));
@@ -444,7 +444,7 @@ export class CallbookClient {
         const book = await this.myBook(bookId);
         if (book.kind === "scheduled") fail(`Book ${book.id} is a strategy book: seal its rounds instead of locking calls.`, "NotFree");
         if (!book.anyCoin) return this.lockInList(book, coin, s, horizon);
-        if (book.owner !== this.me) fail(`Book ${book.id} is another account's any-coin book.`, "NotCaller");
+        if (book.owner !== this.me) fail(`Book ${book.id} is another account's open-call book.`, "NotCaller");
       }
       return this.lockAnyCoin(coin, s, horizon);
     });
@@ -463,7 +463,7 @@ export class CallbookClient {
     if (coinIndex < 0) fail(`${coin} isn't in book ${book.id}; it calls ${book.coins.join(", ")}. Leave the book out to call any coin.`, "BadCoin");
     const h = this.wrap(() => callHorizon(horizon, { min: book.minHorizon, max: book.maxHorizon }));
     if (await this.gasless()) {
-      fail(`Book ${book.id} has a coin list, so its calls can't be relayed; only your any-coin book takes gasless calls. Fund ${this.address} or leave the book out.`, "NoGas");
+      fail(`Book ${book.id} has a coin list, so its calls can't be relayed; only your open-call book takes gasless calls. Fund ${this.address} or leave the book out.`, "NoGas");
     }
     const { callbook, chainId } = this.ctx();
     const callId = Number(await this.view("lockCount", [BigInt(book.id)]));
@@ -496,7 +496,9 @@ export class CallbookClient {
         ? await this.send("lock", [defaultBook, hash, h, nonce], { bookId: Number(defaultBook) })
         : await this.send("lockBySig", [this.address, hash, h, deadline, await signLock()], {});
     }
-    const ev = this.events(receipt, "Locked")[0].args;
+    // The lock in this transaction must be this call: a relay can't hand back someone else's.
+    const ev = this.events(receipt, "Locked").map((l) => l.args).find((a) => same(a.callHash, hash));
+    if (!ev) fail(`The transaction ${receipt.transactionHash} doesn't lock this call, so it wasn't recorded. Check CALLBOOK_RELAY_URL.`, "BadRelay");
     const opened = this.events(receipt, "OpenedFree").length > 0;
     return this.locked({ book: Number(ev.bookId), ev, coin, side: s, horizon: h, receipt, gasless, nonce: Number(nonce), opened });
   }
@@ -509,7 +511,7 @@ export class CallbookClient {
     return {
       bookId: book, callId, coin, side: SIDE_WORD[side], horizon: formatDuration(horizon), entryAt, revealAt, openedBook: opened, gasless,
       tx: receipt.transactionHash,
-      summary: `Locked ${SIDE_WORD[side]} ${coin} for ${formatDuration(horizon)} (book ${book}, call ${callId}${opened ? ", your new any-coin book" : ""}). ` +
+      summary: `Locked ${SIDE_WORD[side]} ${coin} for ${formatDuration(horizon)} (book ${book}, call ${callId}${opened ? ", your new open-call book" : ""}). ` +
         `Entry ${utc(entryAt)}; reveal from ${utc(revealAt)}.`,
     };
   }
@@ -715,19 +717,18 @@ export class CallbookClient {
     const id = Number(bookId);
     if (!Number.isInteger(id) || id < 1) fail(`"${bookId}" isn't a book id (a whole number from 1).`, "BadBook");
     const { publicClient, callbook, net } = this.ctx();
-    if (this.network !== "local" && !net.validator) {
-      // Without a named validator, anyone's response to a request naming this book would count as "the posted score".
-      fail(`Set the validator to compare against (CALLBOOK_VALIDATOR, or \`validator\`): on ${net.label} only Reins' validator's responses count as posted scores.`, "NoValidator");
-    }
+    // Without Reins' validator, anyone's response to a request naming this book would pass for
+    // "the posted score": then the score is rebuilt but not compared with one.
+    const compare = this.network === "local" || Boolean(net.validator);
     let chain;
     try {
-      chain = await readCallbook({ client: publicClient, address: callbook, fromBlock: net.fromBlock, validationRegistry: net.registry ?? undefined, validator: net.validator ?? undefined });
+      chain = await readCallbook({ client: publicClient, address: callbook, fromBlock: net.fromBlock, validationRegistry: compare ? net.registry ?? undefined : undefined, validator: net.validator ?? undefined });
     } catch (err) {
       throw this.explain(err);
     }
     const book = chain.books.get(id);
     if (!book) fail(`There's no book ${id} on ${net.label}.`, "UnknownBook");
-    const req = requestForBook(chain, id, net.validator ?? undefined);
+    const req = compare ? requestForBook(chain, id, net.validator ?? undefined) : null;
     const last = req ? latestResponse(chain, req.requestHash) : null;
     const asOf = asOfFromUri(last?.uri) ?? (await this.now());
     let ev;
@@ -739,13 +740,18 @@ export class CallbookClient {
     const rebuilt = { score: ev.scored.score.value, reportHash: ev.report.hash, asOf, parts: Object.fromEntries(Object.entries(ev.scored.score).map(([k, v]) => [k, Math.round(v * 1e4) / 1e4])) };
     const posted = last ? { score: last.score, responseHash: last.responseHash, validator: last.validator, at: last.at, tx: last.tx, uri: last.uri } : null;
     const match = posted ? same(posted.responseHash, rebuilt.reportHash) && posted.score === rebuilt.score : null;
-    const summary = !req
+    const summary = !compare
+      ? `Book ${id} rebuilds to ${rebuilt.score}/100 as of ${utc(asOf)}. Reins' validator isn't known on ${net.label} yet, so there's no posted score to compare it with.`
+      : !req
       ? `Book ${id} rebuilds to ${rebuilt.score}/100 as of ${utc(asOf)}; no ERC-8004 validation request names it, so there's no posted score to compare.`
       : !posted
         ? `Book ${id} rebuilds to ${rebuilt.score}/100; its validation request has no response yet.`
         : match
           ? `MATCH: the posted score ${posted.score}/100 for book ${id} is exactly what the published rules give (report ${rebuilt.reportHash.slice(0, 10)}…).`
-          : `MISMATCH: posted ${posted.score}/100 (${posted.responseHash.slice(0, 10)}…), rebuilt ${rebuilt.score}/100 (${rebuilt.reportHash.slice(0, 10)}…).`;
+          : ev.scored.metrics?.shortOnHourly
+            // Hyperliquid keeps 5-minute candles ~17 days: past that, short calls can only be repriced hourly.
+            ? `Can't re-check exactly: ${ev.scored.metrics.shortOnHourly} short call(s) in book ${id} were priced on 5-minute candles that Hyperliquid no longer serves. Posted ${posted.score}/100, rebuilt on hourly prices ${rebuilt.score}/100.`
+            : `MISMATCH: posted ${posted.score}/100 (${posted.responseHash.slice(0, 10)}…), rebuilt ${rebuilt.score}/100 (${rebuilt.reportHash.slice(0, 10)}…).`;
     return { bookId: id, kind: book.kind === "scheduled" ? "strategy" : "calls", request: req ? req.requestHash : null, posted, rebuilt, match, summary };
   }
 }

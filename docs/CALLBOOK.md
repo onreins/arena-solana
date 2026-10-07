@@ -3,7 +3,7 @@
 > Working name. Built for the DoraHacks Arc Microgrants (Arc **mainnet**, public
 > repo, submissions close 2026-10-14 23:59 ET).
 
-**One line.** Trading agents seal every call on Arc before the market moves.
+**One line.** Trading agents lock every call on Arc before the market moves.
 Reins scores the revealed calls with open rules ported from Vanta Network
 (MIT), posts each score to Arc's ERC-8004 Validation Registry, and anyone can
 rebuild any score from chain data and public prices.
@@ -184,12 +184,15 @@ gaslessly through `lockBySig` (an account's default book names no coins; each
 call carries its coin as text).
 
 - **Every lock counts.** Long or short only; there is no flat and no period to miss.
-- **Prices:** Hyperliquid hourly candle opens, entry at the first hour at or
-  after the lock's `entryAt`, exit at the first hour at or after
-  `entryAt + horizon`, with Vanta's fees and Hyperliquid funding. Hourly
-  candles are the only Hyperliquid prices with months of history, so every
-  score stays rebuildable; a call can enter up to 59 minutes after its
-  `entryAt`, never before.
+- **Prices:** Hyperliquid candle opens, entry at the first open at or after
+  the lock's `entryAt`, exit at the first open at or after
+  `entryAt + horizon` (never before, so a call can't see its own entry),
+  with Vanta's fees and Hyperliquid funding. Calls of 1 hour or more use
+  hourly candles, which Hyperliquid keeps for months, so their scores stay
+  rebuildable. Calls from 5 minutes up to an hour use 5-minute candles;
+  Hyperliquid keeps those for only about 17 days, after which a short call
+  falls back to hourly candles (until a price archive pins its prices: see
+  docs/CALLBOOK-IDENTITY-PLAN.md).
 - **Symbols** match Hyperliquid perps without regard to case (`btc` is BTC,
   `KPEPE` is kPEPE), before any price is fetched. A symbol Hyperliquid
   doesn't list is never fetched: the call is **unscorable**, flagged, and
@@ -205,6 +208,20 @@ call carries its coin as text).
   recomputed at scoring time, so a score rebuilds the same later; a new set
   is a new scoring version. With 50 coins, including the most volatile ones,
   hiding a loser is never cheaper than revealing it.
+
+### The skill score (fast)
+
+Next to the track record score, every bot and caller has a **skill score**:
+how often its calls beat the market's own move in their direction (the
+book's coins' average move for strategy rounds, the coin's own drift for open
+calls), ignoring fees. Missed, hidden and unpriced calls count as wrong; flat
+rounds are left out. Calls that overlap in time share one vote. The score is
+the cautious end of a 90% range for the hit rate, mapped so 50% right is 0 and
+65% right is 100, and it carries a level: **unrated** under 150 independent
+calls or 24 hours, **provisional**, **rated** from 600 over 14 days, and
+**established** with a 61-day record. It is posted to the same ERC-8004
+request under the tag `callbook-skill-v1`. Rules: `app/verify/callbook-skill.js`;
+why: `docs/CALLBOOK-IDENTITY-PLAN.md`.
 
 ### The caller score
 
@@ -306,6 +323,7 @@ changed.
 |---|---|
 | `app/verify/callbook.js` | periods and their status, scoring, the report, the API shapes |
 | `app/verify/callbook-callers.js` | open-call books: locks, worst outcomes, the caller score |
+| `app/verify/callbook-skill.js` | the skill score: right or wrong against a baseline, overlap weights, levels |
 | `app/verify/callbook-chain.js` | reading Callbook and ValidationRegistry events (chunked getLogs), state snapshots |
 | `app/verify/callbook-prices.js` | Hyperliquid candles, funding and perp list, cached in `data/callbook-prices/` |
 | `app/verify/callbook-publish.js` | posting validation responses (allowlist, daily gas cap) |
@@ -350,30 +368,18 @@ carry a key).
 | `TRUST_PROXY` | API | `1` on Vercel, so `req.ip` is the client's address |
 | `CALLBOOK_PRICE_CACHE` | all | where prices are cached (default `data/callbook-prices`, `/tmp` on Vercel) |
 
-## Payments
+## Cost
 
-A test run of a book costs a small USDC fee over x402 (Circle Gateway), paid
-by the agent asking to be scored. One public counter of every test run across
-all agents feeds the multiple-testing penalty, so spamming random books until
-one gets lucky shows up in the numbers.
+Free for open calls: the agent signs and Reins' relayer pays the gas, within
+per-account, per-address and daily limits. Opening a strategy book is paid by
+the key that opens it.
 
 ## Seeded from day one
 
-Our own agents seal calls every 4h on mainnet: the Smart Money strategy and
-the hot-list thesis from Charts. We also publish how many of our own
-strategies failed the tests.
-
-## Plan to 2026-10-14
-
-| Day | Work |
-|---|---|
-| 1 | Port Vanta's scoring, drawdown, challenge and copy-detection rules (`app/verify/`) with tests |
-| 2–3 | `Callbook.sol`, adversarial tests, deploy to Arc testnet |
-| 4 | Runner: our agents seal and reveal every 4h; scorer posts to ValidationRegistry |
-| 5 | Deploy to **Arc mainnet** (needs a funded deployer key) and start sealing |
-| 6–7 | Callbook page in the app: books, calls with explorer links, scores, re-check |
-| 8 | x402 test fee; `callbook:verify` script |
-| 9 | Submission: description, links, short demo |
+Our own bots (labelled Reins) lock a call every round and are scored by the
+same rules as everyone, including how many of them fail. Today they run in a
+replay over real Hyperliquid prices; on mainnet they run live. Where things
+stand is in `docs/HANDOFF-CALLBOOK.md`.
 
 ## Credits
 

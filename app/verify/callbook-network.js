@@ -7,7 +7,7 @@
  *   CALLBOOK_FROM_BLOCK           first block to read; required off local (the deploy
  *                                 block: scanning Arc from genesis is not an option)
  *   CALLBOOK_RPC                  RPC URL (default: the chain's public RPC; local: RATCHET_RPC or :8545)
- *   CALLBOOK_VALIDATOR            our validator's address. Off local, without a valid one
+ *   CALLBOOK_VALIDATOR            our validator's address (else the deployment record's `validator`). Off local, without a valid one
  *                                 every validation is ignored: anyone can name themselves
  *                                 validator, so unfiltered responses mean nothing
  *   CALLBOOK_VALIDATION_REGISTRY  only needed on local; Arc's are known
@@ -66,7 +66,8 @@ export function ourBooksFrom({ record, owner, callbook }) {
 export function callbookNetwork(env = process.env, over = {}) {
   const name = over.network ?? env.CALLBOOK_NETWORK;
   if (!name) return null;
-  const saved = readJson(path.join(ROOT, "deployments", `callbook-${name}.json`));
+  // The published MCP package carries the deployments in its bundle (scripts/build-callbook-mcp.mjs).
+  const saved = readJson(path.join(ROOT, "deployments", `callbook-${name}.json`)) ?? globalThis.__CALLBOOK_DEPLOYMENTS__?.[name] ?? null;
   const address = over.address ?? env.CALLBOOK_ADDRESS ?? saved?.contracts?.callbook;
   if (!address || !isAddress(address)) throw new Error(`no Callbook address for ${name}: set CALLBOOK_ADDRESS`);
 
@@ -87,7 +88,7 @@ export function callbookNetwork(env = process.env, over = {}) {
   if (!local && fromBlock <= 0n) throw new Error(`set CALLBOOK_FROM_BLOCK (the Callbook deploy block) for ${name}; a scan from genesis is refused`);
 
   registry = over.registry ?? env.CALLBOOK_VALIDATION_REGISTRY ?? registry;
-  let validator = over.validator ?? env.CALLBOOK_VALIDATOR ?? null;
+  let validator = over.validator ?? env.CALLBOOK_VALIDATOR ?? saved?.validator ?? null; // the deployment record can name it (and ships in the MCP package)
   let validationOff = null;
   if (validator && !isAddress(validator)) validator = null;
   if (!local && registry && !validator) {

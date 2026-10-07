@@ -29,7 +29,7 @@
     $("desc").textContent = b.description || "";
     $("desc").hidden = !b.description;
     $("meta").innerHTML = "One call on " + '<span title="' + esc((b.coins || []).join(", ")) + '">' + esc(coinList(b.coins)) + "</span> every <b>" + esc(C.hours(b.periodSec)) +
-      "</b>, revealed <b>" + esc(C.hours(b.horizonSec)) + "</b> later · " + (C.isNum(b.start) ? "first period " + esc(C.stamp(b.start, true)) : "opened " + esc(C.stamp(b.openedAt, true)));
+      "</b>, revealed <b>" + esc(C.hours(b.horizonSec)) + "</b> later · " + (C.isNum(b.start) ? "first round " + esc(C.stamp(b.start, true)) : "opened " + esc(C.stamp(b.openedAt, true)));
     var fact = function (k, v, tip) { return "<div><dt" + (tip ? ' data-tip="' + esc(tip) + '" tabindex="0"' : "") + ">" + esc(k) + "</dt><dd>" + v + "</dd></div>"; };
     $("facts").innerHTML =
       fact("Strategy hash", '<span class="cb-hash" title="' + esc(b.strategyHash) + '">' + esc(C.shortHash(b.strategyHash, 10, 6)) + "</span>" + C.copyButton(b.strategyHash, "Copy the strategy hash"),
@@ -44,7 +44,7 @@
   function validation(b) {
     var v = b.validation, W = C.where(B), sc = C.scoreOf(b);
     if (!C.isNum(sc)) {
-      $("val").innerHTML = '<div class="cbk-stampcol"><div class="cbk-stampw">' + C.seal("cbk-stamp idle", C.SEAL_WORDS) + '</div><figcaption><b>Not scored yet</b><span>The first score is posted to ERC-8004 after a full day of calls.</span></figcaption></div>';
+      $("val").innerHTML = '<div class="cbk-stampcol"><div class="cbk-stampw">' + C.seal("cbk-stamp idle", "CALLBOOK · ERC-8004 · AWAITING SCORE · ") + '</div><figcaption><b>Not scored yet</b><span>The first score is posted to ERC-8004 after a full day of calls.</span></figcaption></div>' + C.skillPanel(b.skill);
       return;
     }
     var s = Math.max(0, Math.min(100, sc)), r = 30, c = 2 * Math.PI * r, why = C.scoreWhy(b);
@@ -54,7 +54,7 @@
       '<circle class="v" cx="50" cy="50" r="' + r + '" stroke-dasharray="' + (s / 100 * c).toFixed(2) + " " + c.toFixed(2) + '"/></svg>' +
       '<div class="cbk-score"><b>' + esc(Math.round(s)) + '</b><span>/100</span></div></div>' +
       "<figcaption><b>" + (s === 0 && why && why.short ? "Score 0 · " + esc(why.short) : "Score, out of 100") + "</b>" +
-      "<span>" + (v ? "Published to ERC-8004 <span class=\"nb\">" + esc(C.ago(v.at)) + "</span>" : "Updated daily") + "</span></figcaption></div>" + breakdown(b, s, why);
+      "<span>" + (v ? "Published to ERC-8004 <span class=\"nb\">" + esc(C.ago(v.at)) + "</span>" : "Updated daily") + "</span></figcaption></div>" + breakdown(b, s, why) + C.skillPanel(b.skill);
   }
   function breakdown(b, s, why) {
     var p = b.score && b.score.parts, m = b.metrics, R = C.RULES;
@@ -87,7 +87,7 @@
     var due = m.calls - m.missed - (m.pending || 0);
     $("stats").innerHTML =
       card("Return", C.pctHtml(m.totalReturn), "over " + esc(Math.floor(m.days)) + " days, after " + esc(costs.replace("real hourly Hyperliquid ", "")), "Compounded over every revealed and withheld call, after " + costs) +
-      card("Vs market", C.pctHtml(m.vsMarket), (m.vsMarket >= 0 ? "ahead of" : "behind") + " its coins’ own move, after fees",
+      card("Vs market", C.pctHtml(m.vsMarket), (!C.isNum(m.vsMarket) ? "no revealed calls yet" : (m.vsMarket >= 0 ? "ahead of" : "behind") + " its coins’ own move, after fees"),
         "Each call's return less the equal-weight move of the book's coins over the same window, in the direction called. For a one-coin book this is close to its fees and funding, so it says little.") +
       card("Steadiness", young ? '<span class="cb-young">' + C.num(m.sharpe) + "</span>" : C.num(m.sharpe),
         young ? "only " + esc(Math.floor(m.days)) + " days: too few to mean much" : steadiness(m.sharpe),
@@ -96,7 +96,7 @@
         "at a day’s close · limit 5%" + (C.isNum(m.eodDrawdown) && C.isNum(m.maxDrawdown) ? " · " + C.dd(m.maxDrawdown) + " inside a day" : ""),
         "Worst fall from a high at a day's close, the challenge's measure. The overall figure also counts falls inside a day.") +
       card("Calls that won", C.isNum(m.winRate) ? (m.winRate * 100).toFixed(1) + "%" : "—", "of its long and short calls, after costs") +
-      card("Average day", C.pctHtml(m.avgDailyPnl, 2), m.avgDailyPnl >= 0 ? "gained on a typical day" : "lost on a typical day") +
+      card("Average day", C.pctHtml(m.avgDailyPnl, 2), !C.isNum(m.avgDailyPnl) ? "no full day yet" : m.avgDailyPnl >= 0 ? "gained on a typical day" : "lost on a typical day") +
       card("Sat out", C.isNum(m.flatShare) ? Math.round(m.flatShare * 100) + "%" : "—", "of calls were flat: no position, still counted") +
       card("Revealed", C.int(m.revealed) + '<span class="cbk-of">/' + C.int(due) + "</span>",
         (m.missed || m.withheld ? esc(C.int(m.missed)) + " missed · " + esc(C.int(m.withheld)) + " kept hidden" : "every call due was revealed") + (m.pending ? " · " + esc(C.int(m.pending)) + " still locked" : ""),
@@ -239,7 +239,7 @@
   }
   function renderRows(n) {
     shown = Math.min(order.length, Math.max(n, shown));
-    $("calls").innerHTML = order.length ? order.slice(0, shown).map(callRow).join("") : '<tr><td class="empty" colspan="6"><b>No calls yet</b>The bot’s first call shows here as soon as it’s locked, and its result 4 hours later.</td></tr>';
+    $("calls").innerHTML = order.length ? order.slice(0, shown).map(callRow).join("") : '<tr><td class="empty" colspan="6"><b>No calls yet</b>The bot’s first call shows here as soon as it’s locked, and its result ' + (B && (B.horizonSec || B.periodSec) ? esc(C.hours(B.horizonSec || B.periodSec)) + " later" : "after it’s revealed") + ".</td></tr>";
     $("more").hidden = shown >= order.length;
     $("more").textContent = "Show " + Math.min(PAGE, order.length - shown) + " earlier calls";
   }

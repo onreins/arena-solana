@@ -112,11 +112,19 @@ export function strategyTiming(every, horizon) {
   return { periodSec, horizonSec };
 }
 
-/** Validate an open call's horizon (and a book's bounds). Returns seconds. */
-export function callHorizon(horizon, { min = MIN_HORIZON, max = MAX_HORIZON } = {}) {
+/**
+ * The shortest open call: 5 minutes, the contract's own floor. Calls under an
+ * hour are priced on 5-minute candles, longer ones on hourly candles
+ * (app/verify/callbook-callers.js).
+ */
+export const MIN_CALL_HORIZON = MIN_HORIZON;
+
+/** Validate an open call's horizon (and a book's bounds, raised to MIN_CALL_HORIZON). Returns seconds. */
+export function callHorizon(horizon, { min = MIN_CALL_HORIZON, max = MAX_HORIZON } = {}) {
   const sec = parseDuration(horizon, "horizon");
-  if (sec < min || sec > max) {
-    throw new Error(`A call's horizon must be between ${formatDuration(min)} and ${formatDuration(max)}; "${horizon}" is ${formatDuration(sec)}.`);
+  const lo = Math.max(min, MIN_CALL_HORIZON);
+  if (sec < lo || sec > max) {
+    throw new Error(`A call's horizon must be between ${formatDuration(lo)} and ${formatDuration(max)}; "${horizon}" is ${formatDuration(sec)}.`);
   }
   if (sec % MINUTE) throw new Error(`A call's horizon is a whole number of minutes (for example 15m, 4h, 1d); "${horizon}" is ${formatDuration(sec)}.`);
   return sec;

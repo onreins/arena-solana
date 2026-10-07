@@ -16,7 +16,7 @@ export const OUR_STRATEGIES = {
     key: "hot",
     name: "Hot list",
     description:
-      "Goes long the top coin on the Charts hot list (markets.js thesis: trend, flow and risk reads over the last 24 hourly candles), or stays flat when no coin qualifies.",
+      "Goes long the top coin on the Charts hot list (trend, flow and risk over the last day), or stays flat when no coin qualifies.",
   },
   "reins/callbook/cold-list/v1": {
     key: "cold",
