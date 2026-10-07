@@ -240,9 +240,22 @@ window.Callbook = (function () {
   }
 
   // ------------------------------------------------------------- the score
-  // Published constants (app/verify/callbook.js, SCORE_RULES):
-  // score = 100 × record × coverage × (0.6 × edge + 0.4 × risk)
-  var RULES = { recordDays: 61, edgeFullT: 3, maxDrawdown: 0.10, minExposure: 0.5, edgeWeight: 0.6, riskWeight: 0.4 };
+  // Published constants (app/verify/callbook.js SCORE_RULES, callbook-callers.js CALLER_RULES):
+  // score = 100 × coverage × (0.6 × profit + 0.4 × edge) × (0.6 + 0.4 × risk); callers have no coverage.
+  // The record's length is its level (app/verify/callbook-skill.js, RECORD_LEVELS), shown beside the score.
+  var RULES = { fullT: 3, maxDrawdown: 0.40, minExposure: 0.5, profitWeight: 0.6, edgeWeight: 0.4, riskFloor: 0.6, newDays: 14, newCalls: 30, fullDays: 61 };
+  var RECORD = { "new": "New record", building: "Building record", full: "Full record" };
+  /** The record's level in words, with what the next one needs: "Building record · 25 days to a full record". */
+  function levelLine(b) {
+    var p = b.score && b.score.parts, m = b.metrics || {}, lv = p && p.level;
+    if (!lv) return "";
+    var calls = (m.revealed || 0) + (m.withheld || 0) + (m.unscorable || 0), days = Math.floor(m.days || 0), need = [];
+    if (lv === "new") {
+      if (days < RULES.newDays) need.push((RULES.newDays - days) + " more days");
+      if (calls < RULES.newCalls) need.push((RULES.newCalls - calls) + " more calls");
+    } else if (lv === "building") need.push((RULES.fullDays - days) + " days to a full record");
+    return RECORD[lv] + (need.length ? " · " + need.join(" and ") : "");
+  }
   // The score posted to ERC-8004, or the latest computed one.
   function scoreOf(b) {
     if (b.validation && isNum(b.validation.score)) return b.validation.score;
@@ -253,32 +266,28 @@ window.Callbook = (function () {
   function scoreWhy(b) {
     var p = b.score && b.score.parts, m = b.metrics || {};
     if (!p) return null;
-    var bits = [], long = [];
+    var bits = [], long = [], next = [];
+    var lost = isNum(m.totalReturn) && m.totalReturn <= 0;
+    if (!(p.profit > 0)) {
+      bits.push(lost ? "no profit yet" : "profit not steady yet");
+      long.push("Profit is 0: " + (lost ? "after fees and funding its calls haven’t made money." : "its gains aren’t steady enough yet (t = " + num(p.profitT) + "; full credit at " + RULES.fullT + ")."));
+      next.push("calls that make money after costs");
+    }
     if (p.edge <= 0) {
-      bits.push("no edge yet");
-      long.push("Edge is 0: after fees and funding its calls don’t beat the market move (t = " + num(p.tStat) + "; it needs a t above 0, and 3 for full credit).");
+      bits.push("not beating the market");
+      long.push("Edge is 0: its calls don’t beat the market’s own move (t = " + num(p.tStat) + "; full credit at " + RULES.fullT + "), so it can’t pass 60.");
+      next.push("calls that beat the market");
     }
-    if (p.risk <= 0) {
-      var ddFull = isNum(m.maxDrawdown) && m.maxDrawdown >= RULES.maxDrawdown;
-      bits.push(ddFull ? "drawdown past 10%" : "too little exposure");
-      long.push(ddFull ? "Risk is 0: its worst drawdown (" + dd(m.maxDrawdown) + ") is past the 10% where the risk credit runs out." :
-        "Risk is 0: it held a position in under half its periods.");
+    if (isNum(p.risk) && p.risk < 1 && isNum(m.maxDrawdown) && m.maxDrawdown > 0) {
+      long.push("Its worst drop was " + dd(m.maxDrawdown) + ", so it keeps " + Math.round(100 * (RULES.riskFloor + (1 - RULES.riskFloor) * p.risk)) + "% of what it earned (60% past a 40% drop).");
+      if (m.maxDrawdown >= RULES.maxDrawdown) next.push("a drawdown back under 40%");
     }
-    if (p.record < 1) {
-      bits.push(Math.max(0, RULES.recordDays - Math.floor(m.days || 0)) + " days to a full record");
-      long.push("Record is " + num(p.record) + ": a full record takes " + RULES.recordDays + " days.");
-    }
-    if (p.coverage < 1) long.push("Coverage is " + num(p.coverage) + ": misses and withheld calls cost it.");
-    // What has to happen for it to rise.
-    var next = [];
-    if (p.edge <= 0) next.push("calls that beat the market after costs");
-    if (p.risk <= 0 && isNum(m.maxDrawdown) && m.maxDrawdown >= RULES.maxDrawdown) next.push("a drawdown back under 10%");
-    var toGo = Math.max(0, RULES.recordDays - Math.floor(m.days || 0));
-    if (toGo) next.push(toGo + " more days for a full record");
+    if (isNum(p.coverage) && p.coverage < 1) long.push("Coverage is " + num(p.coverage) + ": missed and hidden calls cost it.");
+    var lvl = levelLine(b);
+    if (lvl) long.push(lvl + ".");
     var nextText = next.length ? "To rise it needs " + next.join(", ").replace(/, ([^,]*)$/, " and $1") + "." : "";
     if (nextText) long.push(nextText);
-    var first = bits.filter(function (x) { return x.indexOf("days to") >= 0; }).concat(bits.filter(function (x) { return x.indexOf("days to") < 0; }));
-    return { short: (bits.indexOf("no edge yet") >= 0 ? ["no edge yet"] : []).concat(first.filter(function (x) { return x !== "no edge yet"; })).slice(0, 1).join(" · "), long: long.join(" "), next: nextText };
+    return { short: bits.slice(0, 1).join(""), long: long.join(" "), next: nextText };
   }
 
   // The number of the period that opens at boundary `t`. Periods count from
@@ -380,7 +389,7 @@ window.Callbook = (function () {
   }
 
   return {
-    skillHtml: skillHtml, skillTip: skillTip, skillPanel: skillPanel, countUp: countUp, glow: glow, skillRank: skillRank, LEVELS: LEVELS,
+    skillHtml: skillHtml, skillTip: skillTip, skillPanel: skillPanel, countUp: countUp, glow: glow, levelLine: levelLine, RECORD: RECORD, skillRank: skillRank, LEVELS: LEVELS,
     own: own, nameOf: nameOf, movedTag: movedTag, YOUNG_DAYS: YOUNG_DAYS, challengeLine: challengeLine, isHttp: isHttp, RULES: RULES, scoreOf: scoreOf, scoreWhy: scoreWhy, periodAt: periodAt, eodOf: eodOf, where: where, costsText: costsText, loadIndex: loadIndex, loadBook: loadBook, loadCaller: loadCaller, params: params, wantMock: wantMock, ID_RE: ID_RE,
     pct: pct, pctHtml: pctHtml, dd: dd, num: num, int: int, isNum: isNum, shortHash: shortHash, txLink: txLink,
     ago: ago, stamp: stamp, day: day, clock: clock, span: span, hours: hours, now: now,

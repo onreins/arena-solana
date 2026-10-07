@@ -250,6 +250,7 @@ a.cb-hash .ic { width: 11px; height: 11px; color: var(--ink-4); }
 .cbk-parts .bar { position: relative; height: 4px; border-radius: 4px; background: rgba(255, 255, 255, .07); overflow: hidden; }
 .cbk-parts .bar i { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: linear-gradient(90deg, var(--seal), var(--rev)); }
 .cbk-parts small { grid-column: 2 / -1; color: #6f78a3; font-size: 11.5px; }
+.cbk-level { margin-top: 10px; color: var(--ink-3); font-size: 12.5px; }
 .cbk-zero { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--hair); color: #a9b1d3; font-size: 12.5px; line-height: 1.5; }
 .cbk-zero b { color: #fff; font-weight: 500; }
 .cbk-arc { transform: rotate(-90deg); }
@@ -477,6 +478,7 @@ main.cb { --ink-4: #8a8888; }
 .cbk-next .muted { color: #6f78a3; margin-left: 4px; }
 .cbk-val figcaption b { max-width: 20ch; }
 .cbk-formula b { display: block; text-align: left; margin-bottom: 2px; color: #fff; font: 500 13px var(--sans); }
+.cbk-level { margin-top: 10px; color: var(--ink-3); font-size: 12.5px; }
 .cbk-zero { color: #c9d1f2; }
 .cbk-why small { display: block; margin-top: 6px; color: var(--ink-4); font-size: 12px; }
 .cbk-lk { display: inline-flex; align-items: center; gap: 6px; }

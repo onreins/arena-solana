@@ -72,7 +72,7 @@ async function main() {
     console.log(`  calls     ${m.calls} (revealed ${m.revealed}, withheld ${m.withheld}, unscorable ${m.unscorable}, pending ${m.pending}); coverage ${pct(m.coverage, 1)}`);
     console.log(`  return    ${pct(m.meanReturn)} a call after fees · vs its coin ${pct(m.vsCoin)} · hit rate ${pct(m.hitRate, 1)} · sum ${pct(m.totalReturn)} · ${num(m.days, 1)} days`);
     console.log(`  risk      max drawdown ${pct(m.maxDrawdown)} (1 unit a call) · best ${pct(m.best?.ret)} · worst ${pct(m.worst?.ret)}`);
-    console.log(`  score     ${s.value}/100 = 100 × record ${num(s.record, 3)} × (0.6 × edge ${num(s.edge, 3)} [t ${num(s.tStat)}] + 0.4 × risk ${num(s.risk, 3)})`);
+    console.log(`  score     ${s.value}/100 = 100 × (0.6 × profit ${num(s.profit, 3)} [t ${num(s.profitT)}] + 0.4 × edge ${num(s.edge, 3)} [t ${num(s.tStat)}]) × (0.6 + 0.4 × risk ${num(s.risk, 3)}) · ${s.level} record`);
   } else {
     console.log(`  book #${book.id}: ${book.coins.join(", ")} · every ${book.periodSec / 3600}h, held ${book.horizonSec / 3600}h · agent ${book.agentId ?? "none"}`);
     console.log(when);
@@ -88,7 +88,7 @@ function printBook(ev, m, s) {
   console.log(`  risk      max drawdown ${pct(m.maxDrawdown)} · intraday ${pct(m.intradayDrawdown)} · sharpe ${num(m.sharpe)} · sortino ${num(m.sortino)} · omega ${num(m.omega)}`);
   console.log(`  costs     ${ev.scored.costs} · ${ev.scored.interval} candle opens from Hyperliquid`);
   console.log(`  challenge ${ev.scored.challenge.status}: ${ev.scored.challenge.reasons.join("; ")}`);
-  console.log(`  score     ${s.value}/100 = 100 × record ${num(s.record, 3)} × coverage ${num(s.coverage, 3)} × (0.6 × edge ${num(s.edge, 3)} [t ${num(s.tStat)}] + 0.4 × risk ${num(s.risk, 3)})`);
+  console.log(`  score     ${s.value}/100 = 100 × coverage ${num(s.coverage, 3)} × (0.6 × profit ${num(s.profit, 3)} [t ${num(s.profitT)}] + 0.4 × edge ${num(s.edge, 3)} [t ${num(s.tStat)}]) × (0.6 + 0.4 × risk ${num(s.risk, 3)}) · ${s.level} record`);
 }
 
 async function compare(req, last, ev, s) {

@@ -153,21 +153,24 @@ The 0–100 number posted to ERC-8004 (version `callbook-v1`,
 `app/verify/callbook.js` `callbookScore`):
 
 ```
-score    = 100 × record × coverage × (0.6 × edge + 0.4 × risk)
-record   = min(1, days / 61)                     Vanta's 61-day minimum
-coverage = revealed / (revealed + missed + withheld)
+score    = 100 × coverage × (0.6 × profit + 0.4 × edge) × (0.6 + 0.4 × risk)
+profit   = clamp(t / 3, 0, 1), t of the per-call net returns, when they add
+           up above 0 (else 0)
 edge     = clamp(t / 3, 0, 1)
            t: t-statistic of the per-call net returns, after removing
            beta × the market move (beta = the book's average side when in
            a position; withheld calls count at their worst outcome)
-risk     = clamp(1 − maxDrawdown / 10%, 0, 1) × min(1, exposure / 50%)
+risk     = clamp(1 − maxDrawdown / 40%, 0, 1) × min(1, exposure / 50%)
+coverage = revealed / (revealed + missed + withheld)
+level    = new (< 14 days or < 30 revealed calls), building (< 61 days), full
 ```
 
-In two sentences: a book earns points for calls that beat its own average
-market exposure with statistical confidence (60%) and for staying inside
-Vanta's 10% drawdown (40%), scaled down by every period it missed or hid and
-by how much of Vanta's 61-day record it has. Young books score low by design,
-riding the market isn't edge, and staying flat earns no risk credit.
+In two sentences: a book earns points only for what it earned, steady profit
+after costs (60%) and beating its own average market exposure (40%), and
+risk scales those points between 60% and 100% (a big drop costs up to 40%; a
+small one never adds points), as does every round it missed or hid. Riding
+the market without beating it can't pass 60, losing records score 0, and the
+record's length shows as its level instead of lowering the score.
 
 Why beta and not plain vsMarket for the edge: vsMarket removes the market
 move times the side of every call, which also erases timing skill on a
@@ -226,16 +229,17 @@ why: `docs/CALLBOOK-IDENTITY-PLAN.md`.
 ### The caller score
 
 ```
-score  = 100 × record × (0.6 × edge + 0.4 × risk)
-record = min(1, days / 61) × min(1, resolved calls / 30)
+score  = 100 × (0.6 × profit + 0.4 × edge) × (0.6 + 0.4 × risk)
+profit = clamp(t / 3, 0, 1), t of the net returns, when they add up above 0
 edge   = clamp(t / 3, 0, 1)
          t: t-statistic of each resolved call's net return less
          beta × the coin's passive drift over the call's horizon
          (beta = the caller's average side; drift = the coin's average move
          per second over the caller's record; withheld and unscorable calls
          count at their worst, with no drift)
-risk   = clamp(1 − maxDrawdown / 10%, 0, 1), on the call-by-call record
+risk   = clamp(1 − maxDrawdown / 40%, 0, 1), on the call-by-call record
          (1 + the running sum of net returns, one unit per call)
+level  = new (< 14 days or < 30 resolved calls), building (< 61 days), full
 ```
 
 The same idea as a book's score without the coverage term: a caller chooses

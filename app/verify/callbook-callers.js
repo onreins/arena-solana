@@ -32,7 +32,7 @@ import { canonicalJson, hashText, SCORING_VERSION, requestForBook, latestRespons
 import { priceBook, resolveSymbol } from "./callbook-prices.js";
 import { callerInfo } from "./callbook-agents.js";
 import { maxOf, minOf } from "./callbook-util.js";
-import { skillScore, hitOf } from "./callbook-skill.js";
+import { skillScore, hitOf, recordLevel } from "./callbook-skill.js";
 
 const HOUR = 3_600;
 const DAY = 86_400;
@@ -59,12 +59,11 @@ export const REFERENCE_SET_NAME = "hyperliquid-top50-2026-10-07";
 export const REFERENCE_COINS = REFERENCE_SET;
 
 export const CALLER_RULES = Object.freeze({
-  recordDays: 61, // as for books: Vanta's 61-day minimum
-  recordCalls: 30, // and enough calls for a t-statistic to mean something
-  edgeFullT: 3,
-  maxDrawdown: VANTA.drawdownMaxPercent / 100,
-  edgeWeight: 0.6,
-  riskWeight: 0.4,
+  fullT: 3, // a t-statistic of 3 or more earns the whole profit or edge part
+  maxDrawdown: 0.4, // a 40% fall on the call-by-call curve takes risk to its floor
+  profitWeight: 0.6,
+  edgeWeight: 0.4,
+  riskFloor: 0.6, // the worst drawdown keeps 60% of what was earned
 });
 
 const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
@@ -236,25 +235,29 @@ export function curveDrawdown(rets) {
 }
 
 /**
- * The caller score (docs/CALLBOOK.md, "The caller score"):
- *   score  = 100 × record × (0.6 × edge + 0.4 × risk)
- *   record = min(1, days / 61) × min(1, resolved calls / 30)
+ * The caller score (docs/CALLBOOK.md, "The score"):
+ *   score  = 100 × (0.6 × profit + 0.4 × edge) × (0.6 + 0.4 × risk)
+ *   profit = clamp(t / 3, 0, 1), t of the net returns, when they add up above 0
  *   edge   = clamp(t / 3, 0, 1), t of (net return − beta × expected), beta the
  *            average side and `expected` the coin's passive drift over the
  *            call's horizon (0 for withheld and unscorable calls)
- *   risk   = clamp(1 − maxDrawdown / 10%, 0, 1), drawdown of the call-by-call curve (1 unit a call)
+ *   risk   = clamp(1 − maxDrawdown / 40%, 0, 1), drawdown of the call-by-call curve (1 unit a call)
+ * Points come only from profit and edge; risk scales them, never adds. The
+ * record's length is its level (recordLevel), shown beside the score.
  * outcomes: resolved calls in order [{ side, ret, expected }].
  */
 export function callerScore({ days, outcomes, maxDrawdown }) {
   const R = CALLER_RULES;
   const n = outcomes.length;
-  const record = clamp(days / R.recordDays, 0, 1) * Math.min(1, n / R.recordCalls);
   const beta = n ? mean(outcomes.map((o) => o.side ?? 0)) : 0;
   const t = tStat(outcomes.map((o) => o.ret - beta * (o.expected ?? o.move ?? 0)));
-  const edge = clamp(t / R.edgeFullT, 0, 1);
+  const edge = clamp(t / R.fullT, 0, 1);
+  const rets = outcomes.map((o) => o.ret);
+  const profitT = tStat(rets);
+  const profit = sum(rets) > 0 ? clamp(profitT / R.fullT, 0, 1) : 0;
   const risk = n ? clamp(1 - maxDrawdown / R.maxDrawdown, 0, 1) : 0;
-  const value = clamp(Math.round(100 * record * (R.edgeWeight * edge + R.riskWeight * risk)), 0, 100);
-  return { value, record, beta, tStat: t, edge, risk };
+  const value = clamp(Math.round(100 * (R.profitWeight * profit + R.edgeWeight * edge) * (R.riskFloor + (1 - R.riskFloor) * risk)), 0, 100);
+  return { value, level: recordLevel(days, n), beta, tStat: t, profitT, profit, edge, risk };
 }
 
 /**
@@ -341,7 +344,7 @@ export function buildCallerReport({ chainId, callbook, book, asOf, scored }) {
     // [callId, status, coin, side, horizon, net return, candles ("5m" or "1h") it was priced on]
     calls: scored.periods.map((c) => [c.callId, c.status, c.coin ?? c.worst?.coin ?? null, c.side ?? c.worst?.side ?? null, c.horizon ?? c.worst?.horizon ?? null, c.ret == null ? null : round(c.ret), c.candles ?? null]),
     metrics: Object.fromEntries(Object.entries(scored.metrics).map(([k, v]) => [k, typeof v === "number" ? round(v) : v])),
-    score: Object.fromEntries(Object.entries(scored.score).map(([k, v]) => [k, round(v)])),
+    score: Object.fromEntries(Object.entries(scored.score).map(([k, v]) => [k, typeof v === "number" ? round(v) : v])),
     skill: scored.skill ?? null,
   };
   const text = canonicalJson(report);
@@ -427,7 +430,7 @@ export function callerToApi({ chain, ev, validator, asOf }) {
     owner: book.owner, agentId: book.agentId, caller: book.caller, coins: book.anyCoin ? null : book.coins, anyCoin: book.anyCoin,
     minHorizon: book.minHorizon, maxHorizon: book.maxHorizon, openedAt: book.openedAt, closed: book.closedAt != null && book.closedAt <= asOf,
     metrics: metricsOut(scored.metrics),
-    score: { value: scored.score.value, asOf, reportHash: ev.report.hash, parts: Object.fromEntries(Object.entries(scored.score).map(([k, v]) => [k, round(v, 4)])) },
+    score: { value: scored.score.value, asOf, reportHash: ev.report.hash, parts: Object.fromEntries(Object.entries(scored.score).map(([k, v]) => [k, typeof v === "number" ? round(v, 4) : v])) },
     skill: scored.skill ?? null,
     validation: last ? { score: last.score, tag: last.tag, responseHash: last.responseHash, txHash: last.tx, at: last.at, uri: last.uri } : null,
     curve: scored.curve,
