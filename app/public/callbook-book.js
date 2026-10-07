@@ -49,7 +49,7 @@
     }
     var s = Math.max(0, Math.min(100, sc)), r = 30, c = 2 * Math.PI * r, why = C.scoreWhy(b);
     $("val").innerHTML =
-      '<div class="cbk-stampcol"><div class="cbk-stampw' + (s === 0 ? " zero" : "") + '">' + C.seal("cbk-stamp", C.SEAL_WORDS) +
+      '<div class="cbk-stampcol"><div class="cbk-stampw' + (s === 0 ? " zero" : "") + '" data-fx="foil">' + C.seal("cbk-stamp", C.SEAL_WORDS) +
       '<svg class="cbk-arc" viewBox="0 0 100 100" aria-hidden="true"><circle class="t" cx="50" cy="50" r="' + r + '"/>' +
       '<circle class="v" cx="50" cy="50" r="' + r + '" stroke-dasharray="' + (s / 100 * c).toFixed(2) + " " + c.toFixed(2) + '"/></svg>' +
       '<div class="cbk-score"><b>' + esc(Math.round(s)) + '</b><span>/100</span></div></div>' +

@@ -76,7 +76,7 @@
     };
     var resolved = m.revealed + (m.withheld || 0) + (m.unscorable || 0), why = scoreWhy(x);
     $("val").innerHTML =
-      '<div class="cbk-stampcol"><div class="cbk-stampw">' + C.seal("cbk-stamp", C.SEAL_WORDS) +
+      '<div class="cbk-stampcol"><div class="cbk-stampw" data-fx="foil">' + C.seal("cbk-stamp", C.SEAL_WORDS) +
       '<svg class="cbk-arc" viewBox="0 0 100 100" aria-hidden="true"><circle class="t" cx="50" cy="50" r="' + r + '"/>' +
       '<circle class="v" cx="50" cy="50" r="' + r + '" stroke-dasharray="' + (s / 100 * c).toFixed(2) + " " + c.toFixed(2) + '"/></svg>' +
       '<div class="cbk-score"><b>' + esc(Math.round(s)) + "</b><span>/100</span></div></div>" +
