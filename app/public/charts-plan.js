@@ -52,7 +52,7 @@ window.ReinsChartPlan = function (opts) {
       '<button type="button" class="pl-chip" id="pl-clear">Remove lines</button></div></div>' +
       '<div class="pl-ladder" id="pl-ladder" aria-hidden="true"></div>' +
       '<div class="pl-out"><ul class="pl-facts" id="pl-facts"></ul>' +
-      '<a class="th-go" id="pl-go" href="/create.html">Create an agent with these limits</a>' +
+      '<a class="th-go" id="pl-go" href="/create">Create an agent with these limits</a>' +
       '<p class="pl-note">Drag the lines on the chart to change them. Agents trade USDC and EURC on Arc testnet for now; the limits carry over.</p></div>' +
       "</div>";
     $("pl-dep").addEventListener("change", function () { set({ deposit: $("pl-dep").value }); });

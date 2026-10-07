@@ -11,7 +11,7 @@
   // The guide is its own page now: old links to its sections go there.
   var GUIDE = { guide: 1, how: 1, agents: 1, recheck: 1, method: 1 };
   var gone = location.hash.slice(1);
-  if (C.own(GUIDE, gone) === 1) { location.replace("/callbook-guide.html" + (gone === "guide" ? "" : "#" + gone)); return; }
+  if (C.own(GUIDE, gone) === 1) { location.replace("/callbook-guide" + (gone === "guide" ? "" : "#" + gone)); return; }
   C.tooltips();
   $("ic-lock").innerHTML = U.icon("lock");
   $("ic-q").innerHTML = U.icon("search");
@@ -82,7 +82,7 @@
   var BOARDS = {
     books: {
       list: function () { return D.books; },
-      href: function (b) { return "/callbook-book.html?b=" + encodeURIComponent(b.id); },
+      href: function (b) { return "/callbook-book?b=" + encodeURIComponent(b.id); },
       sub: function (b) { return esc(coinList(b.coins)) + " · " + esc(Math.floor(b.metrics.days)) + " days"; },
       noun: ["bot", "bots"],
       metric: "Callbook score, 0–100",
@@ -103,7 +103,7 @@
     },
     callers: {
       list: function () { return D.callers || []; },
-      href: function (c) { return "/callbook-caller.html?c=" + encodeURIComponent(c.id); },
+      href: function (c) { return "/callbook-caller?c=" + encodeURIComponent(c.id); },
       sub: function (c) { return "Any coin · holds " + esc(hold(c.metrics.avgHorizonHours) || "—") + " on average"; },
       noun: ["caller", "callers"],
       metric: "Caller score, 0–100",
@@ -316,7 +316,7 @@
       f("Ranking metric", esc(B.metric)) +
       f("Calls scored", C.int(B.scored())) +
       f("Updated", t1 ? esc(C.stamp(t1)) : "—");
-    $("board-lede").innerHTML = B.lede + ' <a href="/callbook-guide.html#method">How scoring works →</a>';
+    $("board-lede").innerHTML = B.lede + ' <a href="/callbook-guide#method">How scoring works →</a>';
     $("pending").hidden = ranked;
     $("pending-p").textContent = "Ranks appear once the board has " + RANK_MIN + " " + B.noun[1] + " and " + RANK_DAYS + " days of record. Until then, " + B.noun[1] + " are listed by record length.";
     $("fn-a").textContent = (ranked ? "Ranked by " + B.metric.replace(/, 0–100$/, "").toLowerCase() : "Listed by record length until ranks appear") + " · " + B.foot + " · ";
@@ -327,7 +327,7 @@
   var KIND = { sealed: ["lock", "sealed"], locked: ["lock", "sealed"], revealed: ["unlock", "revealed"], validated: ["shield", "validated"], missed: ["miss", "missed"] };
   var feedKind = "all";
   function bookLink(f) {
-    var href = f.caller ? "/callbook-caller.html?c=" + encodeURIComponent(f.callerId || f.bookId) : "/callbook-book.html?b=" + encodeURIComponent(f.bookId);
+    var href = f.caller ? "/callbook-caller?c=" + encodeURIComponent(f.callerId || f.bookId) : "/callbook-book?b=" + encodeURIComponent(f.bookId);
     return '<a href="' + esc(href) + '">' + esc(f.book || "Book #" + f.bookId) + "</a>";
   }
   function feedItem(f) {

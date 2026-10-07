@@ -261,7 +261,7 @@ window.ReinsMarkets = (function () {
   /** The create page, opened with this plan's limits (and the market it was planned on). */
   function createLink(plan, market) {
     var p = cleanPlan(plan);
-    return "/create.html?loss=" + p.lossPercent + "&trade=" + p.tradePercent + "&band=" + p.bandPercent +
+    return "/create?loss=" + p.lossPercent + "&trade=" + p.tradePercent + "&band=" + p.bandPercent +
       "&deposit=" + p.deposit + (market ? "&from=" + encodeURIComponent(label(market)) : "");
   }
 

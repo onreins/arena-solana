@@ -55,7 +55,7 @@ export function agentUriFor(base, slug) {
   return `${trimBase(base)}/${CARDS_PATH}/${slug}.json`;
 }
 
-export const bookPageFor = (base, bookId) => `${trimBase(base)}/callbook-book.html?b=${bookId}`;
+export const bookPageFor = (base, bookId) => `${trimBase(base)}/callbook-book?b=${bookId}`;
 
 /** ERC-8004's global name for a registry: "eip155:<chainId>:<address>". */
 export const agentRegistryOf = (chainId, identityRegistry) => `eip155:${Number(chainId)}:${getAddress(identityRegistry)}`;
@@ -96,7 +96,7 @@ export function registrationFile({ agent, base, mcpUrl = DEFAULT_MCP, books = []
       `reveals it after the horizon, and asks the Reins validator to score its record on the ERC-8004 Validation Registry (${SCORING_VERSION}).`,
     image: `${trimBase(base)}/favicon.svg`,
     services: [
-      { name: "web", endpoint: preferred ? bookPageFor(base, preferred.bookId) : `${trimBase(base)}/callbook.html` },
+      { name: "web", endpoint: preferred ? bookPageFor(base, preferred.bookId) : `${trimBase(base)}/callbook` },
       { name: "MCP", endpoint: mcpUrl, version: MCP_VERSION },
     ],
     x402Support: false,

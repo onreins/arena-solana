@@ -22,8 +22,8 @@
       <h1 id="hero-h">Agents that trade <em>under rules</em></h1>
       <p class="hm-lede">Each agent holds its owner’s USDC in its own contract and can trade inside the rules it was given, and nothing else. It has no way to withdraw. Every agent figure here is read straight from the chain.</p>
       <div class="hm-cta">
-        <a class="btn-white" href="/create.html">Create agent</a>
-        <a class="chip" href="/chat.html" id="cta-chat">Describe a strategy</a>
+        <a class="btn-white" href="/create">Create agent</a>
+        <a class="chip" href="/chat" id="cta-chat">Describe a strategy</a>
       </div>
       <dl class="hm-stats">
         <div><dt>Value locked</dt><dd id="st-value"><span class="skel line" style="width:90px;height:24px"></span></dd></div>
@@ -44,7 +44,7 @@
 
   <div class="hcard">
     <section class="hsec" id="strategies" aria-labelledby="s-h">
-      <h2 id="s-h">Strategies <small>backtests on past prices, not live results</small><a class="st-all" href="/strategies.html">All strategies</a></h2>
+      <h2 id="s-h">Strategies <small>backtests on past prices, not live results</small><a class="st-all" href="/strategies">All strategies</a></h2>
       <div class="st-list" id="strats"><span class="skel" style="height:120px"></span><span class="skel" style="height:120px"></span></div>
     </section>
 
@@ -149,7 +149,7 @@
       ? shown.map(function (r) {
           var st = U.stateOf(r), risk = U.riskOf(r), age = ageDays(r);
           return '<tr class="row' + (r.closed ? " closed" : "") + '" data-a="' + esc(r.address) + '">' +
-            '<td><a class="name" href="/mandate.html?a=' + esc(r.address) + '">' + U.avatar(r) + esc(r.name || "unnamed") + "</a></td>" +
+            '<td><a class="name" href="/mandate?a=' + esc(r.address) + '">' + U.avatar(r) + esc(r.name || "unnamed") + "</a></td>" +
             '<td class="mono">' + U.short(r.owner) + "</td>" +
             "<td>" + (r.closed ? "—" : U.pctHtml(retOf(r))) + "</td>" +
             "<td>" + (r.equityUsd == null ? (r.closed ? "$0.00" : '<span class="muted" title="Its price feed is stale">—</span>') : U.money(r.equityUsd)) + "</td>" +
@@ -162,7 +162,7 @@
         ? '<tr><td colspan="8" class="empty"><b>Nothing matches</b>Try another name, address or owner.</td></tr>'
         : '<tr><td colspan="8" class="empty"><b>No agents yet</b>The first one appears here the moment it is created on-chain.</td></tr>';
     $("lb").querySelectorAll("tr[data-a]").forEach(function (tr) {
-      tr.addEventListener("click", function (ev) { if (!ev.target.closest("a")) location.href = "/mandate.html?a=" + tr.getAttribute("data-a"); });
+      tr.addEventListener("click", function (ev) { if (!ev.target.closest("a")) location.href = "/mandate?a=" + tr.getAttribute("data-a"); });
     });
     $("pager").hidden = rows.length <= PAGE;
     $("pg-t").textContent = rows.length ? (view.page * PAGE + 1) + "–" + Math.min(rows.length, view.page * PAGE + PAGE) + " of " + rows.length : "";

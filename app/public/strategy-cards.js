@@ -18,7 +18,7 @@ window.ReinsStrategyCards = (function () {
   function smartCard(d) {
     var st = d.stats;
     return {
-      cls: "smart", href: "/smart-money.html", search: "smart money hyperliquid traders testing",
+      cls: "smart", href: "/smart-money", search: "smart money hyperliquid traders testing",
       tags: '<span class="tagp sm-tag">New</span><span class="tagp">Testing</span><span>Hyperliquid traders</span>',
       title: "Smart Money",
       text: "Trades alongside a hand-picked group of Hyperliquid's most profitable traders.",
@@ -29,7 +29,7 @@ window.ReinsStrategyCards = (function () {
   function templateCard(s) {
     var st = s.stats, valid = s.status === "validated";
     return {
-      cls: valid ? "valid" : "", href: "/strategy.html?s=" + encodeURIComponent(s.id), search: s.name + " " + s.universe.join(" ") + " " + s.status,
+      cls: valid ? "valid" : "", href: "/strategy?s=" + encodeURIComponent(s.id), search: s.name + " " + s.universe.join(" ") + " " + s.status,
       tags: '<span class="tagp' + (valid ? " ok" : "") + '">' + (valid ? "Validated" : "Candidate") + "</span><span>" + U.coinCount(s.universe) + " coins</span><span>" + esc(s.hold) + "</span>",
       title: U.coins(s.universe) + esc(s.name),
       text: s.tagline,

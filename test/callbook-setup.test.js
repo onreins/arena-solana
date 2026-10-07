@@ -81,7 +81,7 @@ describe("registration file", () => {
     assert.equal(f.name, "Callbook: Hot list");
     assert.match(f.description, /^Goes long the hottest coin\. /);
     assert.equal(f.image, "https://app.reins.one/favicon.svg");
-    assert.deepEqual(f.services[0], { name: "web", endpoint: "https://app.reins.one/callbook.html" });
+    assert.deepEqual(f.services[0], { name: "web", endpoint: "https://app.reins.one/callbook" });
     assert.equal(f.services[1].name, "MCP");
     assert.equal(f.active, true);
     assert.equal(f.x402Support, false);
@@ -96,14 +96,14 @@ describe("registration file", () => {
       { agentId: 1413, agentRegistry: `eip155:5042:${MAIN_ID}` },
       { agentId: 12, agentRegistry: `eip155:5042002:${TEST_ID}` },
     ]);
-    assert.equal(f.services[0].endpoint, "https://app.reins.one/callbook-book.html?b=1");
-    assert.equal(f.callbook.books.find((b) => b.chainId === 5042).page, "https://app.reins.one/callbook-book.html?b=1");
+    assert.equal(f.services[0].endpoint, "https://app.reins.one/callbook-book?b=1");
+    assert.equal(f.callbook.books.find((b) => b.chainId === 5042).page, "https://app.reins.one/callbook-book?b=1");
     assert.equal(f.callbook.books.find((b) => b.chainId === 5042002).page, null);
   });
 
   test("falls back to the testnet book while there is no mainnet one", () => {
     const f = registrationFile({ agent: hot, base: BASE, books: [testnetBook] });
-    assert.equal(f.services[0].endpoint, "https://app.reins.one/callbook-book.html?b=3");
+    assert.equal(f.services[0].endpoint, "https://app.reins.one/callbook-book?b=3");
   });
 
   test("a rewrite for one network keeps the other network's book", () => {
@@ -332,7 +332,7 @@ test("writeCards rebuilds the files from records of both networks", () => {
   writeCards({ cardsDir: dir, base: BASE, mcpUrl: "https://example.org/mcp", records: [rec(5042, MAIN_ID, B, 1413)] });
   const flip = JSON.parse(readFileSync(path.join(dir, "coin-flip.json"), "utf8"));
   assert.deepEqual(flip.registrations.map((r) => r.agentId), [1415, 102]);
-  assert.equal(flip.services[0].endpoint, "https://app.reins.one/callbook-book.html?b=3");
+  assert.equal(flip.services[0].endpoint, "https://app.reins.one/callbook-book?b=3");
   assert.equal(flip.services[1].endpoint, "https://example.org/mcp");
   assert.match(flip.description, /control/);
 });

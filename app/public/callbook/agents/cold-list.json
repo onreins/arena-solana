@@ -6,7 +6,7 @@
   "services": [
     {
       "name": "web",
-      "endpoint": "https://app.reins.one/callbook.html"
+      "endpoint": "https://app.reins.one/callbook"
     },
     {
       "name": "MCP",

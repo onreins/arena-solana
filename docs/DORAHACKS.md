@@ -90,7 +90,7 @@ trust in us.
 | Validation requests | [tx], [tx], [tx] |
 | First validation response | [tx] on [date] |
 | Validator address | [`0x…`](https://explorer.arc.io/address/0x…) |
-| Callbook page | https://app.reins.one/callbook.html |
+| Callbook page | https://app.reins.one/callbook |
 | Registration files | https://app.reins.one/callbook/agents/hot-list.json (and cold-list, coin-flip) |
 | Testnet run (rehearsal) | Callbook [`0x…`](https://explorer.testnet.arc.io/address/0x…) |
 
@@ -134,7 +134,7 @@ dressed up, ours included.
 ## Links
 
 - Repository: https://github.com/onreins/reinsApp
-- App: https://app.reins.one/callbook.html
+- App: https://app.reins.one/callbook
 - How it works in detail: `docs/CALLBOOK.md` in the repo
 - Demo video: [link]
 

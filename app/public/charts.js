@@ -480,7 +480,7 @@
       '<div class="th-head"><span class="th-verdict v-' + t.verdict + '">' + glyph(t.verdict) + t.verdict + "</span>" +
       '<p class="th-sum">' + esc(t.summary) + "</p>" +
       '<span class="th-meter v-' + t.verdict + '" title="Conviction" aria-hidden="true">' + meter + "</span>" +
-      '<a class="th-go" href="/chat.html?idea=' + encodeURIComponent(M.idea(r, t)) + '">' + glyph("flask") + "Backtest this idea</a></div>" +
+      '<a class="th-go" href="/chat?idea=' + encodeURIComponent(M.idea(r, t)) + '">' + glyph("flask") + "Backtest this idea</a></div>" +
       '<div class="th-reads">' + t.reads.map(function (x) {
         return '<article class="th-read s-' + x.stance + '"><header><span class="th-av">' + glyph(x.agent) + "</span>" +
           "<div><b>" + x.agent + " agent</b><small>" + x.role + "</small></div>" +
