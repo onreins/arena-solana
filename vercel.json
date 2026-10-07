@@ -11,9 +11,57 @@
       "maxDuration": 60
     }
   },
-  "rewrites": [{ "source": "/api/(.*)", "destination": "/api/index" }],
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index"
+    }
+  ],
   "headers": [
-    { "source": "/(.*\\.css)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }] },
-    { "source": "/(.*\\.js)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }] }
+    {
+      "source": "/(.*\\.css)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/(.*\\.js)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/callbook",
+      "destination": "/arena",
+      "permanent": true
+    },
+    {
+      "source": "/callbook-guide",
+      "destination": "/arena-guide",
+      "permanent": true
+    },
+    {
+      "source": "/callbook-book",
+      "destination": "/arena-bot",
+      "permanent": true
+    },
+    {
+      "source": "/callbook-caller",
+      "destination": "/arena-caller",
+      "permanent": true
+    },
+    {
+      "source": "/callbook/agents/:file",
+      "destination": "/arena/agents/:file",
+      "permanent": true
+    }
   ]
 }

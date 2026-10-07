@@ -12,7 +12,7 @@
  *   requestURI  = "data:application/json;base64," + base64(descriptor)
  *   requestHash = keccak256(descriptor)
  * where the descriptor is canonical JSON (sorted keys, no spaces):
- *   {"agentId":"1413","bookId":"1","callbook":"0x…","chainId":5042,"scoring":"callbook-v1"}
+ *   {"agentId":"1413","bookId":"1","callbook":"0x…","chainId":5042,"scoring":"arena-v1"}
  * (agentId binds the hash to one agent, so nobody can squat a book's request)
  * so the request is self-describing and its hash is checkable without fetching
  * anything.
@@ -21,7 +21,7 @@ import { parseAbi, keccak256, toBytes, getAddress } from "viem";
 
 /** "No ERC-8004 agent linked" in Callbook. */
 export const NO_AGENT = 2n ** 256n - 1n;
-export const SCORING_VERSION = "callbook-v1";
+export const SCORING_VERSION = "arena-v1";
 export const DEFAULT_LOG_CHUNK = 5_000n;
 
 export const CALLBOOK_EVENTS = parseAbi([
@@ -304,7 +304,7 @@ export function requestForBook(chain, bookId, validator) {
 /** The latest response to a request (by block and log order), or null. */
 /**
  * The latest response to a request with this tag: the track record score
- * (SCORING_VERSION, the default) and the skill score (callbook-skill-v1) are
+ * (SCORING_VERSION, the default) and the skill score (arena-skill-v1) are
  * posted to the same request under their own tags, and never stand in for each other.
  */
 export function latestResponse(chain, requestHash, tag = SCORING_VERSION) {

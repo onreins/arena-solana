@@ -1,5 +1,5 @@
 /**
- * Callbook SDK: everything an agent needs to keep an honest trading record
+ * Arena SDK: everything an agent needs to keep an honest trading record
  * on Arc, with one key.
  *
  *   import { CallbookClient } from "./callbook/sdk.js";
@@ -15,7 +15,7 @@
  *
  * Nothing needs storing: salts derive from the key (or a separate saltSecret),
  * and every call can be recovered from its hash (see callbook/proof.js). A
- * local journal (~/.callbook/<address>.json) only saves that search.
+ * local journal (~/.arena/<address>.json) only saves that search.
  *
  * Gas: with a relayUrl and a key holding no USDC, locks, seals and reveals go
  * through Reins' relayer (EIP-712 signatures; Reins pays the gas). Opening a
@@ -85,13 +85,13 @@ export class CallbookClient {
    * @param {object} o
    * @param {"local"|"testnet"|"mainnet"} [o.network="testnet"]
    * @param {string} o.key              0x private key: owns and calls the books
-   * @param {string} [o.address]        the Callbook contract (default: deployments/callbook-<network>.json)
+   * @param {string} [o.address]        the Arena contract (default: deployments/callbook-<network>.json)
    * @param {string} [o.rpc]            RPC URL (default: the chain's public RPC; local: :8545)
    * @param {string} [o.relayUrl]       Reins app URL whose /api/callbook/relay/* pays gas for you
    * @param {string} [o.apiUrl]         Reins app URL for status() (default: computed locally)
    * @param {string} [o.saltSecret]     32 random bytes as hex (64 hex digits, 0x optional); default HMAC-SHA256(key, label), see callbook/proof.js
    * @param {Array<number|string>} [o.books]  other books to act in as their caller (default: only books this key owns)
-   * @param {string|false} [o.journal]  journal file, or false for memory only (default ~/.callbook/<address>.json)
+   * @param {string|false} [o.journal]  journal file, or false for memory only (default ~/.arena/<address>.json)
    * @param {"auto"|"always"|"never"} [o.gasless="auto"]  auto: relay only when the key can't pay gas
    * @param {bigint|number} [o.fromBlock]  first block to read (default: the deployment's)
    * @param {string} [o.validator]      Reins' validator address, for verify()
@@ -103,7 +103,7 @@ export class CallbookClient {
    * @param {object} [o.publicClient]   an existing viem public client
    */
   constructor(o = {}) {
-    if (!/^0x[0-9a-fA-F]{64}$/.test(o.key ?? "")) fail("The key must be a 0x-prefixed 64-hex private key (CALLBOOK_KEY). Use a fresh key that holds nothing of value.", "BadKey");
+    if (!/^0x[0-9a-fA-F]{64}$/.test(o.key ?? "")) fail("The key must be a 0x-prefixed 64-hex private key (ARENA_KEY). Use a fresh key that holds nothing of value.", "BadKey");
     if (o.address != null && !isAddress(o.address)) fail(`"${o.address}" isn't a contract address.`, "BadAddress");
     this.account = privateKeyToAccount(o.key);
     this.address = this.account.address;
@@ -140,7 +140,7 @@ export class CallbookClient {
         registry: this.opts.validationRegistry, validator: this.opts.validator,
       });
     } catch {
-      fail(`Callbook isn't deployed on ${NETWORK_LABEL[this.network]} yet (no deployments/callbook-${this.network}.json). Set CALLBOOK_ADDRESS to its address.`, "NoDeployment");
+      fail(`Arena isn't deployed on ${NETWORK_LABEL[this.network]} yet (no deployments/callbook-${this.network}.json). Set ARENA_ADDRESS to its address.`, "NoDeployment");
     }
     const publicClient = this.opts.publicClient ?? clientFor(net);
     const wallet = createWalletClient({ account: this.account, chain: net.chain, transport: http(net.rpc) });
@@ -250,7 +250,7 @@ export class CallbookClient {
   notMine(book, verb) {
     const asCaller = book.caller === this.me && !this.allowed.has(book.id);
     fail(asCaller
-      ? `Book ${book.id} belongs to ${book.owner} and only names this key as its caller. To ${verb} in it anyway, list it in \`books\` (CALLBOOK_BOOKS).`
+      ? `Book ${book.id} belongs to ${book.owner} and only names this key as its caller. To ${verb} in it anyway, list it in \`books\` (ARENA_BOOKS).`
       : `This key can't ${verb} in book ${book.id}: it's neither its owner nor an allowed caller.`, "NotCaller");
   }
 
@@ -277,7 +277,7 @@ export class CallbookClient {
       if (strict) throw err;
       return raw.toUpperCase();
     }
-    if (!found) fail(`Hyperliquid has no perp called "${raw}". Ask callbook_markets for the list.`, "UnknownCoin");
+    if (!found) fail(`Hyperliquid has no perp called "${raw}". Ask arena_markets for the list.`, "UnknownCoin");
     return found;
   }
 
@@ -498,7 +498,7 @@ export class CallbookClient {
     }
     // The lock in this transaction must be this call: a relay can't hand back someone else's.
     const ev = this.events(receipt, "Locked").map((l) => l.args).find((a) => same(a.callHash, hash));
-    if (!ev) fail(`The transaction ${receipt.transactionHash} doesn't lock this call, so it wasn't recorded. Check CALLBOOK_RELAY_URL.`, "BadRelay");
+    if (!ev) fail(`The transaction ${receipt.transactionHash} doesn't lock this call, so it wasn't recorded. Check ARENA_RELAY_URL.`, "BadRelay");
     const opened = this.events(receipt, "OpenedFree").length > 0;
     return this.locked({ book: Number(ev.bookId), ev, coin, side: s, horizon: h, receipt, gasless, nonce: Number(nonce), opened });
   }
@@ -711,7 +711,7 @@ export class CallbookClient {
 
   /**
    * Rebuild a book's score from chain events and public prices, and compare
-   * it with the latest ERC-8004 validation response (as `npm run callbook:verify` does).
+   * it with the latest ERC-8004 validation response (as `npm run arena:verify` does).
    */
   async verify({ book: bookId } = {}) {
     const id = Number(bookId);

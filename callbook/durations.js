@@ -1,5 +1,5 @@
 /**
- * Human-friendly durations for Callbook: "15m", "1h", "4h", "1d", "7d".
+ * Human-friendly durations for Arena: "15m", "1h", "4h", "1d", "7d".
  *
  * An open call's horizon is any whole number of minutes from 5 minutes to
  * 30 days (within its book's range). It is public from the moment of the lock,

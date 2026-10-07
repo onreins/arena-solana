@@ -1,4 +1,4 @@
-/* One Callbook book (?b=<id>), from GET /api/callbook/book/:id or its static
+/* One Arena book (?b=<id>), from GET /api/callbook/book/:id or its static
    file: who keeps it, its latest ERC-8004 validation, its numbers, its record
    against the drawdown limit, the challenge, and every period on the tape. */
 (function () {
@@ -17,7 +17,7 @@
   function coinList(c) { c = c || []; return c.slice(0, 4).join(", ") + (c.length > 4 ? " and " + (c.length - 4) + " more" : ""); }
   function header(b) {
     var W = C.where(B);
-    document.title = C.nameOf(b) + " · Callbook · Reins";
+    document.title = C.nameOf(b) + " · Arena · Reins";
     $("crumb").textContent = C.nameOf(b);
     $("name").innerHTML = U.coins(b.coins) + '<span id="name-t">' + esc(C.nameOf(b)) + "</span>";
     var base = !!(b.baseline || b.control) || /^a control\b/i.test(b.description || "");
@@ -44,7 +44,7 @@
   function validation(b) {
     var v = b.validation, W = C.where(B), sc = C.scoreOf(b);
     if (!C.isNum(sc)) {
-      $("val").innerHTML = '<div class="cbk-stampcol"><div class="cbk-stampw">' + C.seal("cbk-stamp idle", "CALLBOOK · ERC-8004 · AWAITING SCORE · ") + '</div><figcaption><b>Not scored yet</b><span>The first score is posted to ERC-8004 after a full day of calls.</span></figcaption></div>' + C.skillPanel(b.skill);
+      $("val").innerHTML = '<div class="cbk-stampcol"><div class="cbk-stampw">' + C.seal("cbk-stamp idle", "ARENA · ERC-8004 · AWAITING SCORE · ") + '</div><figcaption><b>Not scored yet</b><span>The first score is posted to ERC-8004 after a full day of calls.</span></figcaption></div>' + C.skillPanel(b.skill);
       return;
     }
     var s = Math.max(0, Math.min(100, sc)), r = 30, c = 2 * Math.PI * r, why = C.scoreWhy(b);
@@ -284,7 +284,7 @@
 
   // ------------------------------------------------------------- report
   function report(b) {
-    var r = b.report || {}, v = b.validation, cmd = "npm run callbook:verify -- " + b.id;
+    var r = b.report || {}, v = b.validation, cmd = "npm run arena:verify -- " + b.id;
     var row = function (k, val) { return "<div><dt>" + esc(k) + "</dt><dd>" + val + "</dd></div>"; };
     $("report").innerHTML =
       row("Report hash", r.hash ? '<span class="cb-hash">' + esc(C.shortHash(r.hash, 12, 8)) + "</span>" + C.copyButton(r.hash, "Copy the report hash") : '<span class="muted">—</span>') +
@@ -294,7 +294,7 @@
         "<small>the validation request this score answers" + (b.request.validator ? ", validator " + esc(U.short(b.request.validator)) : "") + "</small>") : "") +
       (r.uri && !C.isHttp(r.uri) ? row("Report URI", '<span class="cb-hash cbk-uri">' + esc(r.uri) + "</span>") : "") +
       row("Prices and costs", "Hyperliquid candle open at the period start and at start + horizon<small>less " + esc(C.costsText(r.costs)) + (r.costs ? " (" + esc(r.costs) + ")" : "") + "</small>") +
-      row("Rules", '<span class="mono">' + esc(r.version || "callbook-v1") + "</span><small>" + esc(r.scoring || "Vanta Network rules (MIT)") + "</small>") +
+      row("Rules", '<span class="mono">' + esc(r.version || "arena-v1") + "</span><small>" + esc(r.scoring || "Vanta Network rules (MIT)") + "</small>") +
       row("Re-check it", '<code class="cbk-cmd">' + esc(cmd) + "</code>" + C.copyButton(cmd, "Copy the command") + "<small>Rebuilds this score from the chain’s events and real prices. No keys needed.</small>");
   }
 
@@ -324,7 +324,7 @@
     });
   }).catch(function (err) {
     $("name").innerHTML = '<span id="name-t">Book not found</span>';
-    $("meta").innerHTML = esc(err.message || "") + ' <a href="/callbook">Back to all books</a>';
+    $("meta").innerHTML = esc(err.message || "") + ' <a href="/arena">Back to all books</a>';
     $("tags").innerHTML = "";
     ["stats", "bars", "report"].forEach(function (k) { $(k).innerHTML = ""; });
     $("plot").innerHTML = "";

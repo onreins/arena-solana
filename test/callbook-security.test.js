@@ -1,5 +1,5 @@
 /**
- * The fixes from the Callbook security review, one test (or more) each:
+ * The fixes from the Arena security review, one test (or more) each:
  *
  *   H1  the runner acts only on books owned by our owner and in our record
  *   H2  relayer: see test/callbook-callers.test.js; IP buckets and counters here
@@ -116,7 +116,7 @@ describe("H5/M6: network config", () => {
   test("off local, a missing or invalid validator turns validations off", () => {
     const net = callbookNetwork({ CALLBOOK_NETWORK: "testnet", CALLBOOK_ADDRESS: ADDR, CALLBOOK_FROM_BLOCK: "100" });
     assert.equal(net.registry, null);
-    assert.match(net.validationOff, /CALLBOOK_VALIDATOR/);
+    assert.match(net.validationOff, /ARENA_VALIDATOR/);
     const bad = callbookNetwork({ CALLBOOK_NETWORK: "testnet", CALLBOOK_ADDRESS: ADDR, CALLBOOK_FROM_BLOCK: "100", CALLBOOK_VALIDATOR: "0x123" });
     assert.equal(bad.registry, null);
     const good = callbookNetwork({ CALLBOOK_NETWORK: "testnet", CALLBOOK_ADDRESS: ADDR, CALLBOOK_FROM_BLOCK: "100", CALLBOOK_VALIDATOR: OWNER });
@@ -270,16 +270,16 @@ describe("M3: publishing", () => {
     const unrated = { ...evOf(2), scored: { score: { value: 7 }, skill: { score: null, level: "unrated" } } };
     const out = await publishScores({ chain, evaluated: [withSkill, unrated], wallet: tagged, publicClient, registry: "0x02", validator: OWNER, now: T0, allow: new Set([1, 2]) });
     // Skill first, so the registry's latest answer is the track record score.
-    assert.deepEqual(out.map((r) => [r.bookId, r.tag, r.score]), [[1, "callbook-skill-v1", 41], [1, "callbook-v1", 5], [2, "callbook-v1", 7]]);
-    assert.deepEqual(args.map((a) => [a[0], a[1], a[4]]), [["0xr1", 41, "callbook-skill-v1"], ["0xr1", 5, "callbook-v1"], ["0xr2", 7, "callbook-v1"]]);
+    assert.deepEqual(out.map((r) => [r.bookId, r.tag, r.score]), [[1, "arena-skill-v1", 41], [1, "arena-v1", 5], [2, "arena-v1", 7]]);
+    assert.deepEqual(args.map((a) => [a[0], a[1], a[4]]), [["0xr1", 41, "arena-skill-v1"], ["0xr1", 5, "arena-v1"], ["0xr2", 7, "arena-v1"]]);
 
     // Read back: each tag has its own latest answer.
     chain.validation.responses.set("0xr1", [
-      { score: 5, tag: "callbook-v1", at: T0, responseHash: "0xa" },
-      { score: 41, tag: "callbook-skill-v1", at: T0, responseHash: "0xa" },
+      { score: 5, tag: "arena-v1", at: T0, responseHash: "0xa" },
+      { score: 41, tag: "arena-skill-v1", at: T0, responseHash: "0xa" },
     ]);
     assert.equal(latestResponse(chain, "0xr1").score, 5, "the track record score by default, not the later skill answer");
-    assert.equal(latestResponse(chain, "0xr1", "callbook-skill-v1").score, 41);
+    assert.equal(latestResponse(chain, "0xr1", "arena-skill-v1").score, 41);
     assert.equal(latestResponse(chain, "0xr1", "someone-else"), null);
   });
 

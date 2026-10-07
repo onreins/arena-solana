@@ -39,19 +39,19 @@ const hot = { ...AGENTS.find((a) => a.key === "hot"), description: "Goes long th
 
 describe("names and requests", () => {
   test("a slug is the strategy id's name part", () => {
-    assert.equal(slugOf("reins/callbook/hot-list/v1"), "hot-list");
-    assert.equal(slugOf("reins/callbook/coin-flip/v1"), "coin-flip");
+    assert.equal(slugOf("reins/arena/hot-list/v1"), "hot-list");
+    assert.equal(slugOf("reins/arena/coin-flip/v1"), "coin-flip");
     assert.deepEqual(AGENTS.map((a) => slugOf(a.strategy)), ["hot-list", "cold-list", "coin-flip"]);
   });
 
-  test("agent URIs live under /callbook/agents, whatever the base's trailing slash", () => {
-    assert.equal(agentUriFor(BASE, "hot-list"), "https://app.reins.one/callbook/agents/hot-list.json");
-    assert.equal(agentUriFor(`${BASE}/`, "hot-list"), "https://app.reins.one/callbook/agents/hot-list.json");
+  test("agent URIs live under /arena/agents, whatever the base's trailing slash", () => {
+    assert.equal(agentUriFor(BASE, "hot-list"), "https://app.reins.one/arena/agents/hot-list.json");
+    assert.equal(agentUriFor(`${BASE}/`, "hot-list"), "https://app.reins.one/arena/agents/hot-list.json");
   });
 
   test("a book's request is a data: URI of the canonical descriptor and its keccak256", () => {
     const r = requestForBook({ chainId: 5042, callbook: CALLBOOK, bookId: 7 });
-    assert.equal(r.descriptor, `{"bookId":"7","callbook":"${CALLBOOK.toLowerCase()}","chainId":5042,"scoring":"callbook-v1"}`);
+    assert.equal(r.descriptor, `{"bookId":"7","callbook":"${CALLBOOK.toLowerCase()}","chainId":5042,"scoring":"arena-v1"}`);
     assert.equal(r.requestHash, keccak256(toBytes(r.descriptor)));
     assert.equal(r.requestURI, `data:application/json;base64,${Buffer.from(r.descriptor).toString("base64")}`);
     assert.deepEqual(parseValidationRequest(r.requestURI, r.requestHash), { chainId: 5042, callbook: CALLBOOK.toLowerCase(), bookId: 7 });
@@ -78,10 +78,10 @@ describe("registration file", () => {
   test("has the ERC-8004 registration-v1 shape before any registration", () => {
     const f = registrationFile({ agent: hot, base: BASE });
     assert.equal(f.type, REGISTRATION_TYPE);
-    assert.equal(f.name, "Callbook: Hot list");
+    assert.equal(f.name, "Arena: Hot list");
     assert.match(f.description, /^Goes long the hottest coin\. /);
     assert.equal(f.image, "https://app.reins.one/favicon.svg");
-    assert.deepEqual(f.services[0], { name: "web", endpoint: "https://app.reins.one/callbook" });
+    assert.deepEqual(f.services[0], { name: "web", endpoint: "https://app.reins.one/arena" });
     assert.equal(f.services[1].name, "MCP");
     assert.equal(f.active, true);
     assert.equal(f.x402Support, false);
@@ -96,14 +96,14 @@ describe("registration file", () => {
       { agentId: 1413, agentRegistry: `eip155:5042:${MAIN_ID}` },
       { agentId: 12, agentRegistry: `eip155:5042002:${TEST_ID}` },
     ]);
-    assert.equal(f.services[0].endpoint, "https://app.reins.one/callbook-book?b=1");
-    assert.equal(f.callbook.books.find((b) => b.chainId === 5042).page, "https://app.reins.one/callbook-book?b=1");
+    assert.equal(f.services[0].endpoint, "https://app.reins.one/arena-bot?b=1");
+    assert.equal(f.callbook.books.find((b) => b.chainId === 5042).page, "https://app.reins.one/arena-bot?b=1");
     assert.equal(f.callbook.books.find((b) => b.chainId === 5042002).page, null);
   });
 
   test("falls back to the testnet book while there is no mainnet one", () => {
     const f = registrationFile({ agent: hot, base: BASE, books: [testnetBook] });
-    assert.equal(f.services[0].endpoint, "https://app.reins.one/callbook-book?b=3");
+    assert.equal(f.services[0].endpoint, "https://app.reins.one/arena-bot?b=3");
   });
 
   test("a rewrite for one network keeps the other network's book", () => {
@@ -197,7 +197,7 @@ describe("configuration", () => {
     assert.equal(cfg.owner, A);
     assert.equal(cfg.dryRun, true);
     assert.match(cfg.books, /callbook-testnet-books\.json$/);
-    assert.match(cfg.cardsDir, /app[\\/]public[\\/]callbook[\\/]agents$/);
+    assert.match(cfg.cardsDir, /app[\\/]public[\\/]arena[\\/]agents$/);
   });
 
   test("the owner comes from the key, never printed; shared roles are refused", () => {
@@ -246,7 +246,7 @@ before(async () => {
   }
 });
 
-/** Fresh registries and Callbook, and a setup config pointing at them with files in a temp dir. */
+/** Fresh registries and Arena, and a setup config pointing at them with files in a temp dir. */
 async function freshSetup({ caller = acct(2).address, dryRun = false } = {}) {
   const dir = mkdtempSync(path.join(tmpdir(), "callbook-setup-"));
   const deployment = path.join(dir, "callbook-local.json");
@@ -332,7 +332,7 @@ test("writeCards rebuilds the files from records of both networks", () => {
   writeCards({ cardsDir: dir, base: BASE, mcpUrl: "https://example.org/mcp", records: [rec(5042, MAIN_ID, B, 1413)] });
   const flip = JSON.parse(readFileSync(path.join(dir, "coin-flip.json"), "utf8"));
   assert.deepEqual(flip.registrations.map((r) => r.agentId), [1415, 102]);
-  assert.equal(flip.services[0].endpoint, "https://app.reins.one/callbook-book?b=3");
+  assert.equal(flip.services[0].endpoint, "https://app.reins.one/arena-bot?b=3");
   assert.equal(flip.services[1].endpoint, "https://example.org/mcp");
   assert.match(flip.description, /control/);
 });

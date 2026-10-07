@@ -1,5 +1,5 @@
 /**
- * Names for Callbook books. A book on chain carries only a strategy hash; the
+ * Names for Arena books. A book on chain carries only a strategy hash; the
  * names and descriptions live here, off-chain, keyed by that hash (or, for a
  * book someone else runs, by `${chainId}:${callbook}:${bookId}`).
  *
@@ -12,19 +12,19 @@ export const strategyHashOf = (id) => keccak256(toHex(id));
 
 /** Our own agents' strategies, by id. runner/callbook-agents.js implements them. */
 export const OUR_STRATEGIES = {
-  "reins/callbook/hot-list/v1": {
+  "reins/arena/hot-list/v1": {
     key: "hot",
     name: "Hot list",
     description:
       "Goes long the top coin on the Charts hot list (trend, flow and risk over the last day), or stays flat when no coin qualifies.",
   },
-  "reins/callbook/cold-list/v1": {
+  "reins/arena/cold-list/v1": {
     key: "cold",
     name: "Cold list",
     description:
       "Shorts the coldest coin on the Charts list (the same thesis, read the other way), or stays flat when no coin is cold.",
   },
-  "reins/callbook/coin-flip/v1": {
+  "reins/arena/coin-flip/v1": {
     key: "flip",
     name: "Coin flip",
     baseline: true,

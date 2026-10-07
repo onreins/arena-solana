@@ -48,7 +48,8 @@
     "build:onramp": "esbuild scripts/onramp-client.js --bundle --format=iife --global-name=CircleOnramp --platform=browser --target=es2019 --minify --legal-comments=eof --outfile=app/public/vendor/onramp-kit.js",
     "build:charts": "esbuild scripts/vela-client.js --bundle --format=iife --global-name=ReinsVela --platform=browser --target=es2020 --minify --legal-comments=eof --outfile=app/public/vendor/vela-workspace.js \"--banner:js=/*! Vela charting library, Copyright (c) 2026 LuxAlgo, https://velacharts.dev. Licensed under the Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0 */\"",
     "build:site-chart": "esbuild scripts/vela-site.js --bundle --format=iife --global-name=ReinsChart --platform=browser --target=es2020 --minify --legal-comments=eof \"--banner:js=/*! Vela charting library, Copyright (c) 2026 LuxAlgo, https://velacharts.dev. Licensed under the Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0 */\" --outfile=site/vendor/vela-chart.js",
-    "build:reins-mcp": "node scripts/build-reins-mcp.mjs"
+    "build:reins-mcp": "node scripts/build-reins-mcp.mjs",
+    "arena:verify": "node --env-file-if-exists=.env scripts/callbook-verify.js"
   },
   "license": "MIT",
   "description": "A neutral evaluator for ERC-8183 agent jobs on Arc, built on a metered code sandbox.",

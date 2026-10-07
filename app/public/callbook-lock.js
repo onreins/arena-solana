@@ -1,7 +1,7 @@
-/* Lock a call from the Callbook tab: coin, up or down, how long, one button.
+/* Lock a call from the Arena tab: coin, up or down, how long, one button.
  *
  * The flow (live mode only): connect the wallet, read the account's nonce from
- * the Callbook contract, sign a fixed message to make the salt (see
+ * the Arena contract, sign a fixed message to make the salt (see
  * app/client/callbook-crypto.js for why that's recoverable), hash the call
  * exactly as Callbook.symbolCallHashOf, sign LockCall (EIP-712, with the
  * horizon in the clear), and hand both to POST /api/callbook/relay/lock, which
@@ -150,7 +150,7 @@
     var mine = locks().filter(here);
     if (!mine.length) return;
     $("lock-mine").hidden = false;
-    $("lock-mine").href = "/callbook-caller?c=" + encodeURIComponent(mine[mine.length - 1].bookId);
+    $("lock-mine").href = "/arena-caller?c=" + encodeURIComponent(mine[mine.length - 1].bookId);
   }
 
   // ------------------------------------------------------------- the wallet
@@ -183,7 +183,7 @@
     try { out = await res.json(); } catch (e) { /* not json */ }
     return { status: res.status, ok: res.ok, body: out || {} };
   }
-  var NOT_LIVE = "Locking opens when Callbook is live on Arc. This is a preview: nothing was signed or sent.";
+  var NOT_LIVE = "Locking opens when Arena is live on Arc. This is a preview: nothing was signed or sent.";
   function explain(err) {
     if (err && err.code === 4001) return "You declined in your wallet, so nothing was locked.";
     return esc((err && (err.shortMessage || err.message)) || "Something went wrong. Nothing was locked.");
@@ -217,7 +217,7 @@
       var e = Number(r.body.entryAt) || entryAt();
       remember({ chainId: Number(D.chainId), callbook: String(D.contract).toLowerCase(), account: account, bookId: String(r.body.bookId), callId: Number(r.body.callId),
         nonce: Number(r.body.nonce != null ? r.body.nonce : nonce), coin: call.coin, side: call.side, horizon: call.horizon, salt: salt, entryAt: e, lockedAt: Math.floor(Date.now() / 1000), revealed: false });
-      var href = "/callbook-caller?c=" + encodeURIComponent(r.body.bookId);
+      var href = "/arena-caller?c=" + encodeURIComponent(r.body.bookId);
       say("<b>Locked ✓</b> " + esc(call.coin) + " " + (call.side > 0 ? "up" : "down") + ", reveals " + esc(utc(e + call.horizon, call.horizon >= 86400)) +
         '. <a href="' + esc(href) + '">See your record →</a>', "ok");
       showMine();
@@ -310,7 +310,7 @@
 
   C.loadIndex().then(function (d) {
     D = d;
-    if (D.mode !== "live") $("lock-btn").title = "A preview until Callbook is live on Arc";
+    if (D.mode !== "live") $("lock-btn").title = "A preview until Arena is live on Arc";
     showMine();
     revealDue();
   }).catch(function () { /* the board shows the load error */ });

@@ -2,7 +2,7 @@
  * Re-check a Callbook score from scratch: chain events and Hyperliquid
  * prices, no keys, no trust in Reins.
  *
- *   npm run callbook:verify -- <bookId> [--network local|testnet|mainnet] [--address 0x…]
+ *   npm run arena:verify -- <bookId> [--network local|testnet|mainnet] [--address 0x…]
  *                                       [--rpc URL] [--from-block N] [--registry 0x…] [--validator 0x…]
  *
  * It rebuilds every period of the book, the metrics, the 0–100 score and the
@@ -29,7 +29,7 @@ const fail = (m) => {
   process.exit(1);
 };
 
-const USAGE = "usage: npm run callbook:verify -- <bookId> [--network local|testnet|mainnet] [--address 0x…] [--rpc URL] [--from-block N] [--registry 0x…] [--validator 0x…]\n" +
+const USAGE = "usage: npm run arena:verify -- <bookId> [--network local|testnet|mainnet] [--address 0x…] [--rpc URL] [--from-block N] [--registry 0x…] [--validator 0x…]\n" +
   "  off local: --validator is required, and --from-block unless the deployment record has the deploy block";
 const argv = process.argv.slice(2);
 const positional = argv.filter((a, i) => /^\d+$/.test(a) && !String(argv[i - 1] ?? "").startsWith("--"));

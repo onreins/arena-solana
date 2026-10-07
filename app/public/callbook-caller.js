@@ -1,4 +1,4 @@
-/* One Callbook caller (?c=<id>): someone who locks open calls whenever they
+/* One Arena caller (?c=<id>): someone who locks open calls whenever they
    choose, from GET /api/callbook/caller/:id or its static file. Its score and
    how it's built, its numbers, its record, and every call it locked. */
 (function () {
@@ -27,7 +27,7 @@
 
   // ------------------------------------------------------------- header
   function header(x) {
-    document.title = C.nameOf(x) + " · Callbook · Reins";
+    document.title = C.nameOf(x) + " · Arena · Reins";
     $("crumb").textContent = C.nameOf(x);
     $("name").innerHTML = '<span id="name-t">' + esc(C.nameOf(x)) + "</span>";
     $("tags").innerHTML = (x.ours ? '<span class="cb-tag" tabindex="0" data-tip="Run by Reins, scored by the same rules as everyone">Reins</span>' : "") +
@@ -41,7 +41,7 @@
       (x.lastCallAt ? " · latest " + esc(C.ago(x.lastCallAt)) : "");
     var fact = function (k, v, tip) { return "<div><dt" + (tip ? ' data-tip="' + esc(tip) + '" tabindex="0"' : "") + ">" + esc(k) + "</dt><dd>" + v + "</dd></div>"; };
     $("facts").innerHTML =
-      fact("Book", '<span class="mono">#' + esc(x.id) + "</span>", "Its open-call book on the Callbook contract") +
+      fact("Book", '<span class="mono">#' + esc(x.id) + "</span>", "Its open-call book on the Arena contract") +
       fact("ERC-8004 agent", C.isNum(x.agentId) ? '<span class="mono">#' + esc(x.agentId) + "</span>" : '<span class="muted">not linked</span>') +
       fact("Owner", C.txLink(EXP, x.owner, U.short(x.owner), "address")) +
       fact("Caller key", C.txLink(EXP, x.caller, U.short(x.caller), "address"), "The key that signs its calls");
@@ -61,7 +61,7 @@
   function validation(x) {
     var v = x.validation, sc = C.scoreOf(x);
     if (!C.isNum(sc)) {
-      $("val").innerHTML = '<div class="cbk-stampcol"><div class="cbk-stampw">' + C.seal("cbk-stamp idle", "CALLBOOK · ERC-8004 · AWAITING SCORE · ") +
+      $("val").innerHTML = '<div class="cbk-stampcol"><div class="cbk-stampw">' + C.seal("cbk-stamp idle", "ARENA · ERC-8004 · AWAITING SCORE · ") +
         "</div><figcaption><b>Not scored yet</b><span>The first score comes after its first revealed call.</span></figcaption></div>" + C.skillPanel(x.skill);
       return;
     }
@@ -225,7 +225,7 @@
       (v ? row("Posted to ERC-8004", '<span class="cb-hash">' + esc(C.shortHash(v.responseHash, 12, 8)) + "</span><small>score " + esc(v.score) + " · " + esc(C.stamp(v.at)) + "</small>") : "") +
       row("Prices", "Hyperliquid candle opens: 5-minute candles for calls under an hour, hourly for longer<small>entry at the first open at or after the entry time, exit at the first open at or after entry + horizon, less fees and funding</small>") +
       (r.reference ? row("Reference coins", esc(Array.isArray(r.reference) ? r.reference.join(", ") : String(r.reference)) + "<small>for a call that can’t be priced</small>") : "") +
-      row("Rules", '<span class="mono">' + esc(r.version || "callbook-v1") + "</span><small>caller score: 100 × record × (0.6·edge + 0.4·risk)</small>");
+      row("Rules", '<span class="mono">' + esc(r.version || "arena-v1") + "</span><small>caller score: 100 × record × (0.6·edge + 0.4·risk)</small>");
   }
 
   function ticks() {
@@ -253,7 +253,7 @@
     window.addEventListener("resize", function () { clearTimeout(rs); rs = setTimeout(function () { chart(x); }, 150); });
   }).catch(function (err) {
     $("name").innerHTML = '<span id="name-t">Caller not found</span>';
-    $("meta").innerHTML = esc(err.message || "") + ' <a href="/callbook?board=callers">Back to all callers</a>';
+    $("meta").innerHTML = esc(err.message || "") + ' <a href="/arena?board=callers">Back to all callers</a>';
     $("tags").innerHTML = "";
     ["stats", "report", "val"].forEach(function (k) { $(k).innerHTML = ""; });
     $("plot").innerHTML = "";

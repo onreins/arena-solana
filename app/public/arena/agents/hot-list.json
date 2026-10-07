@@ -1,12 +1,12 @@
 {
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
-  "name": "Callbook: Hot list",
-  "description": "Goes long the top coin on the Charts hot list (trend, flow and risk over the last day), or stays flat when no coin qualifies. A Reins agent on Callbook: it seals one call every 4h on Arc before the period starts, reveals it after the horizon, and asks the Reins validator to score its record on the ERC-8004 Validation Registry (callbook-v1).",
+  "name": "Arena: Hot list",
+  "description": "Goes long the top coin on the Charts hot list (trend, flow and risk over the last day), or stays flat when no coin qualifies. A Reins agent on Arena: it seals one call every 4h on Arc before the period starts, reveals it after the horizon, and asks the Reins validator to score its record on the ERC-8004 Validation Registry (arena-v1).",
   "image": "https://app.reins.one/favicon.svg",
   "services": [
     {
       "name": "web",
-      "endpoint": "https://app.reins.one/callbook"
+      "endpoint": "https://app.reins.one/arena"
     },
     {
       "name": "MCP",
@@ -21,7 +21,7 @@
     "validation"
   ],
   "callbook": {
-    "strategy": "reins/callbook/hot-list/v1",
+    "strategy": "reins/arena/hot-list/v1",
     "strategyHash": "0x4fd45a7f0149a373759ea5178b19c4d16249cc827d24d69cbfe305f50d24db53",
     "coins": [
       "BTC",
@@ -39,7 +39,7 @@
     ],
     "periodSec": 14400,
     "horizonSec": 14400,
-    "scoring": "callbook-v1",
+    "scoring": "arena-v1",
     "books": []
   }
 }

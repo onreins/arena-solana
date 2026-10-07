@@ -62,14 +62,25 @@ export function ourBooksFrom({ record, owner, callbook }) {
   };
 }
 
+/**
+ * Arena's settings under their current names: every ARENA_X is read as
+ * CALLBOOK_X (Arena was called Callbook; the old names keep working).
+ */
+export function arenaEnv(env = process.env) {
+  const out = { ...env };
+  for (const [k, v] of Object.entries(env)) if (k.startsWith("ARENA_") && v !== undefined && v !== "") out[`CALLBOOK_${k.slice(6)}`] = v;
+  return out;
+}
+
 /** The configured network, or null when Callbook isn't configured. Throws on a half-configured one. */
-export function callbookNetwork(env = process.env, over = {}) {
+export function callbookNetwork(rawEnv = process.env, over = {}) {
+  const env = arenaEnv(rawEnv);
   const name = over.network ?? env.CALLBOOK_NETWORK;
   if (!name) return null;
   // The published MCP package carries the deployments in its bundle (scripts/build-reins-mcp.mjs).
   const saved = readJson(path.join(ROOT, "deployments", `callbook-${name}.json`)) ?? globalThis.__CALLBOOK_DEPLOYMENTS__?.[name] ?? null;
   const address = over.address ?? env.CALLBOOK_ADDRESS ?? saved?.contracts?.callbook;
-  if (!address || !isAddress(address)) throw new Error(`no Callbook address for ${name}: set CALLBOOK_ADDRESS`);
+  if (!address || !isAddress(address)) throw new Error(`no Arena address for ${name}: set ARENA_ADDRESS`);
 
   let chain, registry, explorer, label;
   const rpcEnv = over.rpc ?? env.CALLBOOK_RPC;
@@ -81,24 +92,24 @@ export function callbookNetwork(env = process.env, over = {}) {
     chain = localChain(rpcEnv ?? env.RATCHET_RPC ?? "http://127.0.0.1:8545");
     registry = null; explorer = null; label = "Local chain";
   } else {
-    throw new Error("CALLBOOK_NETWORK must be local, testnet or mainnet");
+    throw new Error("ARENA_NETWORK must be local, testnet or mainnet");
   }
   const local = name === "local";
   const fromBlock = BigInt(over.fromBlock ?? env.CALLBOOK_FROM_BLOCK ?? saved?.fromBlock ?? 0);
-  if (!local && fromBlock <= 0n) throw new Error(`set CALLBOOK_FROM_BLOCK (the Callbook deploy block) for ${name}; a scan from genesis is refused`);
+  if (!local && fromBlock <= 0n) throw new Error(`set ARENA_FROM_BLOCK (the Arena deploy block) for ${name}; a scan from genesis is refused`);
 
   registry = over.registry ?? env.CALLBOOK_VALIDATION_REGISTRY ?? registry;
   let validator = over.validator ?? env.CALLBOOK_VALIDATOR ?? saved?.validator ?? null; // the deployment record can name it (and ships in the MCP package)
   let validationOff = null;
   if (validator && !isAddress(validator)) validator = null;
   if (!local && registry && !validator) {
-    validationOff = "CALLBOOK_VALIDATOR is not set to a valid address, so validations are ignored";
+    validationOff = "ARENA_VALIDATOR is not set to a valid address, so validations are ignored";
     registry = null;
   }
 
   const booksFile = env.CALLBOOK_BOOKS_FILE ?? path.join(ROOT, "deployments", `callbook-${name}-books.json`);
   const ownerEnv = over.owner ?? env.CALLBOOK_OWNER;
-  if (ownerEnv && !isAddress(ownerEnv)) throw new Error("CALLBOOK_OWNER must be an address");
+  if (ownerEnv && !isAddress(ownerEnv)) throw new Error("ARENA_OWNER must be an address");
   const ours = ourBooksFrom({ record: readJson(booksFile), owner: ownerEnv, callbook: address });
 
   return {

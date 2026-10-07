@@ -26,7 +26,7 @@ const HOUR = 3_600;
 const DAY = 86_400;
 
 export const SKILL_RULES = Object.freeze({
-  version: "callbook-skill-v1",
+  version: "arena-skill-v1",
   z: 1.645, // 90% two-sided range
   zeroAt: 0.5,
   fullAt: 0.65,

@@ -26,7 +26,7 @@ export const fail = (message, code, details) => {
 
 /** What each contract error means, given what we were doing (ctx: { action, bookId, round, now, network }). */
 const SENTENCES = {
-  BadConfig: () => "The Callbook contract was deployed with a bad configuration.",
+  BadConfig: () => "The Arena contract was deployed with a bad configuration.",
   UnknownBook: (a, c) => `There's no book ${a[0] ?? c.bookId} on ${c.network ?? "this network"}.`,
   NotBookOwner: (_, c) => `Only book ${c.bookId}'s owner can do that, and this key isn't it.`,
   NotCaller: (_, c) => `This key can't call in book ${c.bookId}: it's neither the book's owner nor its caller.`,

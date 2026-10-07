@@ -8,7 +8,7 @@ Ready to paste. Fill the `[…]` placeholders after the mainnet deploy
 
 ## Project name
 
-Callbook *(working name)*
+Arena
 
 ## One-liner
 
@@ -21,7 +21,7 @@ Every strategy product shows a track record, and most track records are
 backtests that can be produced with hindsight in seconds. The only record
 nobody can fake is one fixed before the outcome.
 
-Callbook gives trading agents that record on Arc. An agent opens a book (its
+Arena gives trading agents that record on Arc. An agent opens a book (its
 coins, its 4-hour period and horizon, and a hash of its strategy), then seals
 one call per period, long, short or flat, as a hash, before the period starts.
 After the horizon the call is revealed. A skipped period counts as a miss and
@@ -33,7 +33,7 @@ entry at the period start and exit at the horizon on Hyperliquid's public
 prices, with fees and real funding, then return against the market, drawdown
 and a t-statistic. The score (0 to 100) and the hash of a full report go to
 Arc's ERC-8004 ValidationRegistry. Anyone can rebuild any score from Arc
-events and public prices with `npm run callbook:verify`, with no keys and no
+events and public prices with `npm run arena:verify`, with no keys and no
 trust in us.
 
 ## What it uses Arc for
@@ -50,11 +50,11 @@ trust in us.
   be linked to an agent by that agent's owner or operator.
 - **ERC-8004 validation.** Each book's owner files one `validationRequest`
   naming our validator; the validator answers it daily with
-  `validationResponse(score, reportURI, reportHash, "callbook-v1")`. Checked
+  `validationResponse(score, reportURI, reportHash, "arena-v1")`. Checked
   read-only on 2026-10-05 (02:10 UTC, block 24,317,242) through the
   registry's own getters: Arc mainnet's ValidationRegistry (v2.0.0) has 1,413
   registered agents, one validation request (agent #193, filed 2026-09-24)
-  and no responses at all. Once live, Callbook would be the first validator
+  and no responses at all. Once live, Arena would be the first validator
   answering on Arc mainnet. *(Re-check before submitting:
   `node scripts/erc8004-stats.js --list`.)*
 
@@ -76,23 +76,23 @@ trust in us.
    edge the t-statistic of returns beyond the book's average market exposure,
    and risk staying inside a 10% drawdown with enough time in the market.
 5. **Publish.** The score goes to ERC-8004 with the report's URI and keccak256.
-6. **Re-check.** `npm run callbook:verify -- <bookId> --network mainnet`
+6. **Re-check.** `npm run arena:verify -- <bookId> --network mainnet`
    rebuilds the exact report and compares hashes.
 
 ## What's live
 
 | | |
 |---|---|
-| Callbook contract (Arc mainnet) | [`0x…`](https://explorer.arc.io/address/0x…) |
+| Arena contract (Arc mainnet) | [`0x…`](https://explorer.arc.io/address/0x…) |
 | Deploy transaction | [`0x…`](https://explorer.arc.io/tx/0x…) |
 | Our agents (ERC-8004 ids) | Hot list #[…], Cold list #[…], Coin flip #[…] |
 | Their books | #[…], #[…], #[…] |
 | Validation requests | [tx], [tx], [tx] |
 | First validation response | [tx] on [date] |
 | Validator address | [`0x…`](https://explorer.arc.io/address/0x…) |
-| Callbook page | https://app.reins.one/callbook |
-| Registration files | https://app.reins.one/callbook/agents/hot-list.json (and cold-list, coin-flip) |
-| Testnet run (rehearsal) | Callbook [`0x…`](https://explorer.testnet.arc.io/address/0x…) |
+| Arena page | https://app.reins.one/arena |
+| Registration files | https://app.reins.one/arena/agents/hot-list.json (and cold-list, coin-flip) |
+| Testnet run (rehearsal) | Arena [`0x…`](https://explorer.testnet.arc.io/address/0x…) |
 
 ## The honest result so far
 
@@ -112,7 +112,7 @@ All three of our own books score 0. None beat the market with any
 statistical confidence, all three broke the 10% drawdown limit, and 30 days
 is half of the 61-day record the score asks for. Hot list made money, but
 only by riding a rising market, which the score is built not to reward. We
-publish this because the point of Callbook is that a record can't be
+publish this because the point of Arena is that a record can't be
 dressed up, ours included.
 
 ## Roadmap
@@ -120,9 +120,9 @@ dressed up, ours included.
 - **Open calls**: people and agents lock single calls (coin, side, horizon)
   whenever they like, ranked separately from strategy books. Contract
   functions written and under test.
-- **MCP server for agents**: `callbook_open`, `callbook_seal`,
-  `callbook_lock`, `callbook_reveal_due`, `callbook_status`,
-  `callbook_verify`, so any MCP-speaking agent can keep a book without
+- **MCP server for agents**: `arena_open`, `arena_seal`,
+  `arena_lock`, `arena_reveal_due`, `arena_status`,
+  `arena_verify`, so any MCP-speaking agent can keep a book without
   writing chain code.
 - **x402 test fee**: a small USDC fee per scored test run, paid over x402
   through Circle Gateway; one public counter of all test runs feeds a
@@ -134,7 +134,7 @@ dressed up, ours included.
 ## Links
 
 - Repository: https://github.com/onreins/reinsApp
-- App: https://app.reins.one/callbook
+- App: https://app.reins.one/arena
 - How it works in detail: `docs/CALLBOOK.md` in the repo
 - Demo video: [link]
 

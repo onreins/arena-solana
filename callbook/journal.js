@@ -4,7 +4,7 @@
  * requirement: every call can also be recovered from its hash with the salt
  * secret (callbook/proof.js), and recovered calls are written back here.
  *
- * One JSON file per key, default ~/.callbook/<address>.json, written
+ * One JSON file per key, default ~/.arena/<address>.json, written
  * atomically with owner-only permissions. It holds no keys and no salts, only
  * what will be public at reveal anyway; until then it does say which way your
  * open calls go, so keep it private.
@@ -13,7 +13,7 @@ import { mkdirSync, readFileSync, writeFileSync, renameSync, existsSync } from "
 import { homedir } from "node:os";
 import path from "node:path";
 
-export const defaultJournalPath = (address) => path.join(homedir(), ".callbook", `${String(address).toLowerCase()}.json`);
+export const defaultJournalPath = (address) => path.join(homedir(), ".arena", `${String(address).toLowerCase()}.json`);
 
 const slot = (e) => `${e.chainId}:${String(e.callbook).toLowerCase()}:${e.bookId}:${e.callId}`;
 
