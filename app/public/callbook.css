@@ -738,3 +738,38 @@ p.cb-agents-more { font-size: 13px !important; }
 @media (max-width: 760px) {
   .cbk-calls .c-hold { grid-column: 2; grid-row: 1; justify-self: end; align-self: start; display: none; }
 }
+
+/* ---------------------------------------------------------------- how it works, played
+   callbook-how.js adds .anim and plays the four steps in turn; without it (or with
+   reduced motion) the section is unchanged. */
+.cb-how .hm-panel-h { flex-wrap: wrap; row-gap: 8px; }
+.cb-how-ctl { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.cb-how-ctl .hm-dots { margin-top: 0; }
+.cb-how-pause { height: 26px; padding: 0 11px; border-radius: 999px; background: var(--chip); color: var(--ink-2); font: 500 12px var(--sans); transition: background-color .15s, color .15s; }
+.cb-how-pause:hover { background: var(--chip-2); color: var(--ink); }
+.cb-how.anim .cb-steps > li:not(.cb-prog) { cursor: pointer; opacity: .45; transition: opacity .5s ease, transform .5s cubic-bezier(.2, .7, .2, 1); }
+.cb-how.anim .cb-steps > li.done { opacity: .8; }
+.cb-how.anim .cb-steps > li.on { opacity: 1; transform: translateY(-3px); }
+.cb-how.anim .cb-steps code { transition: box-shadow .4s ease; }
+.cb-how.anim .cb-steps > li.on code { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16), 0 12px 30px -14px currentColor; }
+.cb-how.anim .cb-node { z-index: 1; }
+.cb-how.anim li.on .cb-node::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; border: 2px solid currentColor; animation: cb-ping 1.6s ease-out infinite; }
+@keyframes cb-ping { from { transform: scale(.7); opacity: .8; } to { transform: scale(1.9); opacity: 0; } }
+/* The bright line that fills along the timeline as the story moves on. */
+.cb-steps .cb-prog { position: absolute; left: 16px; right: 0; top: 6px; height: 2px; padding: 0; border-radius: 2px; pointer-events: none; opacity: 1;
+  background: linear-gradient(90deg, var(--seal), var(--rev) 40%, #e7ebff 65%, var(--green)); box-shadow: 0 0 10px rgba(130, 150, 255, .45);
+  transform-origin: left; transform: scaleX(var(--p, 0)); transition: transform 1s cubic-bezier(.2, .7, .2, 1); }
+/* The snippets' moments: the call blurs once locked, reappears on reveal, the match and the score pop in. */
+.cb-blur { display: inline-block; transition: filter .6s ease, opacity .6s ease; }
+.cb-blur.on { filter: blur(4px); opacity: .5; }
+.cb-type { display: inline-block; animation: cb-unblur .6s ease both; }
+.cb-pop { display: inline-block; animation: cb-pop .5s .7s cubic-bezier(.2, 1.4, .4, 1) both; }
+.cb-stamp-in { display: inline-block; animation: cb-stamp .55s .5s cubic-bezier(.2, 1.3, .4, 1) both; }
+@keyframes cb-unblur { from { filter: blur(6px); opacity: 0; } to { filter: none; opacity: 1; } }
+@keyframes cb-pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes cb-stamp { from { transform: scale(1.5) rotate(-4deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.cb-steps code b.neg { color: var(--red) !important; }
+@media (max-width: 900px) { .cb-steps .cb-prog { display: none; } }
+/* Steps (their nodes and the "4h · the market moves" label) sit above the progress line. */
+.cb-how.anim .cb-steps > li:not(.cb-prog) { position: relative; z-index: 1; }
+.cb-steps .cb-prog { z-index: 0; }
