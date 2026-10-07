@@ -14,6 +14,7 @@
 import { formatUnits, parseAbi, decodeEventLog } from "viem";
 
 import { artifact } from "../scripts/artifact.js";
+import { livePrice, redstoneFeedId } from "../mandate/redstone.js";
 
 const MANDATE = artifact("Mandate");
 const FACTORY = artifact("MandateFactory");
@@ -191,6 +192,15 @@ export class ArenaIndexer {
   async _value(token, amount) {
     if (token.isBase) return amount;
     if (!token.feed) return null;
+    // A RedStone feed only moves when someone pushes a price, so between
+    // trades it can lag. For showing a value, read RedStone's live price
+    // off-chain instead; the contract still checks every trade on-chain.
+    try {
+      const id = await redstoneFeedId(this.publicClient, token.feed);
+      if (id) return amount * (await livePrice(id)).usd;
+    } catch {
+      // RedStone unreachable: fall back to the price on-chain
+    }
     try {
       const [[, answer], decimals] = await Promise.all([
         this.publicClient.readContract({ address: token.feed, abi: FEED, functionName: "latestRoundData" }),
@@ -236,7 +246,13 @@ export class ArenaIndexer {
     );
 
     const usd = (v) => Number(formatUnits(v, base.decimals));
-    const equityUsd = equity === null ? null : usd(equity);
+    // Agents on a RedStone feed are valued at the live price (see _value), so
+    // their equity is the sum of their holdings, current to about 10 seconds.
+    // Others keep the contract's own equity, priced by their on-chain feed.
+    const fed = Object.values(tokens).filter((t) => t.feed);
+    const onRedStone = (await Promise.all(fed.map((t) => redstoneFeedId(this.publicClient, t.feed).catch(() => null)))).some(Boolean);
+    const liveTotal = holdings.every((h) => h.valueUsd != null) ? holdings.reduce((s, h) => s + h.valueUsd, 0) : null;
+    const equityUsd = onRedStone && liveTotal != null ? liveTotal : equity === null ? null : usd(equity);
     const baselineUsd = usd(baseline);
     return {
       ...entry,

@@ -33,13 +33,20 @@ const input = {
   },
 };
 
-/** Resolve library imports (e.g. "@openzeppelin/contracts/...") from node_modules. */
+/**
+ * Resolve library imports (e.g. "@redstone-finance/evm-connector/...") from
+ * node_modules. Some packages export no .sol paths, so require.resolve refuses
+ * them; read those straight from node_modules.
+ */
 function findImports(path) {
-  try {
-    return { contents: readFileSync(require.resolve(path), "utf8") };
-  } catch {
-    return { error: `import not found: ${path}` };
+  for (const file of [() => require.resolve(path), () => join(root, "node_modules", path)]) {
+    try {
+      return { contents: readFileSync(file(), "utf8") };
+    } catch {
+      // try the next way
+    }
   }
+  return { error: `import not found: ${path}` };
 }
 
 const output = JSON.parse(solc.compile(JSON.stringify(input), { import: findImports }));

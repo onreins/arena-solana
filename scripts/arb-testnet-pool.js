@@ -41,9 +41,10 @@ export function swapToTarget({ spot, target, liquidity }) {
 
 export async function arbitrage({ publicClient, wallet, deployment }) {
   const { usdc, eurc, stateView } = ARC_TESTNET;
-  const { uniswapV4Venue, pinnedFeed } = deployment.contracts;
+  // The live oracle new agents read (RedStone), or the pinned copy older ones read.
+  const { uniswapV4Venue, pinnedFeed, priceFeed } = deployment.contracts;
   const [sqrtPriceX96] = await publicClient.readContract({ address: stateView, abi: STATE_ABI, functionName: "getSlot0", args: [deployment.pool.poolId] });
-  const [, answer] = await publicClient.readContract({ address: pinnedFeed, abi: FEED.abi, functionName: "latestRoundData" });
+  const [, answer] = await publicClient.readContract({ address: priceFeed ?? pinnedFeed, abi: FEED.abi, functionName: "latestRoundData" });
   const spot = (Number(sqrtPriceX96) / Q96) ** 2;
   const target = 1 / (Number(answer) / 1e8);
   const { gapBps, swap } = swapToTarget({ spot, target, liquidity: Number(deployment.pool.liquidity) });

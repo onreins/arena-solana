@@ -31,6 +31,7 @@ import {
 import { arc, arcTestnet } from "viem/chains";
 
 import { artifact } from "../scripts/artifact.js";
+import { redstoneFeedId, signedPayload } from "../mandate/redstone.js";
 import { ArenaIndexer } from "../arena/indexer.js";
 import { chainIndex, RESET_EVENTS } from "../arena/returns.js";
 import { createRiskEngine, snapshot } from "../bridge/risk.js";
@@ -125,7 +126,8 @@ export function createApp({ deployment, rpcUrl, strategy, onramp, callbook, publ
   // On Vercel use TRUST_PROXY=1: Vercel overwrites X-Forwarded-For with the
   // real client address, so one trusted hop reads exactly that and a client
   // can't pick its own rate-limit bucket. Never trust more hops than exist.
-  const trustProxy = process.env.TRUST_PROXY;
+  // On Vercel, one hop is the default: without it every visitor shares one rate-limit bucket.
+  const trustProxy = process.env.TRUST_PROXY ?? (process.env.VERCEL ? "1" : undefined);
   if (trustProxy) app.set("trust proxy", /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy);
   app.use(express.json({ limit: "64kb" }));
 
@@ -193,7 +195,7 @@ export function createApp({ deployment, rpcUrl, strategy, onramp, callbook, publ
       contracts: dep.contracts,
       tokens: {
         USDC: { address: dep.external.usdc, decimals: USDC_DECIMALS },
-        EURC: { address: dep.external.eurc, decimals: 6, feed: dep.contracts.pinnedFeed },
+        EURC: { address: dep.external.eurc, decimals: 6, feed: (dep.contracts.priceFeed ?? dep.contracts.pinnedFeed) },
       },
     });
   });
@@ -370,7 +372,7 @@ export function createApp({ deployment, rpcUrl, strategy, onramp, callbook, publ
           getAddress(dep.contracts.uniswapV4Venue),
           compiled,
           [getAddress(dep.external.eurc)],
-          [getAddress(dep.contracts.pinnedFeed)],
+          [getAddress((dep.contracts.priceFeed ?? dep.contracts.pinnedFeed))],
         ],
       });
       res.json({ to: dep.contracts.mandateFactory, data, chainId: dep.chainId });
@@ -412,20 +414,51 @@ export function createApp({ deployment, rpcUrl, strategy, onramp, callbook, publ
    * calls can be encoded here; anything else is refused rather than guessed.
    * Whether the caller may make the call is the contract's job, not ours.
    */
+  // The public stop-loss on a fresh price: for a mandate priced by a RedStone
+  // feed, the FreshCheckpoint helper pushes the latest signed price and runs
+  // checkpoint() in one transaction. Null when there's nothing to refresh.
+  const FRESH_CHECKPOINT_ABI = [{
+    type: "function", name: "refreshAndCheckpoint", stateMutability: "nonpayable", outputs: [],
+    inputs: [{ name: "feed", type: "address" }, { name: "mandate", type: "address" }],
+  }];
+  const freshCheckpoint = async (mandate) => {
+    const helper = dep.contracts.freshCheckpoint;
+    if (!helper) return null;
+    const client = getClient();
+    const assets = await client.readContract({ address: mandate, abi: MANDATE.abi, functionName: "assetList" });
+    for (const token of assets) {
+      const [feed] = await client.readContract({ address: mandate, abi: MANDATE.abi, functionName: "assets", args: [token] });
+      const id = await redstoneFeedId(client, feed);
+      if (!id) continue;
+      const head = encodeFunctionData({ abi: FRESH_CHECKPOINT_ABI, functionName: "refreshAndCheckpoint", args: [feed, mandate] });
+      return { to: helper, data: head + (await signedPayload(id)) };
+    }
+    return null;
+  };
+
   const ZERO = "0x0000000000000000000000000000000000000000";
-  app.post("/api/tx/action", (req, res) => {
+  app.post("/api/tx/action", async (req, res) => {
     try {
       const { mandate, action } = req.body ?? {};
       if (typeof mandate !== "string" || !isAddress(mandate)) throw refuse("that agent address is not valid");
       const call = (functionName, args = []) => encodeFunctionData({ abi: MANDATE.abi, functionName, args });
 
+      let to = mandate;
       let data;
       let label;
       if (action === "withdrawAll") {
         data = call("withdrawAll");
         label = "withdraw everything and remove the agent";
       } else if (action === "checkpoint") {
-        data = call("checkpoint");
+        // On a RedStone feed, push a fresh signed price and check in one
+        // transaction, so the freeze is judged on the market as it is now.
+        const fresh = await freshCheckpoint(getAddress(mandate));
+        if (fresh) {
+          to = fresh.to;
+          data = fresh.data;
+        } else {
+          data = call("checkpoint");
+        }
         label = "freeze — only succeeds below the floor";
       } else if (action === "unfreeze") {
         data = call("unfreeze");
@@ -447,7 +480,7 @@ export function createApp({ deployment, rpcUrl, strategy, onramp, callbook, publ
       } else {
         throw refuse("unknown action");
       }
-      res.json({ to: mandate, data, label, chainId: dep.chainId });
+      res.json({ to, data, label, chainId: dep.chainId });
     } catch (err) {
       fail(res, err);
     }

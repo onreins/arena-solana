@@ -420,6 +420,16 @@ footer { border-top: 1px solid var(--line); padding: 48px 0 56px; }
   .pln { stroke-dashoffset: 0; }
   .plt { opacity: 1; }
 }
+
+/* Shaders (shaders.com) backdrops: behind everything in their section, over its
+   CSS glow, fading in once the GPU has drawn the first frame. */
+.hero, .end { isolation: isolate; }
+.sfx { position: absolute; left: 0; width: 100%; z-index: -1; pointer-events: none; opacity: 0; transition: opacity 1.6s ease; }
+.sfx.on { opacity: 1; }
+.hero .sfx { top: 0; height: 900px; -webkit-mask-image: radial-gradient(75% 65% at 50% 28%, #000 35%, transparent 80%); mask-image: radial-gradient(75% 65% at 50% 28%, #000 35%, transparent 80%); }
+.hero .sfx.on { opacity: .75; }
+.end .sfx { inset: 0; height: 100%; -webkit-mask-image: radial-gradient(85% 110% at 50% 100%, #000 40%, transparent 90%); mask-image: radial-gradient(85% 110% at 50% 100%, #000 40%, transparent 90%); }
+.end .sfx.on { opacity: 1; }
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -448,6 +458,7 @@ footer { border-top: 1px solid var(--line); padding: 48px 0 56px; }
 <main id="top">
 <!-- ------------------------------------------------------------------ hero -->
 <section class="hero">
+  <canvas class="sfx" data-shader="hero" aria-hidden="true"></canvas>
   <div class="wrap hero-copy">
     <a class="pill" href="https://app.reins.one/charts.html"><span class="dot"></span><span id="pill-text">Live markets and the agents&rsquo; picks</span><b>Open charts &rarr;</b></a>
     <h1>The all&#8209;in&#8209;one platform for <span class="grad">AI trading agents</span></h1>
@@ -733,6 +744,7 @@ mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
 </section>
 
 <section class="end">
+  <canvas class="sfx" data-shader="end" aria-hidden="true"></canvas>
   <div class="wrap">
     <h2>Trade with agents that<br>stay inside the lines</h2>
     <p>Live on Arc testnet with test money. Look around first: there&rsquo;s no sign-up, and no wallet needed to browse.</p>
@@ -1147,5 +1159,55 @@ mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
     else done("Select to copy");
   });
 })();
+</script>
+<script type="module">
+/* Shaders (shaders.com, MIT): slow WebGPU backdrops behind the hero and the
+   closing call to action. A progressive extra: without WebGPU, on touch
+   screens, with reduced motion or on any error, the CSS glow underneath is the
+   page. Loaded after the page from jsDelivr, version pinned, telemetry off. */
+const canvases = [...document.querySelectorAll("canvas[data-shader]")];
+const wanted = canvases.length && "gpu" in navigator
+  && !matchMedia("(prefers-reduced-motion: reduce)").matches
+  && matchMedia("(hover: hover) and (pointer: fine)").matches;
+const LOOKS = {
+  // Deep navy drifting into brand blue, a violet turn and a warm edge, like the headline.
+  hero: [{ type: "FilmGrain", props: { strength: 0.3, bias: 2 }, children: [{
+    type: "MeshGradient",
+    props: {
+      stops: [
+        { color: "#07080a", position: 0 }, { color: "#0a1830", position: 0.34 }, { color: "#0f5ea8", position: 0.6 },
+        { color: "#3b2a8a", position: 0.82 }, { color: "#ff8a4c", position: 1 },
+      ],
+      count: 5, smoothness: 2.6, variation: 0.3, swirl: 0.2, drift: 0.45, speed: 0.35,
+    },
+  }] }],
+  // The hero's drifting light again, cooler, rising behind the last call to action.
+  end: [{ type: "FilmGrain", props: { strength: 0.25 }, children: [{
+    type: "MeshGradient",
+    props: {
+      stops: [
+        { color: "#07080a", position: 0 }, { color: "#0b1d3d", position: 0.4 }, { color: "#1468c4", position: 0.68 },
+        { color: "#4a35b0", position: 0.88 }, { color: "#7cc6ff", position: 1 },
+      ],
+      count: 4, smoothness: 2.8, variation: 0.25, swirl: -0.25, drift: 0.5, speed: 0.3, seed: 7,
+    },
+  }] }],
+};
+async function start() {
+  try {
+    if (!(await navigator.gpu.requestAdapter())) return;
+    const { createShader } = await import("https://cdn.jsdelivr.net/npm/shaders@4.0.0/dist/js/bundle.js");
+    for (const canvas of canvases) {
+      const look = LOOKS[canvas.dataset.shader];
+      if (!look) continue;
+      const done = () => canvas.classList.add("on");
+      createShader(canvas, { components: look }, { disableTelemetry: true, onReady: done, onError: () => canvas.remove() })
+        .then(done, () => canvas.remove());
+    }
+  } catch {
+    canvases.forEach((c) => c.remove()); // no WebGPU after all: keep the CSS glow
+  }
+}
+if (wanted) (window.requestIdleCallback || ((cb) => setTimeout(cb, 300)))(start);
 </script>
 </html>
