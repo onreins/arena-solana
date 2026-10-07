@@ -11,6 +11,7 @@
  *   POST /api/callbook/relay/lock   gasless lock: { account, callHash, horizon, deadline, signature }
  *   POST /api/callbook/relay/seal   gasless seal: { bookId, p, callHash, deadline, signature }
  *   POST /api/callbook/relay/reveal any reveal, with its preimage
+ *   POST /api/callbook/relay/profile gasless profile: { account, bookId, name, bio, link, deadline, signature }
  *   (the relay routes answer 503 unless CALLBOOK_RELAYER_KEY is set; see app/verify/callbook-relay.js)
  *
  * Read from the network in CALLBOOK_NETWORK (see app/verify/callbook-network.js),
@@ -33,6 +34,7 @@ import { readCallbook, buildCallbook, evaluateAny, stateFromSnapshot } from "./v
 import { createPriceSource } from "./verify/callbook-prices.js";
 import { callbookNetwork, clientFor, arenaEnv } from "./verify/callbook-network.js";
 import { createRelayer, RelayError } from "./verify/callbook-relay.js";
+import { createAgentCards } from "./verify/arena-agent-card.js";
 import { countersFromEnv, ipBucket, brief } from "./verify/callbook-util.js";
 import { artifact } from "../scripts/artifact.js";
 
@@ -43,6 +45,7 @@ const REPORTS_PER_MINUTE = 30;
 const VIEWS = parseAbi([
   "function identityRegistry() view returns (address)",
   "function ownerOf(uint256 agentId) view returns (address)",
+  "function tokenURI(uint256 agentId) view returns (string)",
 ]);
 
 export function mountCallbook(app, { env: rawEnv = process.env, source, now = () => Math.floor(Date.now() / 1000) } = {}) {
@@ -92,6 +95,19 @@ export function mountCallbook(app, { env: rawEnv = process.env, source, now = ()
     return client.readContract({ address: identity, abi: VIEWS, functionName: "ownerOf", args: [BigInt(agentId)] });
   }
 
+  /**
+   * The name in a linked agent's ERC-8004 registration file (cached a day; see arena-agent-card.js).
+   * The index only peeks: a card being read in the background shows on the next rebuild.
+   */
+  const agentCards = createAgentCards({
+    tokenUri: async (agentId) => {
+      if (identity === undefined) identity = await client.readContract({ address: net.address, abi: VIEWS, functionName: "identityRegistry" }).catch(() => null);
+      if (!identity || /^0x0+$/.test(identity)) return null;
+      return client.readContract({ address: identity, abi: VIEWS, functionName: "tokenURI", args: [BigInt(agentId)] });
+    },
+  });
+  const agentCard = (agentId) => agentCards.peek(agentId);
+
   /** Everything, rebuilt at most once a minute; concurrent requests share one build. */
   async function current() {
     if (cache && Date.now() - cache.at < TTL_MS) return cache;
@@ -104,7 +120,7 @@ export function mountCallbook(app, { env: rawEnv = process.env, source, now = ()
         };
         const built = await buildCallbook({
           chain: state, source: prices, asOf: now(), meta, validator: net.validator ?? undefined, reportBase: env.CALLBOOK_REPORT_BASE,
-          log, ours: net.ours, agentOwner,
+          log, ours: net.ours, agentOwner, agentCard,
         });
         cache = { at: Date.now(), ...built };
         return cache;
@@ -192,13 +208,14 @@ export function mountCallbook(app, { env: rawEnv = process.env, source, now = ()
     });
     return relayer;
   };
-  for (const action of ["lock", "seal", "reveal"]) {
+  for (const action of ["lock", "seal", "reveal", "profile"]) {
     app.post(`/api/callbook/relay/${action}`, async (req, res) => {
       if (relayOff) return res.status(503).json({ error: relayOff });
       try {
         const r = await getRelayer();
         res.json(await r[action](req.body ?? {}, { ip: req.ip }));
-        cache = null; // the next read shows the new call
+        // The next read shows the new call. A name waits for the next minute's rebuild: it's cheap to send, so it's no reason to rebuild.
+        if (action !== "profile") cache = null;
       } catch (err) {
         if (err instanceof RelayError) return res.status(err.status).json({ error: err.message, ...err.extra });
         log(`relay ${action}: ${brief(err)}`);

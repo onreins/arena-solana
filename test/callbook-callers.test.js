@@ -16,7 +16,9 @@ import {
   symbolCallHash, lockedHash, readCallbook, evaluateCaller, buildCallbook, REFERENCE_SET, REFERENCE_SET_NAME, GRACE, MAX_LOCKS_PER_BOOK, CALLER_RULES,
 } from "../app/verify/callbook.js";
 import { priceBook, resolveSymbol } from "../app/verify/callbook-prices.js";
-import { createRelayer, DOMAIN, LOCK_TYPES, SEAL_TYPES } from "../app/verify/callbook-relay.js";
+import { createRelayer, DOMAIN, LOCK_TYPES, SEAL_TYPES, PROFILE_TYPES } from "../app/verify/callbook-relay.js";
+import { profileFor } from "../app/verify/callbook-agents.js";
+import { createAgentCards, cardSource, isPrivateAddress, safeLookup, safeGet } from "../app/verify/arena-agent-card.js";
 import { mountCallbook } from "../app/callbook-routes.js";
 import { artifact } from "../scripts/artifact.js";
 
@@ -374,6 +376,114 @@ test("the relayer seals for a scheduled book's caller, and refuses anyone else's
   const r = await relayer.seal({ ...body, signature: await sign(caller) });
   assert.equal(r.p, "0");
   await assert.rejects(relayer.seal({ ...body, signature: await sign(caller) }), (e) => e.status === 422 && /AlreadySealed/.test(e.message));
+});
+
+async function signedProfile(callbook, wallet, { bookId = 0n, name = "Midnight", bio = "", link = "", deadline } = {}) {
+  const account = wallet.account.address;
+  const nonce = await pc.readContract({ address: callbook, abi: CB(), functionName: "profileNonces", args: [account] });
+  const dl = deadline ?? BigInt((await chainNow()) + 600);
+  const message = { account, bookId, name, bio, link, nonce, deadline: dl };
+  const signature = await wallet.signTypedData({ account: wallet.account, domain: DOMAIN(31337, callbook), types: PROFILE_TYPES, primaryType: "SetProfile", message });
+  return { account, bookId: String(bookId), name, bio, link, deadline: dl.toString(), signature };
+}
+
+test("the relayer sets profiles, refuses bad ones before paying, and the index shows them", async (t) => {
+  if (!nodeUp) return t.skip("no Hardhat node at " + RPC);
+  const { callbook, fromBlock } = await deployCallbook();
+  const relayer = createRelayer({ publicClient: pc, wallet: w(4), callbook, abi: CB(), chainId: 31337, now: () => clock.t, limits: { profilesPerAccountDay: 3 } });
+  const user = w(9);
+  await tickClock();
+
+  // No record yet: a name would show nowhere, so we don't pay for it.
+  await assert.rejects(relayer.profile(await signedProfile(callbook, user, { name: "Too Early" })), (e) => e.status === 400 && /first call/.test(e.message));
+  const before = await pc.getBalance({ address: user.account.address });
+  const locked = await relayer.lock(await signedLock(callbook, user));
+  const r = await relayer.profile(await signedProfile(callbook, user, { name: "Midnight Momentum", bio: "Breakouts", link: "https://x.com/m" }));
+  assert.equal(r.bookId, "0");
+  assert.equal(await pc.getBalance({ address: user.account.address }), before, "the person paid nothing");
+
+  // Refused before anything is sent: the rules, text that isn't the cleaned form, someone else's book, a stale signature.
+  await assert.rejects(relayer.profile(await signedProfile(callbook, user, { name: "R3INS" })), (e) => e.status === 400 && /reserved/.test(e.message));
+  await assert.rejects(relayer.profile(await signedProfile(callbook, user, { name: "ok", link: "http://x.com" })), (e) => e.status === 400);
+  await assert.rejects(relayer.profile(await signedProfile(callbook, user, { name: " Spaced " })), (e) => e.status === 400 && /rules clean it/.test(e.message));
+  await assert.rejects(relayer.profile(await signedProfile(callbook, w(8), { bookId: BigInt(locked.bookId), name: "Thief" })), (e) => e.status === 400 && /owner/.test(e.message));
+  const signed = await signedProfile(callbook, user, { name: "Changed" });
+  await assert.rejects(relayer.profile({ ...signed, name: "Tampered" }), (e) => e.status === 401);
+  await relayer.profile(signed);
+  await assert.rejects(relayer.profile(signed), (e) => e.status === 401, "the nonce moved on");
+  // The book's own name, then the daily cap (3 here).
+  await relayer.profile(await signedProfile(callbook, user, { bookId: BigInt(locked.bookId), name: "ETH swings" }));
+  await assert.rejects(relayer.profile(await signedProfile(callbook, user, { name: "Fourth" })), (e) => e.status === 429);
+
+  const chain = await readCallbook({ client: pc, address: callbook, fromBlock });
+  const built = await buildCallbook({ chain, source: sourceOf(() => 100), asOf: await chainNow(), meta: { mode: "replay" } });
+  const caller = built.index.callers[0];
+  assert.equal(caller.name, "ETH swings");
+  assert.equal(caller.nameSource, "book");
+  // Cleared, the book falls back to the person's latest name.
+  const hash = await user.writeContract({ address: callbook, abi: CB(), functionName: "setProfile", args: [BigInt(locked.bookId), "", "", ""], account: user.account, chain: local });
+  await pc.waitForTransactionReceipt({ hash });
+  const again = await readCallbook({ client: pc, address: callbook, fromBlock, state: chain });
+  const person = (await buildCallbook({ chain: again, source: sourceOf(() => 100), asOf: await chainNow(), meta: { mode: "replay" } })).index.callers[0];
+  assert.deepEqual([person.name, person.nameSource, person.bio, person.link, person.linkDomain], ["Changed", "person", null, null, null]);
+});
+
+test("profileFor: own name, then the person's (numbered when they run several), then the agent card; hidden ones never", () => {
+  const p = (name, bio = "", link = "") => ({ name, bio, link });
+  const owner = "0x00000000000000000000000000000000000000aa";
+  const books = new Map([[1, { id: 1, owner, anyCoin: true }], [2, { id: 2, owner, kind: "scheduled", agentId: 7 }], [3, { id: 3, owner: "0x00000000000000000000000000000000000000bb", agentId: 9 }]]);
+  const chain = { chainId: 31337, address: "0xc0", books, profiles: new Map([[owner + ":0", p("Midnight", "hi", "https://x.com/m")], [owner + ":2", p("")]]) };
+  assert.deepEqual(profileFor({ chain, book: books.get(1) }), { name: "Midnight", bio: "hi", link: "https://x.com/m", domain: "x.com", source: "person" });
+  assert.equal(profileFor({ chain, book: books.get(2) }).name, "Midnight #2"); // an empty own name falls through
+  const cards = new Map([["9", { name: "Agent Nine", description: "an ERC-8004 agent" }]]);
+  assert.deepEqual(profileFor({ chain, book: books.get(3), cards }), { name: "Agent Nine", bio: "an ERC-8004 agent", link: null, domain: null, source: "agent" });
+  assert.equal(profileFor({ chain, book: books.get(3), cards: new Map([["9", { name: "Reins", description: "" }]]) }), null, "a card can't impersonate us either");
+});
+
+test("agent cards: inline, https and ipfs files; private addresses refused at connect time; slow hosts never hold up the index", async () => {
+  assert.equal(cardSource("data:application/json;base64," + Buffer.from('{"name":"A"}').toString("base64")).inline, '{"name":"A"}');
+  assert.equal(cardSource("ipfs://bafyabc/agent.json").url, "https://ipfs.io/ipfs/bafyabc/agent.json");
+  assert.equal(cardSource("http://x.com/a.json"), null);
+  assert.equal(cardSource("file:///etc/passwd"), null);
+  for (const ip of ["127.0.0.1", "10.1.2.3", "169.254.169.254", "192.168.1.1", "172.20.0.1", "100.64.0.1", "192.0.0.1", "::1", "fd00::1", "fec0::1",
+    "::ffff:127.0.0.1", "::127.0.0.1", "64:ff9b::7f00:1", "2002:7f00:1::", "0:0:0:0:0:ffff:7f00:1"]) {
+    assert.equal(isPrivateAddress(ip), true, ip);
+  }
+  for (const ip of ["8.8.8.8", "2606:4700::1111"]) assert.equal(isPrivateAddress(ip), false, ip);
+
+  // The address is checked when the connection is made: a resolver that answers private is refused.
+  const lookupWith = (answer) => new Promise((resolve) => safeLookup((h, o, cb) => cb(null, answer))("x.example", { all: true }, (err, addrs) => resolve(err ? err.message : addrs)));
+  assert.match(await lookupWith([{ address: "127.0.0.1", family: 4 }]), /isn't a public address/);
+  assert.match(await lookupWith([{ address: "93.184.216.34", family: 4 }, { address: "10.0.0.5", family: 4 }]), /isn't a public address/);
+  assert.deepEqual(await lookupWith([{ address: "93.184.216.34", family: 4 }]), [{ address: "93.184.216.34", family: 4 }]);
+  await assert.rejects(safeGet("https://127.0.0.1/a.json"), /public address/);
+  await assert.rejects(safeGet("http://x.example/a.json"), /https only/);
+
+  let gets = 0;
+  const uris = { 1: "https://cards.example/1.json", 3: "https://cards.example/big.json", 4: "data:application/json,%7B%22name%22%3A%22Inline%22%7D", 5: "https://cards.example/slow.json" };
+  let release;
+  const slow = new Promise((resolve) => { release = resolve; });
+  const cards = createAgentCards({
+    tokenUri: async (id) => uris[id],
+    get: async (url) => {
+      gets++;
+      if (url.includes("big")) throw new Error("the registration file is over 65536 bytes");
+      if (url.includes("slow")) { await slow; return JSON.stringify({ name: "Slow One" }); }
+      return JSON.stringify({ name: "Card One", description: "d", image: "ignored" });
+    },
+  });
+  assert.deepEqual(await cards.card(1), { name: "Card One", description: "d" });
+  await cards.card(1);
+  assert.equal(gets, 1, "one read a day");
+  await assert.rejects(cards.card(3), /over/);
+  assert.equal(await cards.card(3), null, "a failure is cached as no card");
+  assert.deepEqual(await cards.card(4), { name: "Inline", description: "" });
+
+  // peek answers at once; the slow card arrives for the next rebuild.
+  assert.equal(cards.peek(5), null);
+  release();
+  await new Promise((r) => setTimeout(r, 10));
+  assert.deepEqual(cards.peek(5), { name: "Slow One", description: "" });
 });
 
 test("HTTP: the relay routes are 503 without a key, and work with one; unconfigured routes redirect to the export", async (t) => {

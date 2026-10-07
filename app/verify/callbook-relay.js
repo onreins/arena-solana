@@ -1,6 +1,6 @@
 /**
  * The Callbook relayer: it pays the gas so nobody needs USDC on Arc to keep a
- * record. Three things it will submit:
+ * record. Four things it will submit:
  *
  *   lock    lockBySig(account, callHash, horizon, deadline, signature): an
  *           EIP-712 LockCall(account, callHash, horizon, nonce, deadline)
@@ -8,6 +8,10 @@
  *   seal    sealBySig(bookId, p, callHash, deadline, signature): an EIP-712
  *           SealCall(bookId, p, callHash, deadline) signed by the book's caller or owner
  *   reveal  any reveal with its preimage (reveals are permissionless)
+ *   profile setProfileBySig(account, bookId, name, bio, link, deadline, signature):
+ *           an EIP-712 SetProfile signed by the account, whose text first
+ *           passes the name rules (arena-names.js), so we never pay for a
+ *           name the site would hide
  *
  * Order of checks, cheapest first: shape (a 65-byte signature, a deadline at
  * least 30 seconds and at most 7 days away), the signer is a plain key (no
@@ -19,6 +23,7 @@
  *
  * Limits (defaults in RELAY_LIMITS):
  *   - 30 locks an hour per account; 30 seals an hour per book
+ *   - 5 profile changes a day per account
  *   - 600 relayed transactions an hour in total
  *   - 120 requests an hour per client IP (IPv6 by /64), 60 refused ones
  *   - a daily gas budget (CALLBOOK_RELAYER_DAILY_USDC, default 5 USDC)
@@ -33,6 +38,7 @@
 import { isAddress, isHex, parseEventLogs, formatEther, getAddress, verifyTypedData } from "viem";
 
 import { memoryCounter, ipBucket, brief } from "./callbook-util.js";
+import { checkProfile } from "./arena-names.js";
 
 const HOUR = 3_600;
 const DAY = 86_400;
@@ -43,6 +49,7 @@ const ZERO = "0x0000000000000000000000000000000000000000";
 export const RELAY_LIMITS = Object.freeze({
   locksPerAccountHour: 30,
   sealsPerBookHour: 30,
+  profilesPerAccountDay: 5,
   txPerHour: 600,
   requestsPerIpHour: 120,
   failuresPerIpHour: 60,
@@ -75,6 +82,12 @@ export const LOCK_TYPES = {
   LockCall: [
     { name: "account", type: "address" }, { name: "callHash", type: "bytes32" }, { name: "horizon", type: "uint32" },
     { name: "nonce", type: "uint256" }, { name: "deadline", type: "uint256" },
+  ],
+};
+export const PROFILE_TYPES = {
+  SetProfile: [
+    { name: "account", type: "address" }, { name: "bookId", type: "uint256" }, { name: "name", type: "string" },
+    { name: "bio", type: "string" }, { name: "link", type: "string" }, { name: "nonce", type: "uint256" }, { name: "deadline", type: "uint256" },
   ],
 };
 export const SEAL_TYPES = { SealCall: [{ name: "bookId", type: "uint256" }, { name: "p", type: "uint64" }, { name: "callHash", type: "bytes32" }, { name: "deadline", type: "uint256" }] };
@@ -300,5 +313,48 @@ export function createRelayer({ publicClient, wallet, callbook, abi, chainId, li
     });
   }
 
-  return { lock, seal, reveal, limits: L, address: wallet.account.address, queued: () => waiting };
+  /**
+   * POST /relay/profile: { account, bookId, name, bio, link, deadline, signature } -> { bookId, txHash }.
+   * The text must already be in its cleaned form (checkProfile), since that's what was signed.
+   */
+  async function profile(body = {}, { ip } = {}) {
+    const account = isAddress(body.account ?? "") ? getAddress(body.account) : null;
+    return guarded(ip, account, async (ctx) => {
+      if (!account) throw refuse("account must be an address");
+      const bookId = asBigInt(body.bookId ?? 0, "bookId");
+      const text = { name: body.name ?? "", bio: body.bio ?? "", link: body.link ?? "" };
+      if (Object.values(text).some((v) => typeof v !== "string")) throw refuse("name, bio and link must be text");
+      const checked = checkProfile(text);
+      if (!checked.ok) throw refuse(checked.error);
+      const p = checked.profile;
+      if (p.name !== text.name || p.bio !== text.bio || p.link !== text.link) {
+        throw refuse("send the profile as the name rules clean it (arena-names.js checkProfile), and sign that");
+      }
+      const signature = checkSig(body.signature);
+      const deadline = checkDeadline(body.deadline);
+      if (!(await isPlainKey(account))) throw refuse("the relayer only takes profiles signed by a plain key, not a contract wallet; send it directly");
+      if (bookId !== 0n) {
+        const owner = (await read("books", [bookId]))[0];
+        if (owner === ZERO) throw refuse("no such book");
+        if (getAddress(owner) !== account) throw refuse("only a book's owner can name it");
+      } else if ((await read("booksOf", [account])).length === 0) {
+        // A name shows only beside a record, so we don't pay to name an account that has none.
+        throw refuse("lock your first call before picking a name: a name shows beside your records");
+      }
+
+      const nonce = await read("profileNonces", [account]);
+      const message = { account, bookId, ...p, nonce, deadline };
+      const valid = await signedBy(account, { domain, types: PROFILE_TYPES, primaryType: "SetProfile", message, signature });
+      if (!valid) throw new RelayError(401, `the signature isn't the account's SetProfile for its next profile nonce (${nonce})`);
+      ctx.verified();
+
+      const { hash } = await submit("setProfileBySig", [account, bookId, p.name, p.bio, p.link, deadline, signature], {
+        bucket: ctx.bucket,
+        onSimulated: () => limit(`profile:${account.toLowerCase()}`, L.profilesPerAccountDay, `this account has changed its profile ${L.profilesPerAccountDay} times today; try again tomorrow`, DAY),
+      });
+      return { bookId: String(bookId), txHash: hash };
+    });
+  }
+
+  return { lock, seal, reveal, profile, limits: L, address: wallet.account.address, queued: () => waiting };
 }

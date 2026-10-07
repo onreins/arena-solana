@@ -44,7 +44,10 @@ import { createPriceSource } from "../app/verify/callbook-prices.js";
 import { CallbookError, fail, explain } from "./errors.js";
 import { createMarkets, MIN_VOLUME_USD } from "./markets.js";
 import { Journal, defaultJournalPath } from "./journal.js";
-import { relay, LOCK_TYPES, SEAL_TYPES, domainOf } from "./relay.js";
+import { relay, LOCK_TYPES, SEAL_TYPES, PROFILE_TYPES, domainOf } from "./relay.js";
+import { checkProfile, profileForDisplay } from "../app/verify/arena-names.js";
+import { profileKey } from "../app/verify/callbook-chain.js";
+import { profileFor } from "../app/verify/callbook-agents.js";
 import {
   saltSecretFromKey, sealSalt, lockSalt, symbolSalt, callHash, lockedHash, symbolHash,
   recoverSealedCall, recoverLockedCall, recoverSymbolCall, SIDES,
@@ -659,6 +662,73 @@ export class CallbookClient {
     return shaped.detail;
   }
 
+  /** This key's public Arena profile page: its records, stats and name in one place. */
+  profileUrl() {
+    return `${(this.opts.apiUrl ?? DEFAULT_APP_URL).replace(/\/$/, "")}/arena/p/${this.me}`;
+  }
+
+  /**
+   * Name this key for Arena (or one of its books, with `book`): a name, a short
+   * bio and a link. It's public and stays in the chain's history; the newest
+   * one shows, and an empty name clears it. A field left out keeps its current
+   * value, so changing just the bio keeps the name. Gasless through the relayer.
+   */
+  async setProfile({ name, bio, link, book: bookId } = {}) {
+    let book = 0n;
+    if (bookId != null && bookId !== "" && Number(bookId) !== 0) {
+      const b = await this.myBook(bookId);
+      if (b.owner !== this.me) fail(`Book ${b.id} belongs to ${b.owner}; only its owner can name it.`, "NotOwner");
+      book = BigInt(b.id);
+    }
+    const state = await this.read();
+    if (book === 0n && ![...state.books.values()].some((b) => b.owner === this.me)) {
+      fail("Lock your first call before picking a name: a name shows beside your records.", "NoRecord");
+    }
+    const now0 = state.profiles?.get(profileKey(this.me, book)) ?? {};
+    const want = { name: name ?? now0.name ?? "", bio: bio ?? now0.bio ?? "", link: link ?? now0.link ?? "" };
+    // Only a name can clear a profile; a bio or link alone needs a name to sit under.
+    if (!want.name.trim() && name === undefined && (bio || link)) fail("Pick a name first: a bio and link show under a name.", "BadProfile");
+    const checked = checkProfile(want);
+    if (!checked.ok) fail(checked.error, "BadProfile");
+    const p = checked.profile;
+    const [nonce, now] = await Promise.all([this.view("profileNonces", [this.address]), this.now()]);
+    const deadline = BigInt(now + LOCK_SIG_TTL);
+    const gasless = await this.gasless();
+    let receipt;
+    if (gasless) {
+      const signature = await this.sign(PROFILE_TYPES, "SetProfile", { account: this.address, bookId: book, ...p, nonce, deadline });
+      receipt = await this.relayed("profile", { account: this.address, bookId: book, ...p, deadline, signature }, "profile").catch((e) => { throw this.explain(e); });
+    } else {
+      receipt = await this.send("setProfile", [book, p.name, p.bio, p.link], book ? { bookId: Number(book) } : {});
+    }
+    // The profile in this transaction must be this one: a relay can't hand back someone else's.
+    const ev = this.events(receipt, "Profile").map((l) => l.args).find((a) => same(a.account, this.address) && a.bookId === book && a.name === p.name);
+    if (!ev) fail(`The transaction ${receipt.transactionHash} doesn't set this profile, so nothing changed. Check ARENA_RELAY_URL.`, "BadRelay");
+    const whose = book === 0n ? "Your Arena name" : `Book ${book}'s name`;
+    const url = this.profileUrl();
+    return {
+      ...p, book: Number(book), gasless, tx: receipt.transactionHash, url,
+      summary: p.name
+        ? `${whose} is now "${p.name}". Names are public and stay in the chain's history. Your profile: ${url}`
+        : `${whose} is cleared; your records show your address again. Your profile: ${url}`,
+    };
+  }
+
+  /** What Arena shows for this key: its own profile, and each of its books' names. */
+  async profile() {
+    const state = await this.read();
+    const url = this.profileUrl();
+    const own = profileForDisplay(state.profiles?.get(profileKey(this.me, 0)));
+    const books = [...state.books.values()].filter((b) => b.owner === this.me).sort((a, b) => a.id - b.id).map((b) => {
+      const shown = profileFor({ chain: state, book: b });
+      return { book: b.id, kind: b.kind === "scheduled" ? "strategy" : "calls", shownAs: shown?.name ?? null, from: shown?.source ?? null };
+    });
+    const summary = own
+      ? `You're "${own.name}" in Arena${own.bio ? ` (${own.bio})` : ""}. Your profile: ${url}`
+      : `You have no Arena name yet, so your records show your address. Set one with arena_profile. Your profile: ${url}`;
+    return { address: this.address, profile: own, books, url, summary };
+  }
+
   /** Record, score, pending calls with countdowns and the next deadline, for one book or all of this key's. */
   async status({ book: bookId } = {}) {
     const state = await this.read();
@@ -670,7 +740,8 @@ export class CallbookClient {
     const out = [];
     for (const book of books) out.push(await this.bookStatus(state, book, now));
     if (bookId != null) return out[0];
-    return { address: this.address, network: this.ctx().label, books: out, summary: out.map((b) => b.summary).join(" ") };
+    const url = this.profileUrl();
+    return { address: this.address, network: this.ctx().label, books: out, url, summary: `${out.map((b) => b.summary).join(" ")} Your profile: ${url}` };
   }
 
   async bookStatus(state, book, now) {

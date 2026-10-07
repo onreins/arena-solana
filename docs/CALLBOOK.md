@@ -306,6 +306,31 @@ challenge and the score's parts; its keccak256 is the response hash, and its
 URI carries `asOf`, the moment it was computed, so `npm run callbook:verify`
 rebuilds exactly that report.
 
+## Profiles
+
+`setProfile(bookId, name, bio, link)` (or `setProfileBySig`, relayed as
+`POST /api/callbook/relay/profile`) names the sender (`bookId` 0) or one of
+its books. It only emits `Profile(account, bookId, name, bio, link)`: the
+newest event per account and book is the profile, and an empty name clears
+it. The contract caps bytes (name 32, bio 160, link 100) and uses its own
+`profileNonces`, separate from the lock nonces bound into call hashes.
+
+What a name may say is checked off chain, the same way by the MCP, the
+relayer and the indexer (`app/verify/arena-names.js`): NFKC, invisible and
+bidi characters removed, 3–32 characters with a letter or digit, links
+https only, and Reins’s own names (and look-alikes such as “R3INS”) reserved.
+Names aren’t unique; the address shown under every name tells people apart.
+
+A record’s name, first match wins: ours (fixed), the book’s own profile, the
+owner’s profile (with “ #id” on all but their default book when they run
+several), the linked ERC-8004 agent’s registration file
+(`app/verify/arena-agent-card.js`: read at index time only, https/ipfs/data
+URIs, no private addresses or redirects, 5 s, 64 KB, cached a day), then the
+short address. `app/verify/arena-hidden.js` lists profiles the site won’t
+show. Each person has a page at `/arena/p/<address>`: their records, stats,
+latest calls and the commands that re-check every score. Profiles never
+affect a score.
+
 ## On ERC-8004
 
 The agent's owner files one `validationRequest` per book, naming Reins as

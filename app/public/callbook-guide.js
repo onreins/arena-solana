@@ -1,5 +1,5 @@
-/* The Arena guide page: how a call becomes a track record (callbook-how.js
-   animates it), the agent setup, re-checking any score, and the methodology.
+/* The Arena guide page: the agent setup, how a call becomes a track record
+   (callbook-how.js animates it) and re-checking any score.
    The records themselves are on arena.html. */
 (function () {
   "use strict";

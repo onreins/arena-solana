@@ -277,12 +277,13 @@ function startRelay() {
     reveal: (b) => (b.kind === "seal" ? send("reveal", [BigInt(b.bookId), BigInt(b.p), b.coinIndex, b.side, b.salt])
       : b.kind === "lock" ? send("revealLocked", [BigInt(b.bookId), BigInt(b.callId), b.coinIndex, b.side, b.salt])
         : send("revealLockedSymbol", [BigInt(b.bookId), BigInt(b.callId), b.coin, b.side, b.salt])),
+    profile: (b) => send("setProfileBySig", [b.account, BigInt(b.bookId), b.name, b.bio, b.link, BigInt(b.deadline), b.signature]),
   };
   const server = http.createServer((req, res) => {
     let raw = "";
     req.on("data", (d) => { raw += d; });
     req.on("end", async () => {
-      const what = /^\/api\/callbook\/relay\/(lock|seal|reveal)$/.exec(req.url)?.[1];
+      const what = /^\/api\/callbook\/relay\/(lock|seal|reveal|profile)$/.exec(req.url)?.[1];
       res.setHeader("content-type", "application/json");
       if (!what || req.method !== "POST") return res.writeHead(404).end(JSON.stringify({ error: "not found" }));
       try {
@@ -490,6 +491,51 @@ describe("on a local node", () => {
     await assert.rejects(sdk(key, { relayUrl: `${relayStub.url}/nowhere` }).lock({ coin: "SOL", side: "long" }), /doesn't take lock requests \(HTTP 404\)/);
   });
 
+  test("profiles: a gasless key names itself and its book, keeps what it leaves out, and gets its page link", async (t) => {
+    if (!nodeUp) return t.skip(`no Hardhat node at ${RPC}`);
+    const key = generatePrivateKey();
+    const address = privateKeyToAccount(key).address;
+    const cb = sdk(key, { relayUrl: relayStub.url, apiUrl: "https://app.example/" });
+    const url = `https://app.example/arena/p/${address.toLowerCase()}`;
+    assert.equal(cb.profileUrl(), url);
+
+    const none = await cb.profile();
+    assert.equal(none.profile, null);
+    assert.match(none.summary, /no Arena name yet.*arena_profile/);
+    await assert.rejects(cb.setProfile({ name: "Too Early" }), /first call/);
+    const locked = await cb.lock({ coin: "ETH", side: "long", horizon: "1h" });
+    await assert.rejects(cb.setProfile({ bio: "only a bio" }), /Pick a name first/);
+
+    const set = await cb.setProfile({ name: "  Midnight  Momentum ", bio: "Breakouts on majors", link: "x.com/midnight" });
+    assert.equal(set.gasless, true);
+    assert.equal(set.name, "Midnight Momentum");
+    assert.equal(set.link, "https://x.com/midnight");
+    assert.equal(set.url, url);
+    assert.match(set.summary, /"Midnight Momentum".*public.*arena\/p\//);
+
+    // Just the bio: the name and link stay.
+    const bioOnly = await cb.setProfile({ bio: "Breakouts, majors only" });
+    assert.deepEqual([bioOnly.name, bioOnly.bio, bioOnly.link], ["Midnight Momentum", "Breakouts, majors only", "https://x.com/midnight"]);
+
+    // Its own open-call book can carry a name of its own.
+    await cb.setProfile({ name: "ETH swings", book: locked.bookId });
+    const shown = await cb.profile();
+    assert.equal(shown.profile.name, "Midnight Momentum");
+    assert.deepEqual(shown.books, [{ book: locked.bookId, kind: "calls", shownAs: "ETH swings", from: "book" }]);
+    assert.match((await cb.status()).summary, new RegExp(`Your profile: ${url}`));
+
+    // Refused before anything is signed: reserved names, bad links, someone else's book.
+    await assert.rejects(cb.setProfile({ name: "R3ins Official" }), /reserved/);
+    await assert.rejects(cb.setProfile({ name: "Okay", link: "http://plain.example" }), /https/);
+    const other = await sdk(keyOf(6)).openCallBook({ coins: ["BTC"] });
+    await assert.rejects(cb.setProfile({ name: "Mine now", book: other.bookId }), /only its owner|neither its owner/);
+    assert.equal(await pc.getBalance({ address }), 0n, "the key never paid gas");
+
+    // An empty name clears it.
+    await cb.setProfile({ name: "" });
+    assert.equal((await cb.profile()).profile, null);
+  });
+
   test("a book that only names this key as caller isn't acted in unless listed", async (t) => {
     if (!nodeUp) return t.skip(`no Hardhat node at ${RPC}`);
     const key = keyOf(10);
@@ -567,7 +613,7 @@ describe("the MCP server", () => {
   test("lists its tools, a guide and prompts", async () => {
     const { tools } = await mcp.listTools();
     assert.deepEqual(tools.map((x) => x.name).sort(), [
-      "arena_account", "arena_lock", "arena_markets", "arena_my_books", "arena_open", "arena_reveal_due", "arena_seal", "arena_status", "arena_verify",
+      "arena_account", "arena_lock", "arena_markets", "arena_my_books", "arena_open", "arena_profile", "arena_reveal_due", "arena_seal", "arena_status", "arena_verify",
     ]);
     assert.ok(tools.every((x) => x.title && x.description.length > 40));
     const { resources } = await mcp.listResources();

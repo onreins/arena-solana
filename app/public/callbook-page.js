@@ -28,7 +28,8 @@
   var LOW_FIRST = { dd: true, worst: false };
   var state = { board: "books", sort: { key: "days", dir: -1 }, filter: "all", query: "", page: 0, perPage: 25 };
 
-  var isBaseline = function (b) { return !!(b.baseline || b.control) || /^a control\b/i.test(b.description || ""); };
+  // Only the server's flag counts: a description can be anyone's own bio now.
+  var isBaseline = function (b) { return !!(b.baseline || b.control); };
   function tagsOf(x) {
     var t = "";
     if (x.ours) t += '<span class="cb-tag" tabindex="0" data-tip="Run by Reins, scored by the same rules as everyone">Reins</span>';
@@ -160,14 +161,24 @@
     return '<tr class="row' + (isBaseline(x) ? " base" : "") + '" data-href="' + esc(href) + '">' +
       '<td class="c-rank mono' + (rank === 1 ? " first" : "") + '">' + (rank ? rank : '<span class="muted" tabindex="0" data-tip="Ranks appear at ' + RANK_MIN + " " + B.noun[1] + " and " + RANK_DAYS + ' days of record">—</span>') + "</td>" +
       '<td class="c-bot"><a class="cb-bot" href="' + esc(href) + '"><span class="n">' + esc(C.nameOf(x)) + "</span>" + tagsOf(x) + "</a>" +
-        '<small title="' + esc(x.description || "") + '">' + B.sub(x) + "</small></td>" +
+        '<small title="' + esc(x.description || "") + '">' + B.sub(x) + byLink(x) + "</small></td>" +
       B.cols.map(function (c) { return '<td class="' + c.cls + '">' + c.cell(x) + "</td>"; }).join("") + "</tr>";
+  }
+  // Who runs a record: their own Arena name, Reins for ours, else their short address.
+  function personOf(x) {
+    var p = D.people && C.own(D.people, x.owner);
+    return p && p.name ? p.name : x.ours ? "Reins" : U.short(x.owner || "");
+  }
+  // "· by <person>", linking to everything they run (/arena/p/<address>).
+  function byLink(x) {
+    var href = C.profileHref(x.owner);
+    return href ? ' · <a class="cb-by" href="' + esc(href) + '">by ' + esc(personOf(x)) + "</a>" : "";
   }
   function visible() {
     var q = state.query.toLowerCase();
     return cfg().list().filter(function (x) {
       if (cfg().filters && state.filter !== "all" && !(x.challenge && x.challenge.status === state.filter)) return false;
-      return !q || [C.nameOf(x), x.description, (x.coins || []).join(" ")].join(" ").toLowerCase().indexOf(q) >= 0;
+      return !q || [C.nameOf(x), x.description, (x.coins || []).join(" "), personOf(x), x.owner].join(" ").toLowerCase().indexOf(q) >= 0;
     });
   }
   function table() {
@@ -317,7 +328,7 @@
       f("Ranking metric", esc(B.metric)) +
       f("Calls scored", C.int(B.scored())) +
       f("Updated", t1 ? esc(C.stamp(t1)) : "—");
-    $("board-lede").innerHTML = B.lede + ' <a href="/arena-guide#method">How scoring works →</a>';
+    $("board-lede").innerHTML = B.lede + ' <a href="/arena-guide#how">How scoring works →</a>';
     $("pending").hidden = ranked;
     $("pending-p").textContent = "Ranks appear once the board has " + RANK_MIN + " " + B.noun[1] + " and " + RANK_DAYS + " days of record. Until then, " + B.noun[1] + " are listed by record length.";
     $("fn-a").textContent = (ranked ? "Ranked by " + B.metric.replace(/, 0–100$/, "").toLowerCase() : "Listed by record length until ranks appear") + " · " + B.foot + " · ";

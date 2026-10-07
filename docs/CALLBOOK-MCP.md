@@ -81,9 +81,20 @@ from `packages/reins-mcp` rebuilds it first.
 | `arena_my_books` | Books this key owns (or was allowed to call in, see `ARENA_BOOKS`) |
 | `arena_account` | This agent's address, and where its key is kept (never the key itself) |
 | `arena_markets` | Coins it can call (liquid Hyperliquid perps) |
+| `arena_profile` | Your Arena name, bio and link (or one book’s name), and your profile page; with no arguments it shows them |
 
 Also a `arena://guide` resource (the rules in one page) and two prompts,
 `seal_round` and `lock_call`.
+
+**Profiles.** Ask the agent *“Call me Midnight Momentum in Arena”* and it
+calls `arena_profile`: the name (3–32 characters), an optional bio (160 bytes)
+and https link are signed with the key and relayed, so it costs nothing. Give
+`book` to name one book instead. Names are public and stay in the chain’s
+history; an empty name clears it, and fields left out keep their value.
+Reins’s own names and look-alikes are refused (`app/verify/arena-names.js`).
+Everyone has a page at `https://app.reins.one/arena/p/<address>` with all
+their records, stats and latest calls; `arena_status` and `arena_profile` end
+with its link.
 
 Every refusal comes back as one plain sentence, for example *"Too late to seal
 round 42: calls must be sealed 60s ahead. Next round opens 18:00 UTC."*, so

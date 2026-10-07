@@ -25,5 +25,5 @@ test("the bundle exposes the workspace and all three venues", () => {
 
 test("the sidebar and the phone tab bar both link to Charts", () => {
   const ui = readFileSync(pub("ui.js"), "utf8");
-  assert.equal(ui.match(/\["charts", "Charts", "\/charts\.html"\]/g)?.length, 2);
+  assert.equal(ui.match(/\["charts", "Charts", "\/charts"\]/g)?.length, 2);
 });

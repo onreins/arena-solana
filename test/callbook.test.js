@@ -1471,6 +1471,120 @@ describe("gasless (EIP-712)", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Profiles
+// ---------------------------------------------------------------------------
+
+const PROFILE_TYPES = {
+  SetProfile: [
+    { name: "account", type: "address" },
+    { name: "bookId", type: "uint256" },
+    { name: "name", type: "string" },
+    { name: "bio", type: "string" },
+    { name: "link", type: "string" },
+    { name: "nonce", type: "uint256" },
+    { name: "deadline", type: "uint256" },
+  ],
+};
+
+/** What the MCP does: read the profile nonce and sign SetProfile. */
+async function signProfile(callbook, { signer = user, who = USER, bookId = 0n, name = "Midnight", bio = "", link = "", deadline, domain } = {}) {
+  const nonce = await read(callbook, "profileNonces", [who]);
+  const dl = deadline ?? (await latest()) + HOUR;
+  const message = { account: who, bookId, name, bio, link, nonce, deadline: dl };
+  const signature = await signer.signTypedData({ account: signer.account, domain: domain ?? domainOf(callbook), types: PROFILE_TYPES, primaryType: "SetProfile", message });
+  return { ...message, signature };
+}
+
+const profileArgs = (p) => [p.account, p.bookId, p.name, p.bio, p.link, p.deadline, p.signature];
+const profileOf = (receipt, callbook) => eventsOf(receipt, callbook).find((e) => e.eventName === "Profile")?.args;
+
+describe("profiles", () => {
+  test("the typehash matches what clients sign", async () => {
+    const callbook = await deploy("Callbook", [identity]);
+    assert.equal(
+      await read(callbook, "PROFILE_TYPEHASH"),
+      keccak256(toHex("SetProfile(address account,uint256 bookId,string name,string bio,string link,uint256 nonce,uint256 deadline)")),
+    );
+  });
+
+  test("an account names itself (book 0) directly or through a relayer, and pays nothing when relayed", async () => {
+    const callbook = await deploy("Callbook", [identity]);
+    const direct = await send(stranger, callbook, CALLBOOK.abi, "setProfile", [0n, "Stranger", "hello", "https://example.com"]);
+    assert.deepEqual(profileOf(direct, callbook), { account: STRANGER, bookId: 0n, name: "Stranger", bio: "hello", link: "https://example.com" });
+
+    const balance = await publicClient.getBalance({ address: USER });
+    const signed = await signProfile(callbook, { name: "Midnight Momentum", bio: "Breakouts on majors · ✓", link: "https://x.com/m" });
+    const receipt = await send(relayer, callbook, CALLBOOK.abi, "setProfileBySig", profileArgs(signed));
+    gasUsed.profile = receipt.gasUsed;
+    assert.deepEqual(profileOf(receipt, callbook), { account: USER, bookId: 0n, name: "Midnight Momentum", bio: "Breakouts on majors · ✓", link: "https://x.com/m" });
+    assert.equal(await read(callbook, "profileNonces", [USER]), 1n);
+    assert.equal(await publicClient.getBalance({ address: USER }), balance);
+
+    // An empty name is how a profile is cleared.
+    const cleared = await send(relayer, callbook, CALLBOOK.abi, "setProfileBySig", profileArgs(await signProfile(callbook, { name: "" })));
+    assert.equal(profileOf(cleared, callbook).name, "");
+  });
+
+  test("only a book's owner names it; unknown books are refused; closed books can still be named", async () => {
+    const book = await setup();
+    const { callbook, bookId } = book;
+    await expectRevert(tx(stranger, callbook, "setProfile", [bookId, "Mine now", "", ""]), "NotBookOwner");
+    await expectRevert(tx(agentKey, callbook, "setProfile", [bookId, "Caller", "", ""]), "NotBookOwner"); // the caller key isn't the owner
+    await expectRevert(tx(owner, callbook, "setProfile", [99n, "Ghost", "", ""]), "UnknownBook");
+    const r = await send(owner, callbook, CALLBOOK.abi, "setProfile", [bookId, "Weekend fader", "", ""]);
+    assert.deepEqual(profileOf(r, callbook), { account: OWNER, bookId, name: "Weekend fader", bio: "", link: "" });
+
+    // Signed for someone else's book: the signature is fine, the ownership isn't.
+    const theirs = await signProfile(callbook, { bookId });
+    await expectRevert(tx(relayer, callbook, "setProfileBySig", profileArgs(theirs)), "NotBookOwner");
+
+    await send(owner, callbook, CALLBOOK.abi, "close", [bookId]);
+    await send(owner, callbook, CALLBOOK.abi, "setProfile", [bookId, "Retired", "", ""]);
+  });
+
+  test("caps are in bytes: 32 for the name, 160 for the bio, 100 for the link", async () => {
+    const callbook = await deploy("Callbook", [identity]);
+    const ok = ["n".repeat(32), "b".repeat(160), "l".repeat(100)];
+    await send(stranger, callbook, CALLBOOK.abi, "setProfile", [0n, ...ok]);
+    await expectRevert(tx(stranger, callbook, "setProfile", [0n, "n".repeat(33), "", ""]), "ProfileTooLong");
+    await expectRevert(tx(stranger, callbook, "setProfile", [0n, "é".repeat(17), "", ""]), "ProfileTooLong"); // 34 bytes, 17 characters
+    await expectRevert(tx(stranger, callbook, "setProfile", [0n, "ok", "b".repeat(161), ""]), "ProfileTooLong");
+    await expectRevert(tx(stranger, callbook, "setProfile", [0n, "ok", "", "l".repeat(101)]), "ProfileTooLong");
+  });
+
+  test("a signature can't be replayed, used late, re-aimed, altered or used for someone else", async () => {
+    const callbook = await deploy("Callbook", [identity]);
+    const submit = (p) => tx(relayer, callbook, "setProfileBySig", profileArgs(p));
+    const signed = await signProfile(callbook);
+    await send(relayer, callbook, CALLBOOK.abi, "setProfileBySig", profileArgs(signed));
+    await expectRevert(submit(signed), "BadSignature"); // the nonce moved on
+
+    await expectRevert(submit(await signProfile(callbook, { deadline: (await latest()) - 1n })), "SignatureExpired");
+    await expectRevert(submit(await signProfile(callbook, { signer: stranger })), "BadSignature");
+    const other = await deploy("Callbook", [identity]);
+    await expectRevert(submit(await signProfile(callbook, { domain: domainOf(other) })), "BadSignature");
+
+    const good = await signProfile(callbook, { name: "Real", bio: "b", link: "https://a.b" });
+    for (const change of [{ name: "Fake" }, { bio: "x" }, { link: "https://evil.example" }, { bookId: 1n }, { account: STRANGER }]) {
+      await expectRevert(submit({ ...good, ...change }), "BadSignature");
+    }
+    await expectRevert(submit({ ...good, signature: malleate(good.signature) }), "BadSignature");
+    await expectRevert(submit({ ...good, account: ZERO }), "BadSignature");
+    await submit(good);
+  });
+
+  test("profile nonces are separate from lock nonces, so a call signed ahead still lands", async () => {
+    const callbook = await deploy("Callbook", [identity]);
+    const call = await signLock(callbook); // signed against lock nonce 0
+    await send(relayer, callbook, CALLBOOK.abi, "setProfileBySig", profileArgs(await signProfile(callbook)));
+    await send(user, callbook, CALLBOOK.abi, "setProfile", [0n, "Again", "", ""]);
+    assert.equal(await read(callbook, "profileNonces", [USER]), 2n);
+    assert.equal(await read(callbook, "nonces", [USER]), 0n);
+    await relayLock(callbook, call);
+  });
+});
+
 test("gas on the local node", (t) => {
   assert.ok(gasUsed.open && gasUsed.seal && gasUsed.reveal);
   t.diagnostic(`open (3 coins) ${gasUsed.open} · seal ${gasUsed.seal} · reveal ${gasUsed.reveal}`);

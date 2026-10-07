@@ -29,7 +29,7 @@
     $("desc").textContent = b.description || "";
     $("desc").hidden = !b.description;
     $("meta").innerHTML = "One call on " + '<span title="' + esc((b.coins || []).join(", ")) + '">' + esc(coinList(b.coins)) + "</span> every <b>" + esc(C.hours(b.periodSec)) +
-      "</b>, revealed <b>" + esc(C.hours(b.horizonSec)) + "</b> later · " + (C.isNum(b.start) ? "first round " + esc(C.stamp(b.start, true)) : "opened " + esc(C.stamp(b.openedAt, true)));
+      "</b>, revealed <b>" + esc(C.hours(b.horizonSec)) + "</b> later · " + (C.isNum(b.start) ? "first round " + esc(C.stamp(b.start, true)) : "opened " + esc(C.stamp(b.openedAt, true))) + C.moreFrom(b);
     var fact = function (k, v, tip) { return "<div><dt" + (tip ? ' data-tip="' + esc(tip) + '" tabindex="0"' : "") + ">" + esc(k) + "</dt><dd>" + v + "</dd></div>"; };
     $("facts").innerHTML =
       fact("Strategy hash", '<span class="cb-hash" title="' + esc(b.strategyHash) + '">' + esc(C.shortHash(b.strategyHash, 10, 6)) + "</span>" + C.copyButton(b.strategyHash, "Copy the strategy hash"),

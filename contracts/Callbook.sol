@@ -67,6 +67,12 @@ import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/Signa
  * see `symbolCallHashOf`. Each lock in an any-coin book uses up one nonce of
  * the book's owner, whether it arrives signed or sent directly.
  *
+ * ## Profiles
+ *
+ * `setProfile` (or `setProfileBySig`, relayed) names an account (bookId 0) or
+ * one of its books, with a bio and a link. It only emits `Profile`: the newest
+ * event is the profile. It never touches calls or scores.
+ *
  * Arc timestamps have one-second resolution and never decrease, which is all a
  * deadline needs: time can only move toward it.
  */
@@ -149,6 +155,14 @@ contract Callbook is EIP712 {
         keccak256("LockCall(address account,bytes32 callHash,uint32 horizon,uint256 nonce,uint256 deadline)");
     bytes32 public constant SEAL_TYPEHASH =
         keccak256("SealCall(uint256 bookId,uint64 p,bytes32 callHash,uint256 deadline)");
+    bytes32 public constant PROFILE_TYPEHASH = keccak256(
+        "SetProfile(address account,uint256 bookId,string name,string bio,string link,uint256 nonce,uint256 deadline)"
+    );
+
+    /// Profile caps, in bytes. What a name may say is checked off-chain.
+    uint256 public constant MAX_NAME_BYTES = 32;
+    uint256 public constant MAX_BIO_BYTES = 160;
+    uint256 public constant MAX_LINK_BYTES = 100;
 
     // ---------------------------------------------------------------------
     // State
@@ -172,6 +186,8 @@ contract Callbook is EIP712 {
     /// The book `lockBySig` locks into for an account (0 until its first lock).
     mapping(address => uint256) public defaultBookOf;
     mapping(address => uint64) private _nonces;
+    /// Separate from `nonces`: those are bound into call hashes signed ahead of time.
+    mapping(address => uint256) public profileNonces;
 
     // ---------------------------------------------------------------------
     // Events
@@ -205,6 +221,8 @@ contract Callbook is EIP712 {
     event Locked(uint256 indexed bookId, uint64 indexed callId, bytes32 callHash, uint64 entryAt, uint32 horizon);
     event RevealedLocked(uint256 indexed bookId, uint64 indexed callId, uint8 coinIndex, int8 side, uint32 horizon);
     event RevealedLockedSymbol(uint256 indexed bookId, uint64 indexed callId, string coin, int8 side, uint32 horizon);
+    /// bookId 0 is the account itself; an empty name clears the profile.
+    event Profile(address indexed account, uint256 indexed bookId, string name, string bio, string link);
 
     // ---------------------------------------------------------------------
     // Errors
@@ -240,6 +258,7 @@ contract Callbook is EIP712 {
     error SignatureExpired(uint256 deadline);
     error BadSignature();
     error StaleId(uint64 expected, uint64 actual);
+    error ProfileTooLong();
 
     // ---------------------------------------------------------------------
     // Setup
@@ -367,6 +386,74 @@ contract Callbook is EIP712 {
         if (book.closedAt != 0) revert BookClosed();
         book.closedAt = uint64(block.timestamp);
         emit Closed(bookId);
+    }
+
+    // ---------------------------------------------------------------------
+    // Profiles
+    // ---------------------------------------------------------------------
+
+    /**
+     * @notice Name yourself (bookId 0) or one of your books, with a short bio and
+     *         a link. Only the event is kept: the newest one per account and
+     *         book is the profile, and an empty name clears it. Closed books
+     *         can still be named; their records stay on show.
+     */
+    function setProfile(uint256 bookId, string calldata name, string calldata bio, string calldata link) external {
+        _setProfile(msg.sender, bookId, name, bio, link);
+    }
+
+    /**
+     * @notice `setProfile`, with the gas paid by whoever submits it. The signature
+     *         is EIP-712 `SetProfile(account, bookId, name, bio, link,
+     *         profileNonces(account), deadline)` by `account`.
+     */
+    function setProfileBySig(
+        address account,
+        uint256 bookId,
+        string calldata name,
+        string calldata bio,
+        string calldata link,
+        uint256 deadline,
+        bytes calldata signature
+    ) external {
+        if (block.timestamp > deadline) revert SignatureExpired(deadline);
+        if (account == address(0)) revert BadSignature();
+        bytes memory texts = abi.encode(keccak256(bytes(name)), keccak256(bytes(bio)), keccak256(bytes(link)));
+        if (!SignatureChecker.isValidSignatureNowCalldata(account, _profileDigest(account, bookId, texts, deadline), signature)) {
+            revert BadSignature();
+        }
+        _setProfile(account, bookId, name, bio, link);
+    }
+
+    /// Every field is one 32-byte word, so the parts concatenate to the EIP-712 struct encoding.
+    function _profileDigest(address account, uint256 bookId, bytes memory texts, uint256 deadline)
+        private
+        view
+        returns (bytes32)
+    {
+        return _hashTypedDataV4(
+            keccak256(
+                bytes.concat(
+                    abi.encode(PROFILE_TYPEHASH, account, bookId), texts, abi.encode(profileNonces[account], deadline)
+                )
+            )
+        );
+    }
+
+    function _setProfile(
+        address account,
+        uint256 bookId,
+        string calldata name,
+        string calldata bio,
+        string calldata link
+    ) private {
+        if (bookId != 0 && _book(bookId).owner != account) revert NotBookOwner();
+        if (
+            bytes(name).length > MAX_NAME_BYTES || bytes(bio).length > MAX_BIO_BYTES
+                || bytes(link).length > MAX_LINK_BYTES
+        ) revert ProfileTooLong();
+        profileNonces[account]++;
+        emit Profile(account, bookId, name, bio, link);
     }
 
     // ---------------------------------------------------------------------

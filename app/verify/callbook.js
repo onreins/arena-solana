@@ -27,7 +27,7 @@ import {
 import { canonicalJson, hashText, SCORING_VERSION, requestForBook, latestResponse } from "./callbook-chain.js";
 import { priceBook, intervalFor, resolveSymbol } from "./callbook-prices.js";
 import { maxOf, brief } from "./callbook-util.js";
-import { agentInfo } from "./callbook-agents.js";
+import { agentInfo, profileFor, profileFields, personProfile } from "./callbook-agents.js";
 import { evaluateCaller, callerToApi } from "./callbook-callers.js";
 import { skillScore, hitOf, recordLevel } from "./callbook-skill.js";
 
@@ -476,14 +476,16 @@ function callOut(c) {
  * The /api/callbook book summary and the /api/callbook/book/:id detail for
  * one evaluated book.
  */
-export function bookToApi({ chain, ev, validator, asOf, ours = null }) {
+export function bookToApi({ chain, ev, validator, asOf, ours = null, cards = null }) {
   const { book, scored } = ev;
-  const info = agentInfo({ chainId: chain.chainId, callbook: chain.address, bookId: book.id, strategyHash: book.strategyHash, owner: book.owner, ours });
+  const profile = profileFor({ chain, book, cards });
+  const info = agentInfo({ chainId: chain.chainId, callbook: chain.address, bookId: book.id, strategyHash: book.strategyHash, owner: book.owner, ours, profile });
   const v = validationOf(chain, book, validator);
   const summary = {
     id: String(book.id), name: info.name, description: info.description, owner: book.owner, agentId: book.agentId, caller: book.caller,
     coins: book.coins, periodSec: book.periodSec, horizonSec: book.horizonSec, openedAt: book.openedAt, start: book.start,
     closed: book.closedAt != null && book.closedAt <= asOf, strategyHash: book.strategyHash, ours: info.ours, baseline: info.baseline,
+    ...profileFields(info),
     metrics: metricsOut(scored.metrics),
     challenge: scored.challenge,
     validation: v.api ? { ...v.api, score: v.api.score } : null,
@@ -543,6 +545,9 @@ export function indexToApi({ meta, chain, books, callers = [], feedLimit = 100 }
     },
     books: all,
     callers: people,
+    // Each person's own name, bio and link, for their profile page (/arena/p/<owner>).
+    people: Object.fromEntries([...new Set([...all, ...people].map((b) => b.owner))]
+      .map((owner) => [owner, personProfile(chain, owner)]).filter(([, p]) => p)),
     feed: feed.slice(0, feedLimit),
   };
 }
@@ -557,30 +562,34 @@ export function indexToApi({ meta, chain, books, callers = [], feedLimit = 100 }
  *               `ours`, and scored first, so the coin limit never crowds them out
  *   agentOwner  async (agentId) => current ERC-8004 owner, to flag a book whose
  *               agent has since moved to someone else (`agentMoved`)
+ *   agentCard   async (agentId) => { name, description } from the agent's
+ *               ERC-8004 registration file, or null (arena-agent-card.js): the
+ *               name of a linked book with no profile of its own
  *   maxCoins    distinct coins fetched in one rebuild (MAX_COINS_PER_REBUILD)
  * A book that can't be scored (no coin Hyperliquid lists, over the coin limit)
  * is still listed, flagged `unscorable` with the reason, never silently dropped.
  */
-export async function buildCallbook({ chain, source, asOf, meta, validator, reportBase, log, ours = null, agentOwner = null, maxCoins = MAX_COINS_PER_REBUILD }) {
+export async function buildCallbook({ chain, source, asOf, meta, validator, reportBase, log, ours = null, agentOwner = null, agentCard = null, maxCoins = MAX_COINS_PER_REBUILD }) {
   const books = [], callers = [];
   const budget = { coins: new Set(), max: maxCoins };
   const rank = (b) => (ours?.bookIds.has(b.id) && b.owner === ours.owner ? ours.order.indexOf(b.id) : Infinity);
   const ordered = [...chain.books.values()].filter((b) => b.openedAt <= asOf).sort((a, b) => rank(a) - rank(b) || a.id - b.id);
+  const cards = await agentCardsFor(ordered, agentCard, log);
   for (const book of ordered) {
     const moved = await agentMovedFor(book, agentOwner, log);
     try {
       if (book.kind === "free") {
         const ev = await evaluateCaller({ chain, book, source, asOf, reportBase, reportUri, budget });
-        const api = callerToApi({ chain, ev, validator, asOf });
+        const api = callerToApi({ chain, ev, validator, asOf, cards });
         callers.push({ ...withFlags(api, { agentMoved: moved, truncated: ev.scored.truncated }), ev });
       } else {
         const ev = await evaluateBook({ chain, book, source, asOf, reportBase, budget });
-        const api = bookToApi({ chain, ev, validator, asOf, ours });
+        const api = bookToApi({ chain, ev, validator, asOf, ours, cards });
         books.push({ ...withFlags(api, { agentMoved: moved, truncated: ev.scored.truncated }), ev });
       }
     } catch (err) {
       log?.(`book ${book.id}: ${brief(err)}`);
-      const stub = unscorableStub(book, brief(err), moved);
+      const stub = unscorableStub(book, brief(err), moved, profileFor({ chain, book, cards }));
       (book.kind === "free" ? callers : books).push({ summary: stub, detail: { ...stub, calls: [] }, feed: [], ev: null });
     }
   }
@@ -589,6 +598,21 @@ export async function buildCallbook({ chain, source, asOf, meta, validator, repo
   const details = new Map(books.map((b) => [b.summary.id, { ...meta, generated, ...b.detail }]));
   const callerDetails = new Map(callers.map((c) => [c.summary.id, { ...meta, generated, ...c.detail }]));
   return { index, details, callerDetails, evaluated: [...books, ...callers].map((b) => b.ev).filter(Boolean) };
+}
+
+/** agentId -> { name, description } for every linked agent, each read once; a failed read is just no card. */
+async function agentCardsFor(books, agentCard, log) {
+  const cards = new Map();
+  if (!agentCard) return cards;
+  for (const id of new Set(books.filter((b) => b.agentId != null).map((b) => String(b.agentId)))) {
+    try {
+      const card = await agentCard(id);
+      if (card) cards.set(id, card);
+    } catch (err) {
+      log?.(`agent ${id} card: ${brief(err)}`);
+    }
+  }
+  return cards;
 }
 
 /** True when the book's ERC-8004 agent now belongs to someone other than the book's owner. */
@@ -607,9 +631,9 @@ function withFlags(api, flags) {
   return { ...api, summary: { ...api.summary, ...flags }, detail: { ...api.detail, ...flags } };
 }
 
-function unscorableStub(book, reason, moved) {
+function unscorableStub(book, reason, moved, profile = null) {
   return {
-    id: String(book.id), name: `Book #${book.id}`, kind: book.kind ?? "scheduled", owner: book.owner, agentId: book.agentId, caller: book.caller,
+    id: String(book.id), name: profile?.name ?? `Book #${book.id}`, ...profileFields(profile ?? {}), kind: book.kind ?? "scheduled", owner: book.owner, agentId: book.agentId, caller: book.caller,
     coins: book.coins?.length ? book.coins : null, openedAt: book.openedAt, closed: book.closedAt != null, ours: false, baseline: false,
     unscorable: true, reason, agentMoved: moved, metrics: null, score: null, validation: null, curve: [], challenge: null,
   };

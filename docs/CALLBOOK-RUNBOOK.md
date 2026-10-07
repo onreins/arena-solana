@@ -248,6 +248,15 @@ Mainnet https://explorer.arc.io, testnet https://explorer.testnet.arc.io.
 
 ## 7. What if
 
+**Someone sets an abusive or impersonating name.** Names live on chain and
+can’t be erased, only left unshown. Add the address (lowercase) to
+`accounts`, or `"chainId:callbook:bookId"` to `books`, in
+`app/verify/arena-hidden.js` with a comment saying why, then deploy. The
+record falls back to its short address everywhere; its calls and score are
+untouched. If the name got past the rules, also add the pattern to the
+reserved names in `app/verify/arena-names.js`, so the relayer refuses it next
+time.
+
 **The salt secret is lost.** Every call sealed but not yet revealed can't be
 revealed: after the 7-day grace each one is scored as withheld (the worst
 outcome among the book's coins and sides), which also lowers coverage. Set a
