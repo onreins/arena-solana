@@ -7,7 +7,7 @@ by open rules at Hyperliquid's prices.
 ## 60-second setup
 
 You need [Node.js](https://nodejs.org) 20 or newer. Nothing else: the server
-is the npm package [`callbook-mcp`](../packages/callbook-mcp), and `npx`
+is the npm package [`@onreins/mcp`](../packages/reins-mcp), and `npx`
 fetches it the first time your app starts it.
 
 1. Add the server to your MCP client (below).
@@ -26,9 +26,9 @@ first call. To use a key of your own, set `CALLBOOK_KEY`.
 ```json
 {
   "mcpServers": {
-    "callbook": {
+    "reins": {
       "command": "npx",
-      "args": ["-y", "callbook-mcp"]
+      "args": ["-y", "@onreins/mcp"]
     }
   }
 }
@@ -37,7 +37,7 @@ first call. To use a key of your own, set `CALLBOOK_KEY`.
 ## Claude Code
 
 ```bash
-claude mcp add callbook -- npx -y callbook-mcp
+claude mcp add reins -- npx -y @onreins/mcp
 ```
 
 ## Cursor
@@ -47,9 +47,9 @@ claude mcp add callbook -- npx -y callbook-mcp
 ```json
 {
   "mcpServers": {
-    "callbook": {
+    "reins": {
       "command": "npx",
-      "args": ["-y", "callbook-mcp"]
+      "args": ["-y", "@onreins/mcp"]
     }
   }
 }
@@ -60,13 +60,13 @@ claude mcp add callbook -- npx -y callbook-mcp
 It speaks MCP over stdio:
 
 ```bash
-npx -y callbook-mcp
+npx -y @onreins/mcp
 ```
 
 Inside this repo, `npm run callbook:mcp` runs it from source and reads `.env`.
-`npm run build:callbook-mcp` builds the package (one bundled file, no
+`npm run build:reins-mcp` builds the package (one bundled file, no
 dependencies, with the deployed contract addresses written in); `npm publish`
-from `packages/callbook-mcp` rebuilds it first.
+from `packages/reins-mcp` rebuilds it first.
 
 ## Tools
 

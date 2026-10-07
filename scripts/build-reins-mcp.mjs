@@ -1,10 +1,10 @@
 /**
- * Builds the publishable Callbook MCP package in packages/callbook-mcp/:
+ * Builds the publishable Reins MCP package (@onreins/mcp) in packages/reins-mcp/:
  *
- *   npm run build:callbook-mcp
+ *   npm run build:reins-mcp
  *
- * One self-contained file (dist/callbook-mcp.mjs) with every dependency
- * bundled, so `npx -y callbook-mcp` runs with nothing else to install. The
+ * One self-contained file (dist/onreins-mcp.mjs) with every dependency
+ * bundled, so `npx -y @onreins/mcp` runs with nothing else to install. The
  * deployed contract addresses (deployments/callbook-<network>.json, when
  * present) are written into the bundle, so users don't need CALLBOOK_ADDRESS.
  *
@@ -18,8 +18,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
-const PKG = path.join(ROOT, "packages", "callbook-mcp");
-const OUT = path.join(PKG, "dist", "callbook-mcp.mjs");
+const PKG = path.join(ROOT, "packages", "reins-mcp");
+const OUT = path.join(PKG, "dist", "onreins-mcp.mjs");
 const VERSION = JSON.parse(readFileSync(path.join(PKG, "package.json"), "utf8")).version;
 
 // Whatever is deployed now goes in the bundle.
@@ -50,7 +50,7 @@ const embedArtifacts = {
         loader: "js",
         contents: `const A = ${JSON.stringify(abis)};
 export function artifact(name) {
-  if (!A[name]) throw new Error("artifact " + name + " is not in the callbook-mcp bundle");
+  if (!A[name]) throw new Error("artifact " + name + " is not in the @onreins/mcp bundle");
   return A[name];
 }`,
       };
@@ -86,4 +86,4 @@ copyFileSync(path.join(ROOT, "app", "verify", "NOTICE"), path.join(PKG, "NOTICE"
 
 const kb = (Object.values(result.metafile.outputs)[0].bytes / 1024).toFixed(0);
 const nets = Object.keys(deployments);
-console.log(`packages/callbook-mcp/dist/callbook-mcp.mjs ${kb} KB` + (nets.length ? `, with ${nets.join(" + ")} addresses, runs on ${deployments.mainnet ? "mainnet" : "testnet"} by default` : ", no deployments yet (users set CALLBOOK_ADDRESS)"));
+console.log(`packages/reins-mcp/dist/onreins-mcp.mjs ${kb} KB` + (nets.length ? `, with ${nets.join(" + ")} addresses, runs on ${deployments.mainnet ? "mainnet" : "testnet"} by default` : ", no deployments yet (users set CALLBOOK_ADDRESS)"));

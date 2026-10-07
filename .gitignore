@@ -33,7 +33,7 @@ research/smart-money-*.mjs
 # Hyperliquid candles and funding cached by the Callbook scorer
 data/callbook-prices/
 
-# Built by scripts/build-callbook-mcp.mjs
-packages/callbook-mcp/dist/
-packages/callbook-mcp/NOTICE
-packages/callbook-mcp/*.tgz
+# Built by scripts/build-reins-mcp.mjs
+packages/reins-mcp/dist/
+packages/reins-mcp/NOTICE
+packages/reins-mcp/*.tgz

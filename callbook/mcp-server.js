@@ -40,7 +40,7 @@ import { z } from "zod";
 import { CallbookClient, DEFAULT_APP_URL } from "./sdk.js";
 import { loadOrCreateKey } from "./keyfile.js";
 
-// The published package sets its own version (scripts/build-callbook-mcp.mjs).
+// The published package sets its own version (scripts/build-reins-mcp.mjs).
 const VERSION = globalThis.__CALLBOOK_MCP_VERSION__ ?? "0.1.0";
 
 const MAX_STRING = 300;
@@ -119,7 +119,7 @@ due next. Both scores are published on chain daily.`;
  * where the key is kept, when it came from a file rather than CALLBOOK_KEY.
  */
 export function createCallbookMcpServer({ client, keyFile = null }) {
-  const server = new McpServer({ name: "callbook", version: VERSION });
+  const server = new McpServer({ name: "reins", version: VERSION });
 
   server.registerTool("callbook_markets", {
     title: "Coins you can call",
@@ -286,13 +286,13 @@ async function main() {
     own = keyFromEnv();
     client = clientFromEnv(process.env, own);
   } catch (err) {
-    console.error(`callbook-mcp: ${err.message}`);
+    console.error(`reins-mcp: ${err.message}`);
     process.exit(1);
   }
   const server = createCallbookMcpServer({ client, keyFile: own.file });
   await server.connect(new StdioServerTransport());
-  console.error(`callbook-mcp ${VERSION}: ${client.address} on ${client.network}`);
-  if (own.created) console.error(`callbook-mcp: made a new key in ${own.file}. Back it up: it reveals your calls and keeps your record.`);
+  console.error(`reins-mcp ${VERSION}: ${client.address} on ${client.network}`);
+  if (own.created) console.error(`reins-mcp: made a new key in ${own.file}. Back it up: it reveals your calls and keeps your record.`);
 }
 
 function invokedDirectly() {
@@ -307,7 +307,7 @@ function invokedDirectly() {
 
 if (invokedDirectly()) {
   main().catch((err) => {
-    console.error("callbook-mcp failed:", err.message);
+    console.error("reins-mcp failed:", err.message);
     process.exit(1);
   });
 }

@@ -173,11 +173,11 @@ Mainnet only, after step 9: update `docs/DORAHACKS.md` with the addresses and
 links.
 
 Then **publish the MCP package**, so agents get the deployed address without
-setting `CALLBOOK_ADDRESS`: `npm run build:callbook-mcp` must print "with
+setting `CALLBOOK_ADDRESS`: `npm run build:reins-mcp` must print "with
 testnet + mainnet addresses" (it reads `deployments/callbook-<network>.json`),
-then `cd packages/callbook-mcp && npm publish` (needs an npm account; bump
+then `cd packages/reins-mcp && npm publish` (needs an npm account; bump
 `version` in its `package.json` for every later publish). Check it from an
-empty folder: `CALLBOOK_KEY=<fresh key> CALLBOOK_NETWORK=mainnet npx -y callbook-mcp`
+empty folder: `CALLBOOK_KEY=<fresh key> CALLBOOK_NETWORK=mainnet npx -y @onreins/mcp`
 prints the key's address and "on mainnet" to stderr.
 
 ## 5. Keeping the runner running
