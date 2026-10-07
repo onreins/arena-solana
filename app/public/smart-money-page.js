@@ -13,8 +13,11 @@
   var tone = function (x) { return x > 0 ? "up" : x < 0 ? "down" : ""; };
 
   // ------------------------------------------------------------- the chart
+  // Drawn at the box's own size, so the labels keep their shape at any width.
   function chart(a) {
-    var W = 640, H = 270, P = { l: 8, r: 52, t: 12, b: 24 };
+    var box = $("plot");
+    box.innerHTML = "";  // measure the room the box has, not the last chart's height
+    var W = Math.max(280, Math.round(box.clientWidth || 640)), H = Math.max(240, Math.round(box.clientHeight || 270)), P = { l: 8, r: 52, t: 12, b: 24 };
     var all = a.map(function (p) { return p.index; });
     var lo = Math.min.apply(null, all) * 0.98, hi = Math.max.apply(null, all) * 1.02;
     var t0 = a[0].t, t1 = a[a.length - 1].t;
@@ -29,9 +32,11 @@
     }
     var one = y(1).toFixed(1);
     var months = "";
-    for (var t = t0; t <= t1; t += 30 * 86400) months += '<text x="' + x(t).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle">' + day(t) + "</text>";
+    // a label a month, or every other month when a month is too narrow for one
+    var monthPx = (W - P.l - P.r) / ((t1 - t0) / (30 * 86400)), step = (monthPx < 56 ? 60 : 30) * 86400;
+    for (var t = t0; t <= t1; t += step) months += '<text x="' + x(t).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="' + (t === t0 ? "start" : "middle") + '">' + day(t) + "</text>";
     var area = path(a) + " L" + x(t1).toFixed(1) + " " + (H - P.b) + " L" + x(t0).toFixed(1) + " " + (H - P.b) + " Z";
-    $("plot").innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none">' +
+    box.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none">' +
       '<defs><linearGradient id="sm-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#5aaeff" stop-opacity=".28"/><stop offset="1" stop-color="#5aaeff" stop-opacity="0"/></linearGradient></defs>' +
       grid + '<line class="g one" x1="' + P.l + '" x2="' + (W - P.r) + '" y1="' + one + '" y2="' + one + '"/>' + months +
       '<path d="' + area + '" fill="url(#sm-fill)"/>' +
@@ -61,6 +66,15 @@
     $("fine").textContent = "Positions are sized so the account is never more than fully invested. Costs: " + d.costs + ". " +
       "Tested " + day(d.window[0]) + " to " + day(d.window[1]) + " " + new Date(d.window[1] * 1000).getUTCFullYear() + ".";
     chart(d.curve);
+    var lastW = $("plot").clientWidth, resizeTimer = null;
+    window.addEventListener("resize", function () {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(function () {
+        if ($("plot").clientWidth === lastW) return;
+        lastW = $("plot").clientWidth;
+        chart(d.curve);
+      }, 150);
+    });
 
     $("s-months").innerHTML = st.monthsBeatingMarket + '<span class="sm-of"> of ' + st.months + "</span>";
     $("s-edge").innerHTML = '<span class="' + tone(st.perTradeVsMarket) + '">' + pct(st.perTradeVsMarket, 2) + "</span>";

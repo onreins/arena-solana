@@ -48,3 +48,10 @@
 @media (max-width: 760px) {
   .ag-floor { padding: 12px; }
 }
+/* Phones: the two chart tabs and the four ranges don't fit one row, so the
+   ranges sit on their own row above the tabs instead of scrolling out of view. */
+@media (max-width: 560px) {
+  .ag-hero .tabs { flex-wrap: wrap; overflow: visible; }
+  .ag-hero .tabs .grow { display: none; }
+  .ag-hero .ranges { order: -1; flex-basis: 100%; justify-content: flex-end; }
+}

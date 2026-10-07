@@ -47,8 +47,9 @@
   .sm-read { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 }
 @media (max-width: 900px) {
-  .sm-read { grid-template-columns: minmax(0, 1fr); }
+  .sm-read { grid-template-columns: minmax(0, 1fr); padding-left: 0; }
   .sm-mh, .sm-m { grid-template-columns: 92px 64px minmax(0, 1fr) 58px 32px; gap: 8px; }
+  .sm-mh { font-size: 12px; }
 }
 @media (max-width: 560px) {
   /* phones: the trade count goes, and the "falling" tag sits under the market move */

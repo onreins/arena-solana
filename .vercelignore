@@ -8,6 +8,10 @@
 !/arena
 !/bridge
 !/mandate
+# The Callbook API reads the ERC-8004 registry ABIs from here (app/verify/callbook-network.js).
+!/evaluator
+/evaluator/*
+!/evaluator/abi.js
 !/contracts
 # RedStone price-feed contracts compile only where dev dependencies are
 # installed (tests, CI); the app needs just the feed address, not their build.
@@ -27,4 +31,8 @@
 /deployments/*
 !/deployments/testnet.json
 !/deployments/mandate-testnet.json
+!/deployments/callbook-testnet.json
+!/deployments/callbook-mainnet.json
+!/deployments/callbook-testnet-books.json
+!/deployments/callbook-mainnet-books.json
 .env*

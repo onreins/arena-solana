@@ -342,7 +342,15 @@ body.tm.planning { grid-template-rows: 52px 62px minmax(0, 1fr) 340px; }
   .tm-panel-h .tm-round { margin-left: 0; width: 100%; }
   .tm-chart { border-radius: 0; height: 58dvh; min-height: 360px; margin-top: var(--gap); }
   .tm-tabs { display: flex; position: sticky; top: 52px; z-index: 20; margin-top: var(--gap); border-radius: 0; height: 44px; padding: 0 10px; }
-  .tm-tabs button { flex: 1; height: 32px; }
+  .tm-tabs button { flex: 1; height: 40px; }
+  .tm-share { height: 40px; }
+  .tm-search { height: 40px; }
+  .tm-star { left: 0; width: 26px; height: 40px; }
+  .tm-venues button { height: 40px; min-width: 40px; padding: 0 10px; }
+  .tm-cols { padding-block: 0; }
+  .tm-cols button { height: 36px; font-size: 12px; }
+  .tm-brand { height: 40px; }
+  .tm-seg button { height: 36px; }
   .tm-tabs button[data-p="markets"] { display: block; }
   .tm-tabs .tm-round { display: none !important; }
   .tm-thesis, .tm-hot, .tm-markets { border-radius: 0; margin-top: var(--gap); }

@@ -38,6 +38,7 @@ import { createRiskEngine, snapshot } from "../bridge/risk.js";
 import { mountStrategy } from "./strategy/routes.js";
 import { mountOnramp } from "./onramp.js";
 import { buildActivity } from "./activity.js";
+import { mountCallbook } from "./callbook-routes.js";
 
 const ERC20 = parseAbi(["function balanceOf(address) view returns (uint256)"]);
 
@@ -113,7 +114,7 @@ export function compileRules(rules) {
   };
 }
 
-export function createApp({ deployment, rpcUrl, strategy, onramp, publicClient, snapshot } = {}) {
+export function createApp({ deployment, rpcUrl, strategy, onramp, callbook, publicClient, snapshot } = {}) {
   const dep = deployment ?? loadDeployment();
   const chain = dep.chainId === arc.id ? arc : arcTestnet;
   const explorer = dep.chainId === arc.id ? "https://explorer.arc.io" : "https://explorer.testnet.arc.io";
@@ -122,7 +123,11 @@ export function createApp({ deployment, rpcUrl, strategy, onramp, publicClient, 
   // Behind a reverse proxy every visitor arrives from the proxy's address, which
   // would put everyone in one rate-limit bucket. TRUST_PROXY names the hops to
   // trust (a count, or "loopback"); unset, the socket address is used as is.
-  const trustProxy = process.env.TRUST_PROXY;
+  // On Vercel use TRUST_PROXY=1: Vercel overwrites X-Forwarded-For with the
+  // real client address, so one trusted hop reads exactly that and a client
+  // can't pick its own rate-limit bucket. Never trust more hops than exist.
+  // On Vercel, one hop is the default: without it every visitor shares one rate-limit bucket.
+  const trustProxy = process.env.TRUST_PROXY ?? (process.env.VERCEL ? "1" : undefined);
   if (trustProxy) app.set("trust proxy", /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy);
   app.use(express.json({ limit: "64kb" }));
 
@@ -164,6 +169,9 @@ export function createApp({ deployment, rpcUrl, strategy, onramp, publicClient, 
 
   // Card funding: buy USDC into your own wallet with Circle's Onramp Kit.
   mountOnramp(app, onramp);
+
+  // Callbook: sealed calls, their scores and reports (404 until CALLBOOK_NETWORK is set).
+  mountCallbook(app, callbook);
 
   // A wallet's USDC, so the page can show it and see a card purchase land.
   app.get("/api/usdc/:address", async (req, res) => {

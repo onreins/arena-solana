@@ -3,8 +3,7 @@
  *
  * Only the parts the evaluator touches. These are interface definitions, not
  * deployments — the addresses live in configuration, so the same code works
- * against the local mocks, Arc testnet, and mainnet once the registries land
- * there.
+ * against the local mocks, Arc testnet, and Arc mainnet.
  */
 
 export const JOB_STATUS = ["Open", "Funded", "Submitted", "Completed", "Rejected", "Expired"];
@@ -234,11 +233,12 @@ export const VALIDATION_REGISTRY_ABI = [
 ];
 
 /**
- * ERC-8004 registry addresses on Arc testnet.
+ * ERC-8004 registry addresses on Arc, reference contracts v2.0.0 (behind
+ * proxies, same vanity prefixes on both chains).
  *
- * Verified on 2026-09-24: these are deployed on testnet (chain 5042002) and
- * have NO code on mainnet (chain 5042). Mainnet entries stay null until the
- * registries actually land there.
+ * Testnet (chain 5042002): verified 2026-09-24. Mainnet (chain 5042): live
+ * since the v2.0.0 deployment on 2026-08-01; IdentityRegistry.getVersion()
+ * returns "2.0.0" there.
  */
 export const REGISTRIES = {
   5042002: {
@@ -247,8 +247,8 @@ export const REGISTRIES = {
     validation: "0x8004Cb1BF31DAf7788923b405b754f57acEB4272",
   },
   5042: {
-    identity: null,
-    reputation: null,
-    validation: null,
+    identity: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+    reputation: "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63",
+    validation: "0x8004Cc8439f36fd5F9F049D9fF86523Df6dAAB58",
   },
 };

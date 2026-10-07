@@ -96,7 +96,13 @@ async function main() {
 
   const usdc = await deploy("MockUSDC");
   const jobs = await deploy("MockAgenticCommerce", [usdc]);
-  const validation = await deploy("MockValidationRegistry");
+  const identity = await deploy("MockIdentityRegistry");
+  const validation = await deploy("MockValidationRegistry", [identity]);
+  // Only an agent's owner may ask for its work to be validated.
+  await send(accounts.deployer, identity, artifact("MockIdentityRegistry").abi, "mint", [
+    accounts.client.address,
+    42n,
+  ]);
 
   console.log(`  job contract   ${jobs}`);
   console.log(`  validation     ${validation}`);

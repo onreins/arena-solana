@@ -12,8 +12,8 @@ window.ReinsUI = (function () {
   var FLAT = 0.005; // under half a basis point is rounding, not a move
 
   function esc(s) {
-    return String(s).replace(/[&<>"]/g, function (c) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
   }
   var short = function (a) { return a ? a.slice(0, 6) + "…" + a.slice(-4) : ""; };
@@ -86,6 +86,12 @@ window.ReinsUI = (function () {
     exit: '<path d="M14 4.5h4.5v15H14M10 16l4-4-4-4M14 12H4"/>',
     charts: '<path d="M4 19.5h16"/><path d="M7 15.5v-5M7 8v-1.5"/><rect x="5.5" y="10" width="3" height="5.5" rx=".6"/><path d="M12 13v-6M12 17.5V16"/><rect x="10.5" y="7" width="3" height="9" rx=".6"/><path d="M17 11V9M17 17.5V16"/><rect x="15.5" y="11" width="3" height="5" rx=".6"/>',
     wallet: '<rect x="3.5" y="6" width="17" height="13" rx="2.5"/><path d="M3.5 9.5h17M16 14h.01"/>',
+    // Callbook: a call sealed shut, with the check it gets once it's verified.
+    callbook: '<rect x="4.5" y="10" width="15" height="10.5" rx="2.2"/><path d="M8 10V7.6a4 4 0 0 1 8 0V10"/><path d="m9.3 15.3 1.9 1.9 3.6-3.6"/>',
+    lock: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/>',
+    unlock: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 7.6-1.7"/><path d="M12 14.5v2"/>',
+    miss: '<circle cx="12" cy="12" r="8.5" stroke-dasharray="2.6 2.4"/><path d="M9 12h6"/>',
+    terminal: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="m7.5 9.5 3 2.5-3 2.5M12.5 15h4"/>',
   };
   var ALIAS = { external: "ext", chev: "right", sort: "updown", trend: "strategies", gauge: "shield", coins: "wallet" };
   function icon(name, size) {
@@ -108,7 +114,7 @@ window.ReinsUI = (function () {
     return '<span class="tok' + (cls ? " " + cls : "") + '" style="background:' + bg + '" aria-hidden="true">' + esc(initial) + "</span>";
   }
   var COIN_ICONS = { BTC: "btc", ETH: "eth", SOL: "sol", USDC: "usdc", EURC: "eurc" };
-  function coinImg(sym) { return COIN_ICONS[sym] ? '<img src="/tokens/' + COIN_ICONS[sym] + '.svg" alt="">' : "<i>" + esc(String(sym).slice(0, 3)) + "</i>"; }
+  function coinImg(sym) { return Object.prototype.hasOwnProperty.call(COIN_ICONS, sym) ? '<img src="/tokens/' + COIN_ICONS[sym] + '.svg" alt="">' : "<i>" + esc(String(sym).slice(0, 3)) + "</i>"; }
   // Up to three of a universe's coins, in the space of one avatar.
   function coins(universe, cls) {
     var list = (universe || []).filter(function (u) { return u.charAt(0) !== "+"; }).slice(0, 3);
@@ -133,11 +139,11 @@ window.ReinsUI = (function () {
   // The Reins mark: a rounded lowercase r and its dot, white on the dark sidebar.
   var MARK = '<svg width="26" height="26" viewBox="256 256 512 512" aria-hidden="true"><g fill="#fff"><rect x="307" y="327" width="130" height="368" rx="65"/><path d="M430 396C452 352 494 327 540 327a50.5 50.5 0 0 1 0 101c-58 0-103 34-103 96H415V396z"/><circle cx="670" cy="378" r="47"/></g></svg>';
   var NAV = [
-    [null, [["explore", "Agents", "/"], ["strategies", "Strategies", "/strategies.html"], ["chat", "Chat", "/chat.html"], ["charts", "Charts", "/charts.html"], ["create", "Create agent", "/create.html"]]],
+    [null, [["explore", "Agents", "/"], ["strategies", "Strategies", "/strategies.html"], ["callbook", "Callbook", "/callbook.html"], ["chat", "Chat", "/chat.html"], ["charts", "Charts", "/charts.html"], ["create", "Create agent", "/create.html"]]],
     ["ARC", [["window", "Block explorer", "#", "nav-explorer"]]],
   ];
   // On a phone the sidebar is hidden, so the main pages move to a bar along the bottom.
-  var TABS = [["explore", "Agents", "/"], ["strategies", "Strategies", "/strategies.html"], ["charts", "Charts", "/charts.html"], ["chat", "Chat", "/chat.html"], ["create", "Create", "/create.html"]];
+  var TABS = [["explore", "Agents", "/"], ["strategies", "Strategies", "/strategies.html"], ["callbook", "Callbook", "/callbook.html"], ["charts", "Charts", "/charts.html"], ["chat", "Chat", "/chat.html"], ["create", "Create", "/create.html"]];
   function topbar(page) {
     var nav = NAV.map(function (g) {
       return (g[0] ? '<div class="grp">' + g[0] + "</div>" : "") + g[1].map(function (it) {
