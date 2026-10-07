@@ -11,7 +11,7 @@
   $("guil").innerHTML = C.guilloche(1200, 420, 0.87);
 
   // The caller score's published constants (app/verify/callbook-callers.js, CALLER_RULES).
-  var R = { recordDays: 61, recordCalls: 30, edgeFullT: 3, maxDrawdown: 0.10 };
+  var R = { fullT: 3, maxDrawdown: 0.40 };
   var X = null, EXP = null, order = [], shown = 0, PAGE = 50;
 
   var hold = function (sec) { return !C.isNum(sec) ? "—" : sec >= 86400 ? (Math.round(sec / 8640) / 10) + "d" : sec >= 3600 ? (Math.round(sec / 360) / 10) + "h" : Math.round(sec / 60) + "m"; };
@@ -53,11 +53,9 @@
   function scoreWhy(x) {
     var p = x.score && x.score.parts, m = x.metrics, next = [];
     if (!p) return "";
-    if (p.edge <= 0) next.push("calls that beat each coin’s own move after costs");
-    if (p.risk <= 0) next.push("a drawdown back under 10%");
-    var days = Math.max(0, R.recordDays - Math.floor(m.days || 0)), calls = Math.max(0, R.recordCalls - (m.revealed + (m.withheld || 0) + (m.unscorable || 0)));
-    if (days) next.push(days + " more days");
-    if (calls) next.push(calls + " more calls");
+    if (!(p.profit > 0)) next.push("calls that make money after costs");
+    if (p.edge <= 0) next.push("calls that beat each coin’s own move");
+    if (C.isNum(m.maxDrawdown) && m.maxDrawdown >= R.maxDrawdown) next.push("a drawdown back under 40%");
     return next.length ? "To rise it needs " + next.join(", ").replace(/, ([^,]*)$/, " and $1") + "." : "";
   }
   function validation(x) {
@@ -68,7 +66,7 @@
       return;
     }
     var s = Math.max(0, Math.min(100, sc)), r = 30, c = 2 * Math.PI * r, p = x.score && x.score.parts, m = x.metrics;
-    var short = p && p.edge <= 0 ? "no edge yet" : p && p.record < 1 ? "record still building" : "";
+    var short = p && !(p.profit > 0) ? (C.isNum(m.totalReturn) && m.totalReturn <= 0 ? "no profit yet" : "profit not steady yet") : p && p.edge <= 0 ? "not beating the coins" : "";
     var part = function (k, val, note, tip) {
       var f = Math.max(0, Math.min(1, val || 0));
       return '<li tabindex="0" data-tip="' + esc(tip) + '"><span class="k">' + esc(k) + '</span><b class="mono' + (f === 0 ? " nil" : "") + '">' + C.num(val) + "</b>" +
@@ -82,11 +80,12 @@
       '<div class="cbk-score"><b>' + esc(Math.round(s)) + "</b><span>/100</span></div></div>" +
       "<figcaption><b>" + (s === 0 && short ? "Score 0 · " + esc(short) : "Caller score, out of 100") + "</b><span>" +
       (v ? "Published to ERC-8004 <span class=\"nb\">" + esc(C.ago(v.at)) + "</span>" : "Updated after every reveal") + "</span></figcaption></div>" +
-      (p ? '<div class="cbk-parts"><p class="cbk-formula"><b>How it’s built</b> 100 × record × (0.6·edge + 0.4·risk)</p><ul>' +
-        part("Record", p.record, esc(Math.floor(m.days || 0)) + " of " + R.recordDays + " days · " + (resolved >= R.recordCalls ? esc(resolved) + " calls, enough" : esc(resolved) + " of " + R.recordCalls + " calls"), "min(1, days ÷ 61) × min(1, calls ÷ 30)") +
-        part("Edge", p.edge, "t = " + esc(C.num(p.tStat)) + (p.edge <= 0 ? ", needs above 0" : ", full credit at 3"), "clamp(t ÷ 3, 0, 1): the t-statistic of each call's return after costs, less beta × the coin's own move") +
-        part("Risk", p.risk, "drawdown " + C.dd(m.maxDrawdown) + (m.maxDrawdown >= R.maxDrawdown ? ", past 10%" : ""), "clamp(1 − drawdown ÷ 10%, 0, 1), on the call-by-call curve") +
-        "</ul>" + (why ? '<p class="cbk-zero"><b>What’s next.</b> ' + esc(why) + "</p>" : "") + "</div>" : "") + C.skillPanel(x.skill);
+      (p ? '<div class="cbk-parts"><p class="cbk-formula"><b>How it’s built</b> 100 × (0.6·profit + 0.4·edge) × (0.6 + 0.4·risk)</p><ul>' +
+        part("Profit", p.profit, "t = " + esc(C.num(p.profitT)) + (p.profit > 0 ? ", full credit at 3" : C.isNum(m.totalReturn) && m.totalReturn <= 0 ? ", not making money yet" : ", not steady yet"), "clamp(t ÷ 3, 0, 1): the t-statistic of each call's return after costs, when they add up above 0") +
+        part("Edge", p.edge, "t = " + esc(C.num(p.tStat)) + (p.edge <= 0 ? ", not beating the coins" : ", full credit at 3"), "clamp(t ÷ 3, 0, 1): the t-statistic of each call's return after costs, less beta × the coin's own move") +
+        part("Risk", p.risk, "drop " + C.dd(m.maxDrawdown) + (m.maxDrawdown >= R.maxDrawdown ? ", past 40%" : "") + " · keeps " + Math.round(100 * (0.6 + 0.4 * (p.risk || 0))) + "%", "clamp(1 − drawdown ÷ 40%, 0, 1) on the call-by-call curve; it scales the score from 60% to 100%, never adds to it") +
+        "</ul>" + (C.levelLine(x) ? '<p class="cbk-level">' + esc(C.levelLine(x)) + "</p>" : "") +
+        (why ? '<p class="cbk-zero"><b>What’s next.</b> ' + esc(why) + "</p>" : "") + "</div>" : "") + C.skillPanel(x.skill);
   }
 
   // ------------------------------------------------------------- numbers

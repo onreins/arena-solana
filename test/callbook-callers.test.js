@@ -13,7 +13,7 @@ import { mnemonicToAccount } from "viem/accounts";
 
 import {
   deriveLocks, priceLocks, scoreCaller, callerScore, worstOver, netOf, curveDrawdown, withheldAfter,
-  symbolCallHash, lockedHash, readCallbook, evaluateCaller, buildCallbook, REFERENCE_SET, REFERENCE_SET_NAME, GRACE, MAX_LOCKS_PER_BOOK,
+  symbolCallHash, lockedHash, readCallbook, evaluateCaller, buildCallbook, REFERENCE_SET, REFERENCE_SET_NAME, GRACE, MAX_LOCKS_PER_BOOK, CALLER_RULES,
 } from "../app/verify/callbook.js";
 import { priceBook, resolveSymbol } from "../app/verify/callbook-prices.js";
 import { createRelayer, DOMAIN, LOCK_TYPES, SEAL_TYPES } from "../app/verify/callbook-relay.js";
@@ -197,18 +197,22 @@ describe("the caller score", () => {
     assert.equal(callerScore({ days: 61, outcomes: strong, maxDrawdown: 0 }).value, 100);
   });
 
-  test("the record ramps with days and with calls; no calls is 0", () => {
-    assert.equal(callerScore({ days: 30.5, outcomes: strong, maxDrawdown: 0 }).value, 50);
-    assert.equal(callerScore({ days: 61, outcomes: strong.slice(0, 15), maxDrawdown: 0 }).value, 50);
+  test("the record's length is its level, not a cut in the score; no calls is 0", () => {
+    const full = callerScore({ days: 61, outcomes: strong, maxDrawdown: 0 });
+    assert.equal(full.level, "full");
+    assert.equal(callerScore({ days: 30.5, outcomes: strong, maxDrawdown: 0 }).value, full.value);
+    assert.equal(callerScore({ days: 30.5, outcomes: strong, maxDrawdown: 0 }).level, "building");
+    assert.equal(callerScore({ days: 61, outcomes: strong.slice(0, 15), maxDrawdown: 0 }).level, "new");
     assert.equal(callerScore({ days: 61, outcomes: [], maxDrawdown: 0 }).value, 0);
   });
 
-  test("always long on a rising coin is beta, not edge", () => {
+  test("always long on a rising coin earns for its profit, but without beating the coin it can't pass 60", () => {
     const beta = Array.from({ length: 30 }, (_, i) => ({ side: 1, ret: 0.01 * (1 + (i % 4)), move: 0.01 * (1 + (i % 4)) }));
     const s = callerScore({ days: 61, outcomes: beta, maxDrawdown: 0.2 });
     assert.equal(s.beta, 1);
     assert.equal(s.edge, 0);
-    assert.equal(s.value, 0);
+    assert.ok(s.profit > 0);
+    assert.ok(s.value > 0 && s.value <= 100 * CALLER_RULES.profitWeight, `score ${s.value}`);
   });
 
   test("drawdown of the call-by-call record, and the metrics around it", () => {

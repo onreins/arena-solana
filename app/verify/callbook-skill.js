@@ -35,6 +35,17 @@ export const SKILL_RULES = Object.freeze({
   establishedDays: 61,
 });
 
+/**
+ * How established a track record is, shown next to its score instead of
+ * scaling it: new (under 14 days or 30 resolved calls), building (under
+ * Vanta's 61 days), full.
+ */
+export const RECORD_LEVELS = Object.freeze({ newDays: 14, newCalls: 30, fullDays: 61 });
+export function recordLevel(days, calls, L = RECORD_LEVELS) {
+  if (!(days >= L.newDays) || !(calls >= L.newCalls)) return "new";
+  return days >= L.fullDays ? "full" : "building";
+}
+
 const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 const round = (x, d = 4) => (x == null ? null : Math.round(x * 10 ** d) / 10 ** d);
 

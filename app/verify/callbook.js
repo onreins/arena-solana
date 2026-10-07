@@ -29,7 +29,7 @@ import { priceBook, intervalFor, resolveSymbol } from "./callbook-prices.js";
 import { maxOf, brief } from "./callbook-util.js";
 import { agentInfo } from "./callbook-agents.js";
 import { evaluateCaller, callerToApi } from "./callbook-callers.js";
-import { skillScore, hitOf } from "./callbook-skill.js";
+import { skillScore, hitOf, recordLevel } from "./callbook-skill.js";
 
 export * from "./callbook-chain.js";
 export {
@@ -50,13 +50,20 @@ export const MAX_PERIODS = 5_000;
 export const MAX_COINS_PER_REBUILD = 64;
 
 /** The published score's constants. Changing any of them is a new scoring version. */
+/**
+ * The Callbook score (docs/CALLBOOK.md, "The score"), built on Vanta's metrics:
+ *   score = 100 × coverage × (0.6 × profit + 0.4 × edge) × (0.6 + 0.4 × risk)
+ * Points come only from what a book earned (profit) and how much it beat the
+ * market (edge); risk scales them down, never adds. How long the record is
+ * shows as its level (recordLevel), not in the number.
+ */
 export const SCORE_RULES = Object.freeze({
-  recordDays: VANTA_CHALLENGE.minDays, // a full record is Vanta's 61-day minimum
-  edgeFullT: 3, // a t-statistic of 3 or more earns the whole edge
-  maxDrawdown: VANTA.drawdownMaxPercent / 100, // 10%: Vanta's full-penalty drawdown
+  fullT: 3, // a t-statistic of 3 or more earns the whole profit or edge part
+  maxDrawdown: 0.4, // a 40% fall from a high takes the risk factor to its floor
   minExposure: 0.5, // risk credit needs half the periods in a position
-  edgeWeight: 0.6,
-  riskWeight: 0.4,
+  profitWeight: 0.6,
+  edgeWeight: 0.4,
+  riskFloor: 0.6, // the worst drawdown keeps 60% of what was earned
 });
 
 export const LIMITS = Object.freeze({
@@ -220,15 +227,17 @@ export function tStat(xs) {
 export function callbookScore({ days, revealed, missed, withheld, maxDrawdown, outcomes }) {
   const R = SCORE_RULES;
   const due = revealed + missed + withheld;
-  const record = clamp(days / R.recordDays, 0, 1);
   const coverage = due ? revealed / due : 0;
   const exposure = due ? outcomes.length / due : 0;
   const beta = outcomes.length ? mean(outcomes.map((o) => o.side)) : 0;
   const t = tStat(outcomes.map((o) => o.ret - beta * o.market));
-  const edge = clamp(t / R.edgeFullT, 0, 1);
+  const edge = clamp(t / R.fullT, 0, 1);
+  const rets = outcomes.map((o) => o.ret);
+  const profitT = tStat(rets);
+  const profit = sum(rets) > 0 ? clamp(profitT / R.fullT, 0, 1) : 0;
   const risk = clamp(1 - maxDrawdown / R.maxDrawdown, 0, 1) * Math.min(1, exposure / R.minExposure);
-  const value = Math.round(100 * record * coverage * (R.edgeWeight * edge + R.riskWeight * risk));
-  return { value: clamp(value, 0, 100), record, coverage, exposure, beta, tStat: t, edge, risk };
+  const value = Math.round(100 * coverage * (R.profitWeight * profit + R.edgeWeight * edge) * (R.riskFloor + (1 - R.riskFloor) * risk));
+  return { value: clamp(value, 0, 100), level: recordLevel(days, revealed), coverage, exposure, beta, tStat: t, profitT, profit, edge, risk };
 }
 
 // ------------------------------------------------------------------ scoring a book
@@ -378,7 +387,7 @@ export function buildReport({ chainId, callbook, book, asOf, scored }) {
     }),
     metrics: Object.fromEntries(Object.entries(m).map(([k, v]) => [k, typeof v === "number" ? round(v) : v])),
     challenge: scored.challenge,
-    score: Object.fromEntries(Object.entries(scored.score).map(([k, v]) => [k, round(v)])),
+    score: Object.fromEntries(Object.entries(scored.score).map(([k, v]) => [k, typeof v === "number" ? round(v) : v])),
     skill: scored.skill ?? null,
   };
   const text = canonicalJson(report);

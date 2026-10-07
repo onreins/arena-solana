@@ -50,7 +50,8 @@
     if (!C.isNum(v)) return '<span class="muted" tabindex="0" data-tip="Not scored yet: the first score comes with its first revealed calls">—</span>';
     var why = C.scoreWhy(x);
     // The number, and a bar out of 100 under it.
-    return '<span class="ar-score' + (v === 0 ? " zero" : "") + '"' + (why && why.long ? ' tabindex="0" data-tip="' + esc(why.long) + '"' : "") + "><b>" + esc(Math.round(v)) + '</b><i style="--v:' + Math.max(0, Math.min(100, v)) + '%" aria-hidden="true"></i></span>';
+    return '<span class="ar-score' + (v === 0 ? " zero" : "") + '"' + (why && why.long ? ' tabindex="0" data-tip="' + esc(why.long) + '"' : "") + "><b>" + esc(Math.round(v)) + '</b><i style="--v:' + Math.max(0, Math.min(100, v)) + '%" aria-hidden="true"></i>' +
+      (x.score && x.score.parts && x.score.parts.level ? "<small>" + esc(C.own(C.RECORD, x.score.parts.level) || "") + "</small>" : "") + "</span>";
   }
   var TEST = { in_progress: "In progress", passed: "Passed", failed: "Failed" };
   function testCell(b) {
@@ -243,7 +244,7 @@
       '<span class="ar-pod-n">' + esc(C.nameOf(x)) + (tag ? ' <span class="cb-tag plain">' + esc(tag) + "</span>" : "") + "</span>" +
       '<span class="ar-pod-d">' + esc(x.description || "") + "</span>" +
       '<span class="ar-pod-m">' +
-        '<span class="ar-pod-score"><b data-count="' + s + '">' + s + "</b><span>score out of 100</span></span>" +
+        '<span class="ar-pod-score"><b data-count="' + s + '">' + s + "</b><span>score out of 100" + (x.score && x.score.parts && x.score.parts.level ? " · " + esc((C.own(C.RECORD, x.score.parts.level) || "").toLowerCase()) : "") + "</span></span>" +
         '<span class="ar-pod-ret"><b>' + C.pctHtml(m.totalReturn) + "</b><span>" + C.int(m.calls) + " calls" + (C.isNum(right) ? " · " + Math.round(right * 100) + "% made money" : "") + "</span></span>" +
       "</span>" + curve(x) +
       '<span class="ar-pod-f"><span>Skill ' + (sk && C.isNum(sk.score) ? esc(sk.score) + " · " : "") + esc(sk ? C.own(C.LEVELS, sk.level) || "" : "—") + '</span><span class="go">See its record →</span></span></a>';

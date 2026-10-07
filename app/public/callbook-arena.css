@@ -153,6 +153,7 @@
 .ar-score i { display: block; width: 48px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .08); overflow: hidden; }
 .ar-score i::before { content: ""; display: block; height: 100%; width: var(--v, 0%); border-radius: 2px; background: linear-gradient(90deg, var(--ar-violet), var(--ar-cyan)); }
 .ar-score.zero b { color: var(--ink-3); font-weight: 500; }
+.ar-score small { color: var(--ink-4); font: 500 10px var(--sans); letter-spacing: .02em; white-space: nowrap; }
 .arena .cb-spark.up .ln { stroke: var(--ar-up); }
 .arena .cb-spark.down .ln { stroke: var(--ar-down); }
 .arena .cb-spark.up circle { fill: var(--ar-up); }

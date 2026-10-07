@@ -184,15 +184,28 @@ describe("the score", () => {
   const base = { days: 61, revealed: 10, missed: 0, withheld: 0, maxDrawdown: 0 };
   const strong = Array.from({ length: 10 }, (_, i) => ({ side: i % 2 ? 1 : -1, ret: 0.01 + (i % 3) * 0.001, market: 0 }));
 
-  test("a long record, full coverage, a strong edge and no drawdown is 100", () => {
+  test("strong profit, a strong edge, full coverage and no drawdown is 100", () => {
     const s = callbookScore({ ...base, outcomes: strong });
-    assert.ok(s.tStat > SCORE_RULES.edgeFullT);
+    assert.ok(s.tStat > SCORE_RULES.fullT);
+    assert.ok(s.profitT > SCORE_RULES.fullT);
     assert.equal(s.value, 100);
   });
 
-  test("nothing due scores 0; a young book is capped by its record", () => {
+  test("nothing due scores 0; a young record keeps its score and says so in its level", () => {
     assert.equal(callbookScore({ days: 0, revealed: 0, missed: 0, withheld: 0, maxDrawdown: 0, outcomes: [] }).value, 0);
-    assert.equal(callbookScore({ ...base, days: 30.5, outcomes: strong }).value, 50);
+    const young = callbookScore({ ...base, days: 30.5, outcomes: strong });
+    assert.equal(young.value, 100, "the record's length is no longer a cut in the score");
+    assert.equal(young.level, "new", "10 calls is a new record");
+    assert.equal(callbookScore({ ...base, days: 30.5, revealed: 40, outcomes: strong }).level, "building");
+    assert.equal(callbookScore({ ...base, revealed: 40, outcomes: strong }).level, "full");
+  });
+
+  test("a big drawdown scales what was earned down, and never adds points on its own", () => {
+    const calm = callbookScore({ ...base, outcomes: strong });
+    const rough = callbookScore({ ...base, maxDrawdown: 0.5, outcomes: strong });
+    assert.equal(rough.value, Math.round(calm.value * SCORE_RULES.riskFloor), "past the 40% limit, 60% of the score is kept");
+    const losing = strong.map((o) => ({ ...o, ret: -o.ret }));
+    assert.equal(callbookScore({ ...base, outcomes: losing }).value, 0, "a smooth losing record earns nothing");
   });
 
   test("misses and withheld calls cut coverage; flats cut the risk credit", () => {
