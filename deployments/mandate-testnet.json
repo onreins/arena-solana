@@ -7,14 +7,16 @@
     "mandateFactory": "0x09e45d5b84d9c7cf4e8cdf5d5f1ff2b7d3589f82",
     "uniswapV4Venue": "0x007d5ad07b7a97fefcbd4302dfeafc11d8485052",
     "pinnedFeed": "0xfdde6a331c996d6fddbdce108ba18fff0b7f972e",
-    "priceFeed": "0x90d3750e4ecc17d9283d56e9f844cd582a1a0711"
+    "priceFeed": "0x90d3750e4ecc17d9283d56e9f844cd582a1a0711",
+    "freshCheckpoint": "0x2b8201f90c8dd0d4e3b9d6c5043af946eab8ea33"
   },
   "txs": {
     "mandateFactory": "0x91f13edaaed333ce5d3358d3f99281b56e5ab91613c2992308c3ea20ac0166ba",
     "uniswapV4Venue": "0x4cfadc0c037eb35159bdce54b7cb964d99afe253e784a2741825dc5bf79aa2e7",
     "pinnedFeed": "0xb3a0a996913d1dca849cfe64269972465c10c1a0c6529daaa9a7c11102bd841e",
     "setRoute": "0xb668117c2a1bc6d5165096e273580ab9a392150245455301a92ad780c7497fae",
-    "priceFeed": "0xf2cc346dc5f2205bdff8a4022b0bfd7dc06a0176c49161a4d47b4aed299eb0e5"
+    "priceFeed": "0xf2cc346dc5f2205bdff8a4022b0bfd7dc06a0176c49161a4d47b4aed299eb0e5",
+    "freshCheckpoint": "0x7258856fd218880337378cffdb5f1c01598b4a53a739705ed5921dea3bfbb193"
   },
   "external": {
     "poolManager": "0x8366a39CC670B4001A1121B8F6A443A643e40951",

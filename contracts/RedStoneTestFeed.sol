@@ -28,3 +28,28 @@ contract RedStoneTestFeed is RedStonePriceFeed {
         revert SignerNotAuthorised(signer);
     }
 }
+
+interface ILatestRound {
+    function latestRoundData() external view returns (uint80, int256, uint256, uint256, uint80);
+}
+
+/// A stand-in for a mandate's public stop-loss in tests: freezes only when the
+/// feed's price is below `floorPrice`, reading the feed at the moment of the call.
+contract CheckpointProbe {
+    ILatestRound public immutable feed;
+    int256 public immutable floorPrice;
+    bool public frozen;
+
+    error NotBreached();
+
+    constructor(ILatestRound feed_, int256 floorPrice_) {
+        feed = feed_;
+        floorPrice = floorPrice_;
+    }
+
+    function checkpoint() external {
+        (, int256 answer,,,) = feed.latestRoundData();
+        if (answer >= floorPrice) revert NotBreached();
+        frozen = true;
+    }
+}

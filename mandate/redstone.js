@@ -161,6 +161,23 @@ async function fetchPackages(dataFeedId, { fetch: get = globalThis.fetch } = {})
   throw lastError;
 }
 
+const live = new Map(); // data feed id -> { at, price }
+
+/**
+ * The live price off-chain: the median of the signed packages a trade would
+ * push, read straight from RedStone's gateways, for showing values without a
+ * transaction. Cached for maxAgeMs; RedStone itself updates about every 10s.
+ */
+export async function livePrice(dataFeedId, { fetch, maxAgeMs = 10_000 } = {}) {
+  const hit = live.get(dataFeedId);
+  if (hit && Date.now() - hit.at < maxAgeMs) return hit.price;
+  const chosen = await choosePackages(await fetchPackages(dataFeedId, { fetch }), dataFeedId);
+  const values = chosen.map((p) => p.dataPoints.find((d) => d.dataFeedId === dataFeedId).value).sort((a, b) => a - b);
+  const price = { usd: values[Math.floor(values.length / 2)], at: new Date(chosen[0].timestampMilliseconds).toISOString() };
+  live.set(dataFeedId, { at: Date.now(), price });
+  return price;
+}
+
 /** The latest signed payload for a feed, as hex to append to calldata. */
 export async function signedPayload(dataFeedId, { request, fetch } = {}) {
   if (request) return request({ dataServiceId: REDSTONE_SERVICE, dataPackagesIds: [dataFeedId], uniqueSignersCount: SIGNERS_NEEDED });

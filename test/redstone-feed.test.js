@@ -9,7 +9,7 @@
  */
 import { test, before, describe } from "node:test";
 import assert from "node:assert/strict";
-import { decodeErrorResult, stringToHex } from "viem";
+import { decodeErrorResult, encodeFunctionData, stringToHex } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { DataPackage, NumericDataPoint, RedstonePayload } from "@redstone-finance/protocol";
 
@@ -166,5 +166,38 @@ describe("the SDK helper", () => {
     assert.match(hash, /^0x[0-9a-f]{64}$/);
     const [, answer] = await latest();
     assert.equal(answer, 112_340_000n);
+  });
+});
+
+describe("FreshCheckpoint: push a price and run the stop-loss in one transaction", () => {
+  const HELPER = artifact("FreshCheckpoint");
+  const PROBE = artifact("CheckpointProbe");
+  let helper, probe;
+
+  before(async () => {
+    helper = await deploy(HELPER, []);
+    probe = await deploy(PROBE, [feed, 100_000_000n]); // freezes below $1.00
+  });
+
+  const callData = (hex) =>
+    encodeFunctionData({ abi: HELPER.abi, functionName: "refreshAndCheckpoint", args: [feed, probe] }) + hex;
+  const frozen = () => publicClient.readContract({ address: probe, abi: PROBE.abi, functionName: "frozen" });
+
+  test("above the floor it reverts as a whole: no freeze, and the pushed price isn't kept either", async () => {
+    const [roundBefore] = await latest();
+    const hex = payload(signerKeys.slice(0, 3), 1.05, (await chainNowMs()) + 6000);
+    await assert.rejects(publicClient.call({ to: helper, data: callData(hex), account: stranger.account.address }));
+    const [round] = await latest();
+    assert.equal(round, roundBefore);
+    assert.equal(await frozen(), false);
+  });
+
+  test("below the floor it stores the fresh price and freezes, in one transaction", async () => {
+    const hex = payload(signerKeys.slice(0, 3), 0.9, (await chainNowMs()) + 7000);
+    const hash = await stranger.sendTransaction({ to: helper, data: callData(hex), account: stranger.account, chain: localChain });
+    assert.equal((await publicClient.waitForTransactionReceipt({ hash })).status, "success");
+    const [, answer] = await latest();
+    assert.equal(answer, 90_000_000n);
+    assert.equal(await frozen(), true);
   });
 });

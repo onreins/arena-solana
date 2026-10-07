@@ -31,6 +31,7 @@ import {
 import { arc, arcTestnet } from "viem/chains";
 
 import { artifact } from "../scripts/artifact.js";
+import { redstoneFeedId, signedPayload } from "../mandate/redstone.js";
 import { ArenaIndexer } from "../arena/indexer.js";
 import { chainIndex, RESET_EVENTS } from "../arena/returns.js";
 import { createRiskEngine, snapshot } from "../bridge/risk.js";
@@ -405,20 +406,51 @@ export function createApp({ deployment, rpcUrl, strategy, onramp, publicClient, 
    * calls can be encoded here; anything else is refused rather than guessed.
    * Whether the caller may make the call is the contract's job, not ours.
    */
+  // The public stop-loss on a fresh price: for a mandate priced by a RedStone
+  // feed, the FreshCheckpoint helper pushes the latest signed price and runs
+  // checkpoint() in one transaction. Null when there's nothing to refresh.
+  const FRESH_CHECKPOINT_ABI = [{
+    type: "function", name: "refreshAndCheckpoint", stateMutability: "nonpayable", outputs: [],
+    inputs: [{ name: "feed", type: "address" }, { name: "mandate", type: "address" }],
+  }];
+  const freshCheckpoint = async (mandate) => {
+    const helper = dep.contracts.freshCheckpoint;
+    if (!helper) return null;
+    const client = getClient();
+    const assets = await client.readContract({ address: mandate, abi: MANDATE.abi, functionName: "assetList" });
+    for (const token of assets) {
+      const [feed] = await client.readContract({ address: mandate, abi: MANDATE.abi, functionName: "assets", args: [token] });
+      const id = await redstoneFeedId(client, feed);
+      if (!id) continue;
+      const head = encodeFunctionData({ abi: FRESH_CHECKPOINT_ABI, functionName: "refreshAndCheckpoint", args: [feed, mandate] });
+      return { to: helper, data: head + (await signedPayload(id)) };
+    }
+    return null;
+  };
+
   const ZERO = "0x0000000000000000000000000000000000000000";
-  app.post("/api/tx/action", (req, res) => {
+  app.post("/api/tx/action", async (req, res) => {
     try {
       const { mandate, action } = req.body ?? {};
       if (typeof mandate !== "string" || !isAddress(mandate)) throw refuse("that agent address is not valid");
       const call = (functionName, args = []) => encodeFunctionData({ abi: MANDATE.abi, functionName, args });
 
+      let to = mandate;
       let data;
       let label;
       if (action === "withdrawAll") {
         data = call("withdrawAll");
         label = "withdraw everything and remove the agent";
       } else if (action === "checkpoint") {
-        data = call("checkpoint");
+        // On a RedStone feed, push a fresh signed price and check in one
+        // transaction, so the freeze is judged on the market as it is now.
+        const fresh = await freshCheckpoint(getAddress(mandate));
+        if (fresh) {
+          to = fresh.to;
+          data = fresh.data;
+        } else {
+          data = call("checkpoint");
+        }
         label = "freeze — only succeeds below the floor";
       } else if (action === "unfreeze") {
         data = call("unfreeze");
@@ -440,7 +472,7 @@ export function createApp({ deployment, rpcUrl, strategy, onramp, publicClient, 
       } else {
         throw refuse("unknown action");
       }
-      res.json({ to: mandate, data, label, chainId: dep.chainId });
+      res.json({ to, data, label, chainId: dep.chainId });
     } catch (err) {
       fail(res, err);
     }
