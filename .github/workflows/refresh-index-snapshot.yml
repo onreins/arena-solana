@@ -1,0 +1,53 @@
+# Keeps the app's saved chain reads current.
+#
+# The app seeds its indexer from app/data/index-snapshot.json and reads only
+# the blocks after it. On Vercel every cold start pays for that gap, paged
+# 10k blocks at a time through Arc's rate-limited public RPC. After a few days
+# the gap runs past the function's 60-second limit, and the agents' charts and
+# totals stop loading. This job re-saves the snapshot twice a day and commits
+# it, which redeploys the app with a gap of hours, not days.
+#
+# It only reads the chain, so it needs no secrets. Its commits touch only the
+# snapshot file: pull before pushing a branch onto master and they merge
+# cleanly.
+#
+# GitHub runs scheduled workflows from the default branch only.
+name: Refresh index snapshot
+
+on:
+  schedule:
+    - cron: "41 */12 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: index-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --omit=dev --ignore-scripts
+      - run: npm run build
+      - run: npm run snapshot:index
+      - name: Commit the snapshot if it moved
+        run: |
+          if git diff --quiet -- app/data/index-snapshot.json; then
+            echo "Nothing new to save."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/data/index-snapshot.json
+          git commit -m "chore(app): refresh the index snapshot"
+          git pull --rebase
+          git push
