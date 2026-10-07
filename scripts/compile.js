@@ -33,7 +33,16 @@ const input = {
   },
 };
 
-const output = JSON.parse(solc.compile(JSON.stringify(input)));
+/** Resolve library imports (e.g. "@openzeppelin/contracts/...") from node_modules. */
+function findImports(path) {
+  try {
+    return { contents: readFileSync(require.resolve(path), "utf8") };
+  } catch {
+    return { error: `import not found: ${path}` };
+  }
+}
+
+const output = JSON.parse(solc.compile(JSON.stringify(input), { import: findImports }));
 
 const errors = (output.errors ?? []).filter((e) => e.severity === "error");
 const warnings = (output.errors ?? []).filter((e) => e.severity === "warning");
@@ -47,6 +56,7 @@ if (errors.length) {
 mkdirSync(buildDir, { recursive: true });
 let count = 0;
 for (const [file, contracts] of Object.entries(output.contracts ?? {})) {
+  if (!sources[file]) continue; // a library's own contracts: compiled in, not written out
   for (const [name, c] of Object.entries(contracts)) {
     writeFileSync(
       join(buildDir, `${name}.json`),

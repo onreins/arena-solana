@@ -1,0 +1,279 @@
+#!/usr/bin/env node
+/**
+ * Callbook MCP server: an honest, public trading record for any AI agent,
+ * with one key in its config.
+ *
+ *   callbook_markets     coins it can call (liquid Hyperliquid perps)
+ *   callbook_lock        an open call: coin, long/short, horizon (opens your book on first use)
+ *   callbook_open        open a strategy book (a call every period) or a call book
+ *   callbook_seal        this round's call for a strategy book
+ *   callbook_reveal_due  reveal everything that has matured
+ *   callbook_status      record, score, pending calls with countdowns, next deadline
+ *   callbook_verify      rebuild a score from chain events and public prices
+ *   callbook_my_books    books this key owns or calls in
+ *
+ * Environment:
+ *   CALLBOOK_KEY          the only required one: a fresh 0x private key
+ *   CALLBOOK_NETWORK      local | testnet | mainnet (default testnet)
+ *   CALLBOOK_ADDRESS      the contract (default deployments/callbook-<network>.json)
+ *   CALLBOOK_RELAY_URL    who pays gas for gasless calls (default https://app.reins.one)
+ *   CALLBOOK_API_URL      where status comes from (default https://app.reins.one; falls back to computing it)
+ *   CALLBOOK_BOOKS        other books to act in as their caller, e.g. "12,15" (default: only books the key owns)
+ *   CALLBOOK_RPC, CALLBOOK_SALT_SECRET (64 hex digits), CALLBOOK_JOURNAL, CALLBOOK_FROM_BLOCK, CALLBOOK_VALIDATOR, CALLBOOK_GASLESS
+ *
+ * stdout carries the protocol; anything else goes to stderr.
+ *
+ * Everything a book holds on chain (coin symbols, revealed coins) was written
+ * by whoever opened or revealed it, so it's untrusted text: every string in a
+ * reply has control and invisible formatting characters removed and is capped
+ * in length before the agent sees it.
+ */
+import { resolve as resolvePath } from "node:path";
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
+
+import { CallbookClient, DEFAULT_APP_URL } from "./sdk.js";
+
+const VERSION = "0.1.0";
+
+const MAX_STRING = 300;
+const MAX_SUMMARY = 2_000;
+// C0/C1 controls (newlines and tabs too), zero-width and bidi-override characters, BOM.
+const UNSAFE = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028\u2029\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]/g;
+
+/** One string made safe to show an agent: no control or invisible characters, bounded length. */
+export function cleanText(text, max = MAX_STRING) {
+  const s = String(text).replace(UNSAFE, " ");
+  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
+}
+
+/** Every string in a reply, cleaned (keys included); numbers, booleans and null pass through. */
+export function cleanValue(value, depth = 0) {
+  if (typeof value === "string") return cleanText(value);
+  if (typeof value === "bigint") return value.toString();
+  if (value == null || typeof value !== "object" || depth > 12) return value;
+  if (Array.isArray(value)) return value.map((v) => cleanValue(v, depth + 1));
+  return Object.fromEntries(Object.entries(value).map(([k, v]) => [cleanText(k, 64), cleanValue(v, depth + 1)]));
+}
+
+/** A one-line summary for people, then the JSON for the agent. */
+function reply(value) {
+  const { summary, ...data } = value ?? {};
+  const content = [];
+  if (summary) content.push({ type: "text", text: cleanText(summary, MAX_SUMMARY) });
+  content.push({ type: "text", text: JSON.stringify(cleanValue(data)) });
+  return { content };
+}
+
+/** A refusal is information for the agent, not a crash: one sentence, flagged as an error. */
+const refuse = (err) => ({ isError: true, content: [{ type: "text", text: cleanText(err?.message ?? String(err), MAX_SUMMARY) }] });
+
+const run = (fn) => async (args) => {
+  try {
+    return reply(await fn(args ?? {}));
+  } catch (err) {
+    return refuse(err);
+  }
+};
+
+const BOOK = z.union([z.number().int().positive(), z.string().regex(/^\d+$/)]).describe("Book id, e.g. 3");
+const DURATION = (example) => z.string().regex(/^\s*\d+(\.\d+)?\s*[a-zA-Z]+(\s*\d+(\.\d+)?\s*[a-zA-Z]+)*\s*$/, "a duration like 15m, 4h, 1d").describe(`A duration such as ${example}`);
+
+const GUIDE = `# Callbook in one page
+
+Callbook keeps a trading record nobody can fake: every call is sealed on Arc before the
+market moves, revealed after, and scored by open rules (ported from Vanta Network) at
+Hyperliquid's public prices. Anyone can rebuild any score from chain data.
+
+Two ways to call:
+
+- Open calls (callbook_lock): whenever you like. Coin (any Hyperliquid perp), long or
+  short, and a horizon (5m to 30d, whole minutes). The horizon is public from the lock;
+  the coin and side stay hidden until the reveal. Entry is the first whole minute at least
+  60s after locking. Your first lock opens your any-coin book. Every lock counts, so
+  choose when to call.
+- Strategy books (callbook_open kind=strategy, then callbook_seal): one call every period
+  (e.g. every 4h), long, short or flat, sealed at least 60s before the round starts. A round
+  with no call is a miss; flat is a call.
+
+Reveals: after the horizon, callbook_reveal_due reveals everything matured. A call not
+revealed within 7 days of its horizon scores as its worst possible outcome.
+
+Nothing to store: each call's salt is derived from the key, so any machine with the same
+key can reveal. callbook_status shows the record, the score and what's due next.`;
+
+/** Build the server around a CallbookClient (tests pass their own). */
+export function createCallbookMcpServer({ client }) {
+  const server = new McpServer({ name: "callbook", version: VERSION });
+
+  server.registerTool("callbook_markets", {
+    title: "Coins you can call",
+    description: "Liquid Hyperliquid perpetuals you can name in a call, most traded first, with 24h volume in USD, mark price and hourly funding. Any listed perp works; this is the liquid ones.",
+    inputSchema: {
+      limit: z.number().int().min(1).max(200).optional().describe("How many (default 30)"),
+      minVolumeUsd: z.number().min(0).optional().describe("Minimum 24h volume in USD (default 1,000,000)"),
+    },
+  }, run(async ({ limit = 30, minVolumeUsd }) => {
+    const markets = await client.markets({ limit, minVolumeUsd });
+    return { summary: `${markets.length} liquid perps: ${markets.slice(0, 10).map((m) => m.coin).join(", ")}${markets.length > 10 ? ", …" : ""}.`, markets };
+  }));
+
+  server.registerTool("callbook_lock", {
+    title: "Lock a call",
+    description:
+      "Lock an open call on Arc: a coin, long or short, and how long (horizon). It's sealed now and enters at the next whole minute at least 60s away; " +
+      "reveal it after the horizon with callbook_reveal_due. Without `book`, it goes in your any-coin book, which your first lock opens (gasless through the relayer when the key has no gas). " +
+      "Every lock counts toward your record.",
+    inputSchema: {
+      coin: z.string().min(1).max(16).describe("Hyperliquid perp, e.g. ETH, BTC, SOL"),
+      side: z.enum(["long", "short"]).describe("long: you expect it to rise; short: to fall"),
+      horizon: DURATION("15m, 1h, 4h, 1d or 7d").optional().describe("How long the call is held (default 4h)"),
+      book: BOOK.optional().describe("A call book with a coin list, if not your any-coin book"),
+    },
+  }, run(({ coin, side, horizon = "4h", book }) => client.lock({ coin, side, horizon, book })));
+
+  server.registerTool("callbook_open", {
+    title: "Open a book",
+    description:
+      "Open a strategy book (kind=strategy: one call every period, no skipping; a skipped round is a miss) or a call book (kind=calls: calls whenever you like). " +
+      "A call book without coins is your any-coin book, which opens by itself with your first lock. Optionally link an ERC-8004 agent you own.",
+    inputSchema: {
+      kind: z.enum(["strategy", "calls"]).describe("strategy: scheduled calls; calls: open calls"),
+      coins: z.array(z.string().min(1).max(16)).max(32).optional().describe("Coins the book may call, e.g. [\"BTC\",\"ETH\"]; required for strategy"),
+      every: DURATION("1h or 4h").optional().describe("strategy: how often a call is due (default 4h)"),
+      horizon: DURATION("4h").optional().describe("strategy: how long each call is held (default: the period)"),
+      minHorizon: DURATION("5m").optional().describe("calls: shortest horizon (default 5m)"),
+      maxHorizon: DURATION("30d").optional().describe("calls: longest horizon (default 30d)"),
+      name: z.string().max(200).optional().describe("A name; its hash is fixed in the book"),
+      strategy: z.string().max(10_000).optional().describe("strategy: the rules, as text; only their hash goes on chain"),
+      agentId: z.union([z.number().int().min(0), z.string().regex(/^\d+$/)]).optional().describe("ERC-8004 agent id to link (you must own it)"),
+    },
+  }, run(({ kind, coins, every, horizon, minHorizon, maxHorizon, name, strategy, agentId }) => (kind === "strategy"
+    ? client.openStrategyBook({ coins, every, horizon, name, strategy, agentId })
+    : client.openCallBook({ coins, minHorizon, maxHorizon, name, agentId }))));
+
+  server.registerTool("callbook_seal", {
+    title: "Seal this round's call",
+    description:
+      "Seal the next round's call for a strategy book: a coin from the book and long, short or flat. Rounds must be sealed at least 60s before they start, " +
+      "once each; the reply says when it starts and when it can be revealed. Salts are derived, so there's nothing to save.",
+    inputSchema: {
+      book: BOOK,
+      coin: z.string().min(1).max(16).describe("One of the book's coins"),
+      side: z.enum(["long", "short", "flat"]),
+    },
+  }, run(({ book, coin, side }) => client.seal({ book, coin, side })));
+
+  server.registerTool("callbook_reveal_due", {
+    title: "Reveal matured calls",
+    description: "Reveal every call of yours whose horizon has passed (seals and locks). Safe to run any time; it reports what's still maturing and when. Unrevealed calls score as their worst outcome after 7 days.",
+    inputSchema: {},
+  }, run(() => client.revealDue()));
+
+  server.registerTool("callbook_status", {
+    title: "Record and score",
+    description: "Your record: score (0-100) and its parts, revealed/missed/withheld counts, returns, pending calls with countdowns, and the next sealing deadline. One book, or all of yours.",
+    inputSchema: { book: BOOK.optional().describe("A book id; omit for all your books") },
+  }, run(({ book }) => client.status({ book })));
+
+  server.registerTool("callbook_verify", {
+    title: "Verify a score",
+    description: "Rebuild any book's score from Arc events and Hyperliquid's public prices, with no trust in Reins, and compare it with the latest score posted to the ERC-8004 ValidationRegistry.",
+    inputSchema: { book: BOOK },
+  }, run(({ book }) => client.verify({ book })));
+
+  server.registerTool("callbook_my_books", {
+    title: "My books",
+    description: "Books this key owns (or was allowed to call in): kind, coins, timing, how many calls, what's due to reveal, and the next round to seal.",
+    inputSchema: {},
+  }, run(async () => {
+    const r = await client.myBooks();
+    const due = r.books.reduce((n, b) => n + (b.dueToReveal ?? 0), 0);
+    return { summary: r.books.length ? `${r.books.length} book${r.books.length === 1 ? "" : "s"} on ${r.network}${due ? `; ${due} call${due === 1 ? "" : "s"} ready to reveal` : ""}.` : `No books yet on ${r.network}. Lock a call to open one.`, ...r };
+  }));
+
+  server.registerResource("guide", "callbook://guide", {
+    title: "How Callbook works", description: "The rules in one page: open calls, strategy books, reveals and scores.", mimeType: "text/markdown",
+  }, async (uri) => ({ contents: [{ uri: uri.href, mimeType: "text/markdown", text: GUIDE }] }));
+
+  server.registerPrompt("seal_round", {
+    title: "Seal this round's call",
+    description: "Decide and seal the next round's call for a strategy book.",
+    argsSchema: { book: z.string().describe("Strategy book id") },
+  }, ({ book }) => ({
+    messages: [{
+      role: "user",
+      content: {
+        type: "text",
+        text: `Use Callbook for strategy book ${book}. First call callbook_reveal_due, then callbook_status with book ${book} to see its coins and the sealing deadline. ` +
+          "Decide this round's call by your strategy (one coin, long, short or flat; flat counts as a call), then call callbook_seal before the deadline. " +
+          "Report the round, the call, and when it can be revealed.",
+      },
+    }],
+  }));
+
+  server.registerPrompt("lock_call", {
+    title: "Lock a call",
+    description: "Lock an open call on a coin.",
+    argsSchema: { coin: z.string().describe("e.g. ETH"), side: z.string().describe("long or short"), horizon: z.string().optional().describe("e.g. 4h") },
+  }, ({ coin, side, horizon }) => ({
+    messages: [{
+      role: "user",
+      content: { type: "text", text: `Lock a ${horizon ?? "4h"} ${side} on ${coin} in Callbook with callbook_lock, then tell me the entry time and when it can be revealed.` },
+    }],
+  }));
+
+  return server;
+}
+
+/** A CallbookClient from the environment. Only CALLBOOK_KEY is required. */
+export function clientFromEnv(env = process.env) {
+  const app = (v) => (v === "" || v === "off" || v === "none" ? undefined : v ?? DEFAULT_APP_URL);
+  return new CallbookClient({
+    key: env.CALLBOOK_KEY,
+    network: env.CALLBOOK_NETWORK || "testnet",
+    address: env.CALLBOOK_ADDRESS || undefined,
+    rpc: env.CALLBOOK_RPC || undefined,
+    relayUrl: app(env.CALLBOOK_RELAY_URL),
+    apiUrl: app(env.CALLBOOK_API_URL),
+    saltSecret: env.CALLBOOK_SALT_SECRET || undefined,
+    journal: env.CALLBOOK_JOURNAL === "off" ? false : env.CALLBOOK_JOURNAL || undefined,
+    fromBlock: env.CALLBOOK_FROM_BLOCK || undefined,
+    validator: env.CALLBOOK_VALIDATOR || undefined,
+    gasless: env.CALLBOOK_GASLESS || "auto",
+    books: env.CALLBOOK_BOOKS ? env.CALLBOOK_BOOKS.split(/[,\s]+/).filter(Boolean) : undefined,
+  });
+}
+
+async function main() {
+  let client;
+  try {
+    client = clientFromEnv();
+  } catch (err) {
+    console.error(`callbook-mcp: ${err.message}`);
+    process.exit(1);
+  }
+  const server = createCallbookMcpServer({ client });
+  await server.connect(new StdioServerTransport());
+  console.error(`callbook-mcp ${VERSION}: ${client.address} on ${client.network}`);
+}
+
+function invokedDirectly() {
+  if (!process.argv[1]) return false;
+  try {
+    // npm's bin shims and symlinks point here under another path.
+    return realpathSync(resolvePath(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (invokedDirectly()) {
+  main().catch((err) => {
+    console.error("callbook-mcp failed:", err.message);
+    process.exit(1);
+  });
+}

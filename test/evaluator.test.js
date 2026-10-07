@@ -61,7 +61,13 @@ before(async () => {
 
   usdc = await deploy("MockUSDC");
   jobs = await deploy("MockAgenticCommerce", [usdc]);
-  validation = await deploy("MockValidationRegistry");
+  // The reference registry only takes requests from the agent's owner, so the
+  // client owns the agents it asks about.
+  const identity = await deploy("MockIdentityRegistry");
+  validation = await deploy("MockValidationRegistry", [identity]);
+  for (const agentId of [42n, 7n]) {
+    await send(deployer, identity, artifact("MockIdentityRegistry").abi, "mint", [CLIENT, agentId]);
+  }
 
   await send(deployer, usdc, artifact("MockUSDC").abi, "mint", [CLIENT, USDC(100000)]);
 

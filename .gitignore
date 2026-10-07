@@ -12,6 +12,11 @@ verdicts/
 rulings/
 !deployments/mainnet.json
 !deployments/mandate-testnet.json
+!deployments/callbook-testnet.json
+!deployments/callbook-mainnet.json
+# our books record: public ids and addresses; the API needs it to tell our books from look-alikes
+!deployments/callbook-testnet-books.json
+!deployments/callbook-mainnet-books.json
 research/data/
 bridge/data/
 *.stackdump
@@ -25,3 +30,5 @@ data/runner.sqlite*
 data/STOP
 # strategy research that would let anyone copy a strategy: kept local, never published
 research/smart-money-*.mjs
+# Hyperliquid candles and funding cached by the Callbook scorer
+data/callbook-prices/

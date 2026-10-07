@@ -116,6 +116,14 @@
   .hm-hero { padding: 22px 18px; }
   .hm-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 16px; }
   .hm-stats div:nth-child(3) { padding-left: 0; border-left: 0; }
+  .hm-rc figcaption b { white-space: nowrap; }
+}
+/* The phone frame (a tab bar from 900px down): touch-sized controls. */
+@media (max-width: 900px) {
+  .hm-pause { height: 40px; padding: 0 14px; font-size: 12.5px; }
+  .hm-out a { padding-block: 13px; margin-block: -11px -13px; }
+  .hm-dots { gap: 0; }
+  .hm-dots button { width: 40px; height: 40px; }
 }
 
 /* ------------------------------------------------------- strategy cards */
@@ -145,6 +153,11 @@
 }
 @media (max-width: 900px) {
   .st-card { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 18px; }
+  .st-card dt { font-size: 12px; }
+  /* "Strategies ... All strategies": the note drops to its own line under the two. */
+  .hsec h2:has(.st-all) { flex-wrap: wrap; row-gap: 2px; }
+  .hsec h2:has(.st-all) small { order: 1; flex-basis: 100%; }
+  .st-all { padding-block: 13px; margin-block: -13px; }
 }
 .st-card dd .yr { margin-left: 2px; color: var(--ink-3); font: 500 11px var(--sans); letter-spacing: 0; }
 /* the coins a strategy trades, in a row beside its name */

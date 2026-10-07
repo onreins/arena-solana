@@ -16,6 +16,8 @@ module.exports = {
       // Mirror Arc's fee floor so gas arithmetic in tests is representative.
       initialBaseFeePerGas: 20_000_000_000,
       accounts: { accountsBalance: "10000000000000000000000" }, // 10,000 USDC (18dp)
+      // The Callbook replay starts its node in the past so it can walk forward over real prices.
+      ...(process.env.HARDHAT_INITIAL_DATE ? { initialDate: process.env.HARDHAT_INITIAL_DATE } : {}),
     },
   },
 };

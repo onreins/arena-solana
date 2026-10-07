@@ -129,6 +129,14 @@
   .cr-fine .grid, .cr-keys { grid-template-columns: minmax(0, 1fr); }
   .cr-amount input { width: 100%; }
   .cr-amount { flex: 1 1 100%; }
+  .cr-fineprint, .cr-card .compiled { font-size: 12px; }
+}
+/* The phone frame (a tab bar from 900px down): touch-sized controls. */
+@media (max-width: 900px) {
+  .cr-trail a { height: 40px; padding-right: 14px; }
+  .cr-chips .chip, .cr-wallet .chip { height: 40px; padding: 0 14px; }
+  .cr-limit input[type="range"] { height: 40px; }
+  .cr-card summary { padding-block: 12px; margin-block: -12px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .cr-dice, .cr-floor .bar i, .cr-floor .bar s { transition: none; }
