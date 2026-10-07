@@ -49,7 +49,8 @@
     var v = C.scoreOf(x);
     if (!C.isNum(v)) return '<span class="muted" tabindex="0" data-tip="Not scored yet: the first score comes with its first revealed calls">—</span>';
     var why = C.scoreWhy(x);
-    return '<span class="cb-sc' + (v === 0 ? " zero" : "") + '"' + (why && why.long ? ' tabindex="0" data-tip="' + esc(why.long) + '"' : "") + ">" + esc(Math.round(v)) + "</span>";
+    // The number, and a bar out of 100 under it.
+    return '<span class="ar-score' + (v === 0 ? " zero" : "") + '"' + (why && why.long ? ' tabindex="0" data-tip="' + esc(why.long) + '"' : "") + "><b>" + esc(Math.round(v)) + '</b><i style="--v:' + Math.max(0, Math.min(100, v)) + '%" aria-hidden="true"></i></span>';
   }
   var TEST = { in_progress: "In progress", passed: "Passed", failed: "Failed" };
   function testCell(b) {
@@ -117,8 +118,9 @@
         { key: "hit", h: "Hit rate", tip: "Share of calls that made money after costs", cls: "r mono opt", v: function (c) { return c.metrics.hitRate; }, cell: function (c) { return C.isNum(c.metrics.hitRate) ? Math.round(c.metrics.hitRate * 100) + "%" : "—"; } },
         { key: "vs", h: "Vs coin", tip: "Average per call, after costs, less the coin's own move over the same hours", cls: "r mono m-hide", v: function (c) { return c.metrics.vsCoin; }, cell: function (c) { return C.pctHtml(c.metrics.vsCoin, 2); } },
         { key: "worst", h: "Worst call", tip: "Its single worst call, after costs", cls: "opt", v: function (c) { return c.metrics.worst ? c.metrics.worst.ret : null; }, cell: function (c) { return worstCall(c.metrics); } },
-        { key: "days", h: "Record", tip: "Days since its first call", cls: "r mono opt", v: function (c) { return c.metrics.days; }, cell: function (c) { return C.int(Math.floor(c.metrics.days)) + '<span class="muted">d</span>'; } },
+        { key: "days", h: "Days", tip: "Days since its first call", cls: "r mono opt", v: function (c) { return c.metrics.days; }, cell: function (c) { return C.int(Math.floor(c.metrics.days)) + '<span class="muted">d</span>'; } },
         { key: "cov", h: "Coverage", tip: "Calls revealed, and their share of the calls that were due", cls: "r mono c-cov", v: function (c) { return coverageOf(c.metrics).share; }, cell: function (c) { return covCell(c.metrics); } },
+        { key: "curve", h: "Record", cls: "c-curve opt", cell: curve },
       ],
     },
   };
@@ -213,33 +215,62 @@
   }
   pressGroup($("filter"), "data-f", function (f) { state.filter = f; state.page = 0; table(); });
 
-  // Switch boards: tabs, the ?board= in the address, the facts and the words.
-  // The best record on either board, by score, picked by the numbers, never by hand.
-  // Shown only when that score is above 0.
-  function spotlight() {
-    var all = (D.books || []).map(function (x) { return { x: x, kind: "books" }; })
+  // The podium: the top three records on either board, by score, picked by the
+  // numbers, never by hand. Only scores above 0 stand on it.
+  function podium() {
+    var el = $("podium");
+    var top = (D.books || []).map(function (x) { return { x: x, kind: "books" }; })
       .concat((D.callers || []).map(function (x) { return { x: x, kind: "callers" }; }))
       .filter(function (e) { return (C.scoreOf(e.x) || 0) > 0; })
-      .sort(function (a, b) { return (C.scoreOf(b.x) - C.scoreOf(a.x)) || ((b.x.metrics.totalReturn || 0) - (a.x.metrics.totalReturn || 0)); });
-    var el = $("spot");
-    if (!all.length) { el.hidden = true; return; }
-    var top = all[0], x = top.x, m = x.metrics, caller = top.kind === "callers";
-    var right = caller ? m.hitRate : m.winRate;
-    var tag = x.sample ? "Sample" : x.ours ? "Reins" : "";
-    el.href = BOARDS[top.kind].href(x);
-    el.innerHTML =
-      '<span class="cb-spot-k">Top of the board <span class="muted">· highest score, ' + (caller ? "a caller" : "a strategy") + "</span></span>" +
-      '<span class="cb-spot-n">' + esc(C.nameOf(x)) + (tag ? ' <span class="cb-tag plain">' + esc(tag) + "</span>" : "") + "</span>" +
-      '<span class="cb-spot-d">' + esc(x.description || "") + "</span>" +
-      '<span class="cb-spot-m">' +
-        '<span><b class="mono">' + esc(Math.round(C.scoreOf(x))) + "</b>score</span>" +
-        "<span><b>" + C.pctHtml(m.totalReturn) + "</b>" + (caller ? "its calls added up, after costs" : "compounded, after costs") + "</span>" +
-        '<span><b class="mono">' + C.int(m.calls) + "</b>calls" + (C.isNum(right) ? ", " + Math.round(right * 100) + "% made money" : "") + "</span>" +
-        "<span>" + C.skillHtml(x.skill) + "skill</span>" +
-      "</span>" +
-      '<span class="cb-spot-go">See its record →</span>';
+      .sort(function (a, b) { return (C.scoreOf(b.x) - C.scoreOf(a.x)) || ((b.x.metrics.totalReturn || 0) - (a.x.metrics.totalReturn || 0)); })
+      .slice(0, 3);
+    if (!top.length) { el.hidden = true; return; }
+    // Second, first, third, as on a podium.
+    var order = [1, 0, 2].filter(function (i) { return top[i]; });
+    el.className = "ar-podium n" + order.length; // how many stand on it: the layout follows
+    el.innerHTML = order.map(function (i) { return podCard(top[i], i + 1); }).join("");
     el.hidden = false;
+    Array.prototype.forEach.call(el.querySelectorAll(".ar-pod"), C.glow);
+    Array.prototype.forEach.call(el.querySelectorAll("[data-count]"), function (b) { C.countUp(b, Number(b.getAttribute("data-count"))); });
   }
+  function podCard(e, rank) {
+    var x = e.x, m = x.metrics, caller = e.kind === "callers", s = Math.round(C.scoreOf(x));
+    var right = caller ? m.hitRate : m.winRate, sk = x.skill;
+    // The coin flip is the control: on the podium it says so.
+    var tag = x.baseline ? "Baseline" : x.sample ? "Sample" : x.ours ? "Reins" : "";
+    return '<a class="ar-pod ar-card r' + rank + '" href="' + esc(BOARDS[e.kind].href(x)) + '" aria-label="Number ' + rank + ": " + esc(C.nameOf(x)) + ", score " + s + '">' +
+      '<span class="ar-pod-top"><span class="ar-medal" aria-hidden="true">' + rank + '</span><span class="ar-pod-k">' + (caller ? "Caller" : "Strategy") + "</span></span>" +
+      '<span class="ar-pod-n">' + esc(C.nameOf(x)) + (tag ? ' <span class="cb-tag plain">' + esc(tag) + "</span>" : "") + "</span>" +
+      '<span class="ar-pod-d">' + esc(x.description || "") + "</span>" +
+      '<span class="ar-pod-m">' +
+        '<span class="ar-pod-score"><b data-count="' + s + '">' + s + "</b><span>score out of 100</span></span>" +
+        '<span class="ar-pod-ret"><b>' + C.pctHtml(m.totalReturn) + "</b><span>" + C.int(m.calls) + " calls" + (C.isNum(right) ? " · " + Math.round(right * 100) + "% made money" : "") + "</span></span>" +
+      "</span>" + curve(x) +
+      '<span class="ar-pod-f"><span>Skill ' + (sk && C.isNum(sk.score) ? esc(sk.score) + " · " : "") + esc(sk ? C.own(C.LEVELS, sk.level) || "" : "—") + '</span><span class="go">See its record →</span></span></a>';
+  }
+
+  // The ticker: the latest locks, reveals and scores, rolling. The second copy only
+  // makes the loop seamless, so it's hidden from screen readers and the keyboard.
+  function ticker() {
+    var items = (D.feed || []).slice(0, 24).map(tickItem).filter(Boolean);
+    if (!items.length) { $("ticker").hidden = true; return; }
+    var html = items.join("");
+    $("tape").innerHTML = html + '<span style="display:contents" aria-hidden="true">' + html.replace(/<a /g, '<a tabindex="-1" ') + "</span>";
+    $("tape").style.setProperty("--ar-roll", Math.max(30, items.length * 5) + "s");
+    $("ticker").hidden = false;
+  }
+  function tickItem(f) {
+    var who = bookLink(f).replace("<a ", "<a class=\"n\" ").replace(/>([^<]*)<\/a>$/, "><b>$1</b></a>");
+    var dir = function (side) { return side > 0 ? '<span class="up">↑ long</span>' : side < 0 ? '<span class="down">↓ short</span>' : "<span>flat</span>"; };
+    var ret = function (r) { return C.isNum(r) ? '<span class="' + (r >= 0 ? "up" : "down") + '">' + esc(C.pct(r, 2)) + "</span>" : ""; };
+    if (f.kind === "sealed" || f.kind === "locked") return '<span class="ar-tk"><span class="k">Locked</span>' + who + "<span>hidden</span></span>";
+    if (f.kind === "revealed") return '<span class="ar-tk"><span class="k">Revealed</span>' + who + "<b>" + esc(f.coin || "") + "</b>" + dir(f.side) + ret(f.ret) + "</span>";
+    if (f.kind === "validated") return '<span class="ar-tk"><span class="k">' + (f.tag === "callbook-skill-v1" ? "Skill" : "Scored") + "</span>" + who + "<b>" + esc(f.score) + "/100</b></span>";
+    if (f.kind === "missed") return '<span class="ar-tk"><span class="k">' + (f.note === "withheld" ? "Kept hidden" : "Missed") + "</span>" + who + "</span>";
+    return "";
+  }
+
+  // Switch boards: tabs, the ?board= in the address, the facts and the words.
 
   function setBoard(name, push) {
     if (!C.own(BOARDS, name)) name = "books";
@@ -399,17 +430,18 @@
     var ours = D.books.filter(function (b) { return b.ours; }).length;
     // Strategy bots and callers together.
     var tracked = (s.books || 0) + (s.callers || 0), hidden = (s.withheld || 0) + (s.lockedWithheld || 0);
-    $("st-books").textContent = C.int(tracked);
+    C.countUp($("st-books"), tracked);
     $("st-books-s").textContent = !tracked ? "the first records arrive soon" : C.int(s.books || 0) + " strategies · " + C.int(s.callers || 0) + " callers";
-    $("st-sealed").textContent = C.int((s.sealed || 0) + (s.locked || 0));
-    $("st-revealed").textContent = C.int((s.revealed || 0) + (s.lockedRevealed || 0));
-    $("st-missed").textContent = C.int((s.missed || 0) + hidden);
+    C.countUp($("st-sealed"), (s.sealed || 0) + (s.locked || 0));
+    C.countUp($("st-revealed"), (s.revealed || 0) + (s.lockedRevealed || 0));
+    C.countUp($("st-missed"), (s.missed || 0) + hidden);
     $("st-missed-s").textContent = hidden ? "incl. " + C.int(hidden) + " kept hidden" : (s.missed ? "each counts against its record" : "none so far");
-    $("st-valid").textContent = C.int(s.validations);
+    C.countUp($("st-valid"), s.validations || 0);
     $("foot-gen").textContent = "Paper calls, scored at Hyperliquid prices. Not investment advice." + (D.generated ? " Updated " + C.stamp(Date.parse(D.generated) / 1000) + "." : "");
     $("foot-net").textContent = D.network || "Arc";
     setBoard(new URLSearchParams(location.search).get("board") || "books", false);
-    spotlight();
+    podium();
+    ticker();
     feed();
     machine();
   }).catch(function (err) {

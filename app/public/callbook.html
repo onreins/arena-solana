@@ -11,12 +11,13 @@
 <link rel="stylesheet" href="/app.css">
 <link rel="stylesheet" href="/home.css">
 <link rel="stylesheet" href="/callbook.css">
+<link rel="stylesheet" href="/callbook-arena.css">
 
 <a class="skip" href="#main">Skip to content</a>
 <aside id="side"></aside>
 <header id="top"></header>
 
-<main id="main" class="cb">
+<main id="main" class="cb arena">
   <!-- The hero: the idea in one look, and one call being locked and revealed. -->
   <section class="cb-hero" data-fx="engraving" aria-labelledby="cb-h">
     <div class="cb-hero-bg" id="guil"></div>
@@ -75,6 +76,11 @@
   </nav>
 
   <div class="cb-view" id="view-main">
+  <!-- What just happened, rolling: the latest locks, reveals and scores. -->
+  <div class="ar-ticker" id="ticker" hidden>
+    <span class="ar-live"><i aria-hidden="true"></i>Live</span>
+    <div class="ar-tape" aria-label="Latest calls"><div class="ar-tape-in" id="tape"></div></div>
+  </div>
   <!-- Lock a call: coin, up or down, how long. -->
   <section class="cb-lock" id="lock" aria-labelledby="lock-h">
     <div class="cb-lock-head">
@@ -150,7 +156,8 @@
     </div>
     <div class="cb-dbl" aria-hidden="true"></div>
 
-    <a class="cb-spot" id="spot" hidden></a>
+    <!-- The podium: the top three by score, picked by the numbers, never by hand. -->
+    <section class="ar-podium" id="podium" aria-label="Top of the board" hidden></section>
 
     <div class="cb-boards" role="tablist" aria-label="Boards" id="boards">
       <button type="button" role="tab" data-b="books" aria-selected="true" aria-controls="tbl">Strategies</button>

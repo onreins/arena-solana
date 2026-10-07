@@ -314,6 +314,35 @@ window.Callbook = (function () {
   // Under two weeks of record, ratios like Sharpe are shown but greyed.
   var YOUNG_DAYS = 14;
 
+  /** A number that counts up from 0 the first time it scrolls into view (at once with reduced motion). */
+  function countUp(el, to, fmt) {
+    fmt = fmt || int;
+    if (!el || !isNum(to)) return;
+    if (reduce || !window.IntersectionObserver || !window.requestAnimationFrame) { el.textContent = fmt(to); return; }
+    el.textContent = fmt(0);
+    var io = new IntersectionObserver(function (es) {
+      if (!es.some(function (e) { return e.isIntersecting; })) return;
+      io.disconnect();
+      var t0 = performance.now(), dur = 900;
+      (function step(t) {
+        var k = Math.min(1, (t - t0) / dur);
+        el.textContent = fmt(to * (1 - Math.pow(1 - k, 3)));
+        if (k < 1) requestAnimationFrame(step);
+      })(t0);
+    });
+    io.observe(el);
+  }
+  /** A faint light that follows the pointer across a card (.ar-glow in callbook-arena.css). */
+  function glow(el) {
+    if (!el || reduce) return;
+    el.classList.add("ar-glow");
+    el.addEventListener("pointermove", function (e) {
+      var r = el.getBoundingClientRect();
+      el.style.setProperty("--mx", (e.clientX - r.left) + "px");
+      el.style.setProperty("--my", (e.clientY - r.top) + "px");
+    });
+  }
+
   // The skill score (docs/CALLBOOK-IDENTITY-PLAN.md): how often calls beat the market's own move,
   // credible by the number of calls. Levels in order, and what each says.
   var LEVELS = { unrated: "Unrated", provisional: "Provisional", rated: "Rated", established: "Established" };
@@ -351,7 +380,7 @@ window.Callbook = (function () {
   }
 
   return {
-    skillHtml: skillHtml, skillTip: skillTip, skillPanel: skillPanel, skillRank: skillRank, LEVELS: LEVELS,
+    skillHtml: skillHtml, skillTip: skillTip, skillPanel: skillPanel, countUp: countUp, glow: glow, skillRank: skillRank, LEVELS: LEVELS,
     own: own, nameOf: nameOf, movedTag: movedTag, YOUNG_DAYS: YOUNG_DAYS, challengeLine: challengeLine, isHttp: isHttp, RULES: RULES, scoreOf: scoreOf, scoreWhy: scoreWhy, periodAt: periodAt, eodOf: eodOf, where: where, costsText: costsText, loadIndex: loadIndex, loadBook: loadBook, loadCaller: loadCaller, params: params, wantMock: wantMock, ID_RE: ID_RE,
     pct: pct, pctHtml: pctHtml, dd: dd, num: num, int: int, isNum: isNum, shortHash: shortHash, txLink: txLink,
     ago: ago, stamp: stamp, day: day, clock: clock, span: span, hours: hours, now: now,
