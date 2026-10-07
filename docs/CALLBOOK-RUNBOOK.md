@@ -136,7 +136,12 @@ reveals, one score, `callbook:verify` matching), then repeat it with
    `app/public/callbook/agents/*.json` (and `deployments/callbook-N.json`,
    which `vercel.json` bundles into the API) so each agent's URI resolves to
    a file listing its registration.
-8. **API on Vercel.** Set, for the production environment:
+8. **API on Vercel.** First add any new records to `includeFiles` in
+   `vercel.json` (and to `.vercelignore` if needed): it lists only files that
+   exist, so after setup add `deployments/callbook-<network>-books.json` and, on
+   mainnet, `deployments/callbook-mainnet.json` (and the runner's
+   `app/data/callbook-state-<network>.json` once it writes one). Then set, for
+   the production environment:
 
    | Var | Value |
    |---|---|
