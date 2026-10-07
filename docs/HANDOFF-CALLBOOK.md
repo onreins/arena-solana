@@ -87,10 +87,10 @@ bundle. What remains is the founder's part: name, funded keys, go-ahead.
 ## Arc testnet (2026-10-07)
 
 - Callbook is deployed on Arc testnet at `0x8fde4b31ac39dc05852405dc892b724244a404cb` (`deployments/callbook-testnet.json`, deployed by the runner's gas wallet).
-- The packed `callbook-mcp` was run on testnet with a fresh zero-balance key through a local relayer: gasless lock, status, reveal all worked.
+- The packed `@onreins/mcp` was run on testnet with a fresh zero-balance key through a local relayer: gasless lock, status, reveal all worked.
 - Fixed: Arc's RPC takes at most 10 event signatures per `eth_getLogs` ("requested range too large" past that), and Callbook asked for 11, so every read failed on Arc. `callbook-chain.js` now splits them (`test/callbook-chain-logs.test.js`).
 - Decided (for now): open calls run from 1h, since they're priced on 1h candles from the first candle at or after entry and a shorter call has no price move. `MIN_CALL_HORIZON` in `callbook/durations.js`; the SDK, MCP and relayer refuse shorter calls (the contract still allows 5m). Shorter calls would need 5m candles plus a permanent price archive (Hyperliquid keeps only ~17 days of 5m).
-- For the public to use it: push (so app.reins.one serves `/api/callbook`), set `CALLBOOK_NETWORK=testnet` and `CALLBOOK_RELAYER_KEY` on Vercel, then `npm publish` from `packages/callbook-mcp`.
+- For the public to use it: push (so app.reins.one serves `/api/callbook`), set `CALLBOOK_NETWORK=testnet` and `CALLBOOK_RELAYER_KEY` on Vercel, then `npm publish` from `packages/reins-mcp`.
 
 ## Audit (2026-10-07)
 
@@ -117,7 +117,7 @@ screen-reader text for tooltips, and the 5-minute price archive.
 1. **Run the tests** whenever you change something. Start local nodes (`npx hardhat node --port 8545` and `--port 8546`), `npm run build`, then run with `--test-concurrency=1`:
    `node --test --test-concurrency=1 test/callbook.test.js test/callbook-engine.test.js test/callbook-callers.test.js test/callbook-sdk.test.js test/callbook-setup.test.js test/verify-scoring.test.js test/evaluator.test.js`.
    Don't run the whole `npm test` without a node: chain suites time out.
-2. ~~Finish the MCP~~ done. It ships as the npm package `callbook-mcp` (`packages/callbook-mcp/`, built by `npm run build:callbook-mcp` into one dependency-free file), so agents run `npx -y callbook-mcp` with no clone. Not published yet: publish after the mainnet deploy so the addresses are built in (runbook, section 4).
+2. ~~Finish the MCP~~ done. It ships as the npm package `@onreins/mcp` (`packages/reins-mcp/`, built by `npm run build:reins-mcp` into one dependency-free file), so agents run `npx -y @onreins/mcp` with no clone. Not published yet: publish after the mainnet deploy so the addresses are built in (runbook, section 4).
 3. **Site v2**: enable the Callers tab; build the **Lock a call** panel on `callbook.html` (connect wallet with `wallet.js`, pick a Hyperliquid perp, long/short, horizon chips, preview of entry and reveal time, sign EIP-712 `LockCall`, POST to `/api/callbook/relay/lock`); derive the salt from a wallet signature so it can be recovered on any device; auto-reveal on return; caller pages from `callbook-caller-<id>.json`. Keep the ease-of-use rules in the plan.
 4. **QA**: browser check desktop + 375px, no console errors; a security review of the contract and the signing/relay flow (rate limits, gas budget).
 5. **Go live (needs the founder)**: name; five fresh keys (deployer, owner, sealing caller, validator, salt secret ≥ 32 chars) funded with about $1–2 of USDC on Arc mainnet in total; then follow `docs/CALLBOOK-RUNBOOK.md`. The runner doesn't need an always-on server: a bot can seal its next round any time during the current 4h round, so an hourly scheduled job (e.g. GitHub Actions with encrypted secrets) works. Aim to be live by ~Oct 8 so there's a real record by Oct 14.

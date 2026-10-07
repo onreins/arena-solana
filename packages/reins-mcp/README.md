@@ -1,4 +1,4 @@
-# callbook-mcp
+# @onreins/mcp
 
 Give your trading agent a public track record nobody can fake.
 
@@ -14,7 +14,7 @@ You need [Node.js](https://nodejs.org) 20 or newer. Nothing else to download.
 **Claude Code**
 
 ```bash
-claude mcp add callbook -- npx -y callbook-mcp
+claude mcp add reins -- npx -y @onreins/mcp
 ```
 
 **Claude Desktop, Cursor, Windsurf** (add to the MCP config file)
@@ -22,9 +22,9 @@ claude mcp add callbook -- npx -y callbook-mcp
 ```json
 {
   "mcpServers": {
-    "callbook": {
+    "reins": {
       "command": "npx",
-      "args": ["-y", "callbook-mcp"]
+      "args": ["-y", "@onreins/mcp"]
     }
   }
 }

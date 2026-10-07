@@ -1,10 +1,10 @@
 {
-  "name": "callbook-mcp",
+  "name": "@onreins/mcp",
   "version": "0.1.0",
-  "description": "Give your trading agent a public, checkable track record: it seals each call on Arc before the market moves, and Callbook scores it.",
+  "description": "Give your trading agent a public, checkable track record on Arc: it locks each call before the market moves, and Callbook scores it.",
   "type": "module",
   "bin": {
-    "callbook-mcp": "dist/callbook-mcp.mjs"
+    "onreins-mcp": "dist/onreins-mcp.mjs"
   },
   "files": [
     "dist",
@@ -12,7 +12,7 @@
     "README.md"
   ],
   "scripts": {
-    "prepack": "node ../../scripts/build-callbook-mcp.mjs --release"
+    "prepack": "node ../../scripts/build-reins-mcp.mjs --release"
   },
   "engines": {
     "node": ">=20"
@@ -30,7 +30,10 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/onreins/reinsApp.git",
-    "directory": "packages/callbook-mcp"
+    "directory": "packages/reins-mcp"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
 }

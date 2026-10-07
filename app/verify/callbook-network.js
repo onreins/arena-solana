@@ -66,7 +66,7 @@ export function ourBooksFrom({ record, owner, callbook }) {
 export function callbookNetwork(env = process.env, over = {}) {
   const name = over.network ?? env.CALLBOOK_NETWORK;
   if (!name) return null;
-  // The published MCP package carries the deployments in its bundle (scripts/build-callbook-mcp.mjs).
+  // The published MCP package carries the deployments in its bundle (scripts/build-reins-mcp.mjs).
   const saved = readJson(path.join(ROOT, "deployments", `callbook-${name}.json`)) ?? globalThis.__CALLBOOK_DEPLOYMENTS__?.[name] ?? null;
   const address = over.address ?? env.CALLBOOK_ADDRESS ?? saved?.contracts?.callbook;
   if (!address || !isAddress(address)) throw new Error(`no Callbook address for ${name}: set CALLBOOK_ADDRESS`);
