@@ -132,7 +132,19 @@ export function createApp({ deployment, rpcUrl, strategy, onramp, callbook, publ
   app.use(express.json({ limit: "64kb" }));
 
   const here = path.dirname(fileURLToPath(import.meta.url));
-  app.use(express.static(path.join(here, "public")));
+  // Clean addresses, as on Vercel (cleanUrls): /callbook serves callbook.html, and
+  // /callbook.html redirects there for good, so old links keep working.
+  app.get(/^\/([\w-]+)\.html$/, (req, res) => {
+    const q = req.url.indexOf("?"), query = q >= 0 ? req.url.slice(q) : "";
+    res.redirect(308, (req.params[0] === "index" ? "/" : "/" + req.params[0]) + query);
+  });
+  // A page wins over a folder of the same name (/callbook is the page, not public/callbook/).
+  app.get(/^\/([\w-]+)$/, (req, res, next) => {
+    const page = path.join(here, "public", `${req.params[0]}.html`);
+    if (existsSync(page)) res.sendFile(page);
+    else next();
+  });
+  app.use(express.static(path.join(here, "public"), { extensions: ["html"] }));
 
   // Chain access is created lazily so the encoding endpoints need no RPC.
   let client = null;

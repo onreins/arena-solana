@@ -266,7 +266,7 @@
         step("Funded with " + money(f.deposit), "ok");
       }
       step("Done. Opening your agent.", "ok");
-      location.href = "/mandate.html?a=" + mandate;
+      location.href = "/mandate?a=" + mandate;
     } catch (err) {
       step(esc(W.explain(err)), "err");
       notice(W.explain(err));
@@ -327,7 +327,7 @@
     var from = (q.get("from") || "").slice(0, 40);
     $("template").innerHTML = "Limits from your plan" + (from ? " on the <b>" + esc(from) + "</b> chart" : "") +
       ". Agents trade USDC and EURC on Arc testnet for now; the limits work the same. Change anything. " +
-      '<a href="/charts.html">Back to the charts</a>';
+      '<a href="/charts">Back to the charts</a>';
     $("template").hidden = false;
     applyPreset(planned);
   }
@@ -344,7 +344,7 @@
       $("f-name").value = s.name + " agent";
       $("f-days").value = C.DAYS.quarter;
       $("template").innerHTML = "Started from the <b>" + esc(s.name) + "</b> template: its stop-loss sits a little beyond its worst backtested drop. Change anything. " +
-        esc(s.onArc) + ' <a href="/strategy.html?s=' + encodeURIComponent(s.id) + '">See the strategy</a>';
+        esc(s.onArc) + ' <a href="/strategy?s=' + encodeURIComponent(s.id) + '">See the strategy</a>';
       $("template").hidden = false;
       applyPreset(t);
     }).catch(function () { /* the presets still work */ });

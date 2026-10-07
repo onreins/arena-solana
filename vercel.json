@@ -4,6 +4,7 @@
   "installCommand": "npm install --omit=dev --ignore-scripts",
   "buildCommand": "npm run build",
   "outputDirectory": "app/public",
+  "cleanUrls": true,
   "functions": {
     "api/index.js": {
       "includeFiles": "{build/Mandate.json,build/Callbook.json,build/MandateFactory.json,deployments/testnet.json,deployments/mandate-testnet.json,deployments/callbook-testnet.json,app/data/prices.json,app/data/index-snapshot.json}",

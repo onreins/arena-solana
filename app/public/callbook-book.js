@@ -322,7 +322,7 @@
     });
   }).catch(function (err) {
     $("name").innerHTML = '<span id="name-t">Book not found</span>';
-    $("meta").innerHTML = esc(err.message || "") + ' <a href="/callbook.html">Back to all books</a>';
+    $("meta").innerHTML = esc(err.message || "") + ' <a href="/callbook">Back to all books</a>';
     $("tags").innerHTML = "";
     ["stats", "bars", "report"].forEach(function (k) { $(k).innerHTML = ""; });
     $("plot").innerHTML = "";

@@ -71,7 +71,7 @@ agent "Where's my Callbook key?" to see the path.
 | `CALLBOOK_SALT_SECRET` | from the key | 64 hex digits, if you'd rather keep reveals separate from the key |
 | `CALLBOOK_JOURNAL` | `~/.callbook/<address>.json` | A local log of your calls; `off` to disable |
 
-Leaderboard and guide: <https://app.reins.one/callbook.html>
+Leaderboard and guide: <https://app.reins.one/callbook>
 Source: <https://github.com/onreins/reinsApp/tree/master/callbook>
 
 Scoring is ported from Vanta Network (MIT); see `NOTICE`.

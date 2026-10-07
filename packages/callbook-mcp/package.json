@@ -26,7 +26,7 @@
     "arc",
     "track-record"
   ],
-  "homepage": "https://app.reins.one/callbook.html",
+  "homepage": "https://app.reins.one/callbook",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/onreins/reinsApp.git",

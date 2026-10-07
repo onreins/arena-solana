@@ -43,7 +43,7 @@
     $("tagline").textContent = s.tagline;
     $("fine").textContent = (valid ? "Validated: it held up on data it wasn't tuned on. " : "Candidate: promising, but not yet confirmed on data it wasn't tuned on. ") +
       "A backtest on past prices, not live results. Costs: " + doc.costs + ". " + s.onArc;
-    $("u-go").href = "/create.html?s=" + encodeURIComponent(s.id);
+    $("u-go").href = "/create?s=" + encodeURIComponent(s.id);
     $("lg-strat").textContent = s.name;
 
     $("s-since").innerHTML = U.pctHtml(st.cagr_since_2024 * 100, 0);
@@ -322,7 +322,7 @@
     doc = d;
     s = (d.strategies || []).filter(function (x) { return x.id === id; })[0];
     if (!s) {
-      missing("Strategy not found", '<a class="chip" href="/strategies.html">See all strategies</a>');
+      missing("Strategy not found", '<a class="chip" href="/strategies">See all strategies</a>');
       return;
     }
     renderHead();

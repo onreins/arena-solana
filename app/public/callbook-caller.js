@@ -254,7 +254,7 @@
     window.addEventListener("resize", function () { clearTimeout(rs); rs = setTimeout(function () { chart(x); }, 150); });
   }).catch(function (err) {
     $("name").innerHTML = '<span id="name-t">Caller not found</span>';
-    $("meta").innerHTML = esc(err.message || "") + ' <a href="/callbook.html?board=callers">Back to all callers</a>';
+    $("meta").innerHTML = esc(err.message || "") + ' <a href="/callbook?board=callers">Back to all callers</a>';
     $("tags").innerHTML = "";
     ["stats", "report", "val"].forEach(function (k) { $(k).innerHTML = ""; });
     $("plot").innerHTML = "";

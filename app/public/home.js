@@ -133,7 +133,7 @@ window.ReinsHome = (function () {
     return new Date(t * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" });
   }
   function sentence(e) {
-    var who = '<a href="/mandate.html?a=' + esc(e.mandate) + '">' + esc(e.name || "An agent") + "</a>";
+    var who = '<a href="/mandate?a=' + esc(e.mandate) + '">' + esc(e.name || "An agent") + "</a>";
     var sum = function (x) { return "<b>" + amount(x.amount) + " " + esc(x.symbol) + "</b>"; };
     switch (e.event) {
       case "Traded": return who + " swapped " + amount(e.sold.amount) + " " + esc(e.sold.symbol) + " for " + sum(e.bought);

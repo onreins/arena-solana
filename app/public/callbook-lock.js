@@ -150,7 +150,7 @@
     var mine = locks().filter(here);
     if (!mine.length) return;
     $("lock-mine").hidden = false;
-    $("lock-mine").href = "/callbook-caller.html?c=" + encodeURIComponent(mine[mine.length - 1].bookId);
+    $("lock-mine").href = "/callbook-caller?c=" + encodeURIComponent(mine[mine.length - 1].bookId);
   }
 
   // ------------------------------------------------------------- the wallet
@@ -217,7 +217,7 @@
       var e = Number(r.body.entryAt) || entryAt();
       remember({ chainId: Number(D.chainId), callbook: String(D.contract).toLowerCase(), account: account, bookId: String(r.body.bookId), callId: Number(r.body.callId),
         nonce: Number(r.body.nonce != null ? r.body.nonce : nonce), coin: call.coin, side: call.side, horizon: call.horizon, salt: salt, entryAt: e, lockedAt: Math.floor(Date.now() / 1000), revealed: false });
-      var href = "/callbook-caller.html?c=" + encodeURIComponent(r.body.bookId);
+      var href = "/callbook-caller?c=" + encodeURIComponent(r.body.bookId);
       say("<b>Locked ✓</b> " + esc(call.coin) + " " + (call.side > 0 ? "up" : "down") + ", reveals " + esc(utc(e + call.horizon, call.horizon >= 86400)) +
         '. <a href="' + esc(href) + '">See your record →</a>', "ok");
       showMine();
