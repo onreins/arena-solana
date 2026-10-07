@@ -36,7 +36,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci --omit=dev --ignore-scripts
+      - run: npm ci --ignore-scripts
       - run: npm run build
       - run: npm run snapshot:index
       - name: Commit the snapshot if it moved

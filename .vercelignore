@@ -9,6 +9,9 @@
 !/bridge
 !/mandate
 !/contracts
+# RedStone price-feed contracts compile only where dev dependencies are
+# installed (tests, CI); the app needs just the feed address, not their build.
+/contracts/RedStone*.sol
 !/scripts
 !/build
 !/deployments

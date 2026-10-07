@@ -49,7 +49,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci --omit=dev --ignore-scripts
+      - run: npm ci --ignore-scripts
       - run: npm run build
       - name: Push the latest signed RedStone price
         env:
