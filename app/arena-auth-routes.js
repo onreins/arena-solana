@@ -16,14 +16,54 @@
  */
 import { randomUUID } from "node:crypto";
 
-import { memoryCounter, ipBucket, brief } from "./verify/callbook-util.js";
-import { arenaEnv } from "./verify/callbook-network.js";
+import { countersFromEnv, ipBucket, brief } from "./verify/callbook-util.js";
+import { arenaEnv, callbookNetwork } from "./verify/callbook-network.js";
 
 const CIRCLE = "https://api.circle.com";
 const HOUR = 3_600;
 export const AUTH_LIMITS = Object.freeze({ requestsPerIpHour: 120, timeoutMs: 10_000, maxTypedDataBytes: 8_192 });
-/** The Arena messages a Google wallet may sign here (contracts/Callbook.sol). */
-export const SIGNABLE = Object.freeze(["LinkAgent", "UnlinkAgent", "SetProfile"]);
+/**
+ * The Arena messages a Google wallet may sign here (contracts/Callbook.sol),
+ * field by field. A request is rebuilt from these, never passed through, so
+ * Circle only ever shows the person one of Arena's own messages.
+ */
+const ADDRESS = (v) => typeof v === "string" && /^0x[0-9a-fA-F]{40}$/.test(v);
+const UINT = (v) => (typeof v === "string" || typeof v === "number") && /^\d{1,78}$/.test(String(v));
+const TEXT = (max) => (v) => typeof v === "string" && Buffer.byteLength(v) <= max;
+const MESSAGES = Object.freeze({
+  LinkAgent: [["agent", "address", ADDRESS], ["wallet", "address", ADDRESS], ["nonce", "uint256", UINT], ["deadline", "uint256", UINT]],
+  UnlinkAgent: [["agent", "address", ADDRESS], ["nonce", "uint256", UINT], ["deadline", "uint256", UINT]],
+  SetProfile: [["account", "address", ADDRESS], ["bookId", "uint256", UINT], ["name", "string", TEXT(32)], ["bio", "string", TEXT(160)],
+    ["link", "string", TEXT(100)], ["nonce", "uint256", UINT], ["deadline", "uint256", UINT]],
+});
+export const SIGNABLE = Object.freeze(Object.keys(MESSAGES));
+const DOMAIN_TYPE = [
+  { name: "name", type: "string" }, { name: "version", type: "string" }, { name: "chainId", type: "uint256" }, { name: "verifyingContract", type: "address" },
+];
+
+/** The typed data to sign, rebuilt from MESSAGES for this deployment's domain; throws a sentence otherwise. */
+export function arenaTypedData(input, domain) {
+  const fields = MESSAGES[input?.primaryType];
+  if (!fields) throw new Error(`only Arena's own messages (${SIGNABLE.join(", ")}) are signed here`);
+  const d = input.domain ?? {};
+  if (d.name !== "Arena" || String(d.version) !== "1" || Number(d.chainId) !== domain.chainId || String(d.verifyingContract ?? "").toLowerCase() !== domain.verifyingContract.toLowerCase()) {
+    throw new Error("that message isn't for this Arena contract and chain");
+  }
+  const m = input.message ?? {};
+  const extra = Object.keys(m).filter((k) => !fields.some(([name]) => name === k));
+  if (extra.length) throw new Error(`unexpected fields: ${extra.join(", ")}`);
+  const message = {};
+  for (const [name, , ok] of fields) {
+    if (!ok(m[name])) throw new Error(`${name} is missing or malformed`);
+    message[name] = typeof m[name] === "number" ? String(m[name]) : m[name];
+  }
+  return {
+    types: { EIP712Domain: DOMAIN_TYPE, [input.primaryType]: fields.map(([name, type]) => ({ name, type })) },
+    primaryType: input.primaryType,
+    domain: { name: "Arena", version: "1", chainId: domain.chainId, verifyingContract: domain.verifyingContract },
+    message,
+  };
+}
 /** Circle's code for "this user already has wallets". */
 const ALREADY_INITIALIZED = 155106;
 
@@ -41,9 +81,17 @@ export function mountAuth(app, { env: rawEnv = process.env, fetchImpl = fetch, n
   const apiKey = rawEnv.CIRCLE_API_KEY || "";
   const appId = rawEnv.CIRCLE_APP_ID || "";
   const googleClientId = rawEnv.GOOGLE_CLIENT_ID || "";
-  const on = Boolean(apiKey && appId && googleClientId);
   const blockchain = env.CALLBOOK_NETWORK === "mainnet" ? "ARC" : "ARC-TESTNET";
-  const counts = memoryCounter({ now });
+  // Shared counters, as the relayer uses: on Vercel each instance would count alone, so without
+  // a shared store Google sign-in stays off rather than let anyone spend our Circle quota.
+  const counts = countersFromEnv(rawEnv, { now });
+  const sharedOk = !rawEnv.VERCEL || counts.kind === "rest";
+  let domain = null;
+  try {
+    const net = callbookNetwork(rawEnv);
+    if (net) domain = { chainId: net.chain.id, verifyingContract: net.address };
+  } catch { /* no Arena deployment configured: nothing can be signed */ }
+  const on = Boolean(apiKey && appId && googleClientId && sharedOk);
 
   app.get("/api/auth/config", (_req, res) => {
     res.set("cache-control", "no-store");
@@ -127,12 +175,15 @@ export function mountAuth(app, { env: rawEnv = process.env, fetchImpl = fetch, n
     const t = token(userToken);
     if (typeof walletId !== "string" || !/^[0-9a-f-]{36}$/i.test(walletId)) throw refuse("walletId is missing or malformed");
     if (!typedData || typeof typedData !== "object") throw refuse("typedData must be an object");
-    const text = JSON.stringify(typedData);
-    if (text.length > AUTH_LIMITS.maxTypedDataBytes) throw refuse("typedData is too large");
-    if (typedData.domain?.name !== "Arena" || !SIGNABLE.includes(typedData.primaryType)) {
-      throw refuse(`only Arena's own messages (${SIGNABLE.join(", ")}) are signed here`);
+    if (JSON.stringify(typedData).length > AUTH_LIMITS.maxTypedDataBytes) throw refuse("typedData is too large");
+    if (!domain) throw new AuthError(503, "Arena isn't configured on this server, so there's nothing to sign.");
+    let typed;
+    try {
+      typed = arenaTypedData(typedData, domain);
+    } catch (err) {
+      throw refuse(err.message);
     }
-    const d = await circle("POST", "/v1/w3s/user/sign/typedData", { userToken: t, body: { walletId, data: text, memo: `Arena: ${typedData.primaryType}` } });
+    const d = await circle("POST", "/v1/w3s/user/sign/typedData", { userToken: t, body: { walletId, data: JSON.stringify(typed), memo: `Arena: ${typed.primaryType}` } });
     if (!d.challengeId) throw new AuthError(502, "Circle didn't return a challenge.");
     return { challengeId: d.challengeId };
   });

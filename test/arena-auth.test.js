@@ -4,6 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
+import { readFileSync } from "node:fs";
 
 import { mountAuth, SIGNABLE } from "../app/arena-auth-routes.js";
 
@@ -11,6 +12,8 @@ const ON = { CIRCLE_API_KEY: "TEST_API_KEY:abc:def", CIRCLE_APP_ID: "app-123", G
 const TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1In0.signature";
 const WALLET_ID = "0b3f9d2e-1111-4222-8333-944455556666";
 const ADDR = "0x14dc79964da2c08b23698b3d3cc7ca32193d9955";
+// The testnet deployment the routes read (ARENA_NETWORK=testnet): signed messages must name it.
+const CONTRACT = JSON.parse(readFileSync(new URL("../deployments/callbook-testnet.json", import.meta.url), "utf8")).contracts.callbook;
 
 /** A fake Circle: answers by path, records every call. */
 function fakeCircle(routes) {
@@ -101,21 +104,44 @@ test("already initialized without an Arc wallet: one is created", async () => {
   } finally { s.close(); }
 });
 
-test("signing: only Arena's own messages, under its domain, and not too large", async () => {
+test("signing: only Arena's own messages, for this deployment, rebuilt field by field", async () => {
   const s = await serve(ON, { "POST /v1/w3s/user/sign/typedData": [201, { data: { challengeId: "ch-sign" } }] });
-  const typed = (over = {}) => ({ domain: { name: "Arena", version: "1", chainId: 5042002 }, primaryType: "LinkAgent", types: {}, message: { agent: ADDR }, ...over });
+  const domain = { name: "Arena", version: "1", chainId: 5042002, verifyingContract: CONTRACT };
+  const MESSAGES = {
+    LinkAgent: { agent: ADDR, wallet: "0x" + "2".repeat(40), nonce: "0", deadline: "1999999999" },
+    UnlinkAgent: { agent: ADDR, nonce: "1", deadline: "1999999999" },
+    SetProfile: { account: ADDR, bookId: "0", name: "Midnight", bio: "", link: "", nonce: "0", deadline: "1999999999" },
+  };
+  const typed = (primaryType = "LinkAgent", over = {}) => ({ domain, primaryType, types: { anything: [] }, message: MESSAGES[primaryType], ...over });
   try {
-    for (const bad of [typed({ domain: { name: "Uniswap" } }), typed({ primaryType: "Permit" }), typed({ message: { pad: "x".repeat(9_000) } })]) {
+    for (const bad of [
+      typed("LinkAgent", { domain: { ...domain, name: "Uniswap" } }),
+      typed("LinkAgent", { domain: { ...domain, chainId: 1 } }),
+      typed("LinkAgent", { domain: { ...domain, verifyingContract: "0x" + "9".repeat(40) } }),
+      typed("Permit", { message: {} }),
+      typed("LinkAgent", { message: { ...MESSAGES.LinkAgent, extra: "x" } }),
+      typed("LinkAgent", { message: { ...MESSAGES.LinkAgent, wallet: "not-an-address" } }),
+      typed("LinkAgent", { message: { pad: "x".repeat(9_000) } }),
+    ]) {
       assert.equal((await s.post("/api/auth/circle/sign", { userToken: TOKEN, walletId: WALLET_ID, typedData: bad })).status, 400);
     }
     assert.equal((await s.post("/api/auth/circle/sign", { userToken: TOKEN, walletId: "not-a-uuid", typedData: typed() })).status, 400);
     assert.equal(s.calls.length, 0, "nothing reached Circle");
     for (const primaryType of SIGNABLE) {
-      const r = await s.post("/api/auth/circle/sign", { userToken: TOKEN, walletId: WALLET_ID, typedData: typed({ primaryType }) });
+      const r = await s.post("/api/auth/circle/sign", { userToken: TOKEN, walletId: WALLET_ID, typedData: typed(primaryType) });
       assert.deepEqual(r.json, { challengeId: "ch-sign" });
     }
+    const sent = JSON.parse(s.calls[0].body.data);
     assert.equal(s.calls[0].body.walletId, WALLET_ID);
-    assert.equal(JSON.parse(s.calls[0].body.data).primaryType, "LinkAgent");
+    assert.deepEqual(Object.keys(sent.types), ["EIP712Domain", "LinkAgent"], "the caller's types are replaced by Arena's own");
+    assert.deepEqual(sent.types.LinkAgent.map((f) => f.name), ["agent", "wallet", "nonce", "deadline"]);
+  } finally { s.close(); }
+});
+
+test("on Vercel without a shared rate-limit store, Google sign-in stays off", async () => {
+  const s = await serve({ ...ON, VERCEL: "1" });
+  try {
+    assert.deepEqual(await (await fetch(s.base + "/api/auth/config")).json(), { google: false });
   } finally { s.close(); }
 });
 

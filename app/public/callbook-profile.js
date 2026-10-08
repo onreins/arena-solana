@@ -92,7 +92,8 @@
   }
   function records(recs) {
     var order = recs.slice().sort(function (a, b) { return (C.scoreOf(b) || -1) - (C.scoreOf(a) || -1) || a.id - b.id; });
-    $("r-sum").textContent = recs.length + " record" + (recs.length === 1 ? "" : "s");
+    var via = recs.filter(function (r) { return r.via; }).length;
+    $("r-sum").textContent = recs.length + " record" + (recs.length === 1 ? "" : "s") + (via ? " · " + via + " from linked agents" : "");
     $("recs").innerHTML = order.map(recCard).join("");
   }
 

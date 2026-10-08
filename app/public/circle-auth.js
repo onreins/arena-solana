@@ -107,5 +107,8 @@ window.ReinsCircle = (function () {
     return sig;
   }
 
-  return { signIn: signIn, resume: resume, signTypedData: signTypedData, forget: function () { drop(LOGIN); drop(PENDING); } };
+  /** True while this tab holds a Circle login (it doesn't survive a new tab). */
+  function hasLogin() { var l = get(LOGIN); return !!(l && l.userToken && l.walletId); }
+
+  return { signIn: signIn, resume: resume, signTypedData: signTypedData, hasLogin: hasLogin, forget: function () { drop(LOGIN); drop(PENDING); } };
 })();

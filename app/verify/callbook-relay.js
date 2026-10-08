@@ -377,6 +377,10 @@ export function createRelayer({ publicClient, wallet, callbook, abi, chainId, li
     const agentSig = checkSig(body.agentSig);
     const deadline = checkDeadline(body.deadline);
     if (!(await isPlainKey(agent))) throw refuse("the agent must be a plain key, not a contract");
+    // Said up front, so the person isn't asked to sign for a link the relayer will refuse.
+    if (!(await isPlainKey(wallet))) throw refuse("this wallet is a contract wallet; the relayer only takes plain-key wallets, so link it by sending linkBySig yourself");
+    // Like a name, a link only means something beside a record, so we don't pay to link an agent with none.
+    if ((await read("booksOf", [agent])).length === 0) throw refuse("this agent has no record yet: lock a call first, then link it");
     const nonce = await read("linkNonces", [agent]);
     const message = { agent, wallet, nonce, deadline };
     if (!(await signedBy(agent, { domain, types: LINK_TYPES, primaryType: "LinkAgent", message, signature: agentSig }))) {

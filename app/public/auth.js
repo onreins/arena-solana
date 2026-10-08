@@ -70,19 +70,19 @@ window.ReinsAuth = (function () {
     var a = accts && accts[0];
     if (!ADDR.test(a || "")) throw new Error("The wallet didn't share an address.");
     W.use(w.provider, a);
-    watch(w.provider);
+    watch(w.provider, w.id);
     save({ kind: "injected", address: a.toLowerCase(), label: w.name, rdns: w.id });
     return a.toLowerCase();
   }
 
   // Follow account switches in the wallet; a disconnect signs out.
   var watched = new Set();
-  function watch(provider) {
+  function watch(provider, id) {
     if (!provider || !provider.on || watched.has(provider)) return;
     watched.add(provider);
     provider.on("accountsChanged", function (accts) {
       var s = session();
-      if (!s || s.kind !== "injected") return;
+      if (!s || s.kind !== "injected" || s.rdns !== id) return;
       if (!accts || !accts[0]) { signOut(); return; }
       W.use(provider, accts[0]);
       save({ kind: "injected", address: accts[0].toLowerCase(), label: s.label, rdns: s.rdns });
@@ -99,9 +99,39 @@ window.ReinsAuth = (function () {
     if (!w) return s;
     try {
       var accts = await w.provider.request({ method: "eth_accounts" });
-      if (accts && accts[0] && accts[0].toLowerCase() === s.address) { W.use(w.provider, accts[0]); watch(w.provider); }
+      if (accts && accts[0]) {
+        W.use(w.provider, accts[0]);
+        watch(w.provider, w.id);
+        if (accts[0].toLowerCase() !== s.address) { s = { kind: "injected", address: accts[0].toLowerCase(), label: s.label, rdns: w.id }; save(s); }
+      }
     } catch (e) { /* the wallet is locked: the session still names the address */ }
     return s;
+  }
+
+  /**
+   * Wallets refuse to sign typed data for a chain other than the one they're on
+   * (MetaMask: "Provided chainId must match the active chainId"), so switch first,
+   * adding Arc when the wallet doesn't know it.
+   */
+  async function onChain(provider, chainId) {
+    if (!chainId) return;
+    var hex = "0x" + chainId.toString(16);
+    var current = await provider.request({ method: "eth_chainId" }).catch(function () { return null; });
+    if (current && parseInt(current, 16) === chainId) return;
+    try {
+      await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: hex }] });
+    } catch (err) {
+      if (!err || (err.code !== 4902 && !(err.data && err.data.originalError && err.data.originalError.code === 4902))) throw err;
+      var testnet = chainId === 5042002;
+      await provider.request({
+        method: "wallet_addEthereumChain",
+        params: [{
+          chainId: hex, chainName: testnet ? "Arc Testnet" : "Arc", nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
+          rpcUrls: [testnet ? "https://rpc.testnet.arc.network" : "https://rpc.mainnet.arc.io"],
+          blockExplorerUrls: [testnet ? "https://explorer.testnet.arc.io" : "https://explorer.arc.io"],
+        }],
+      });
+    }
   }
 
   /** An EIP-712 signature from the signed-in wallet. */
@@ -110,12 +140,17 @@ window.ReinsAuth = (function () {
     if (!s) throw new Error("Sign in first.");
     if (s.kind === "google") {
       await loadCircle();
+      if (!window.ReinsCircle.hasLogin()) {
+        toast("Signing you in with Google again, then you can confirm.");
+        await google();
+      }
       return window.ReinsCircle.signTypedData(s, typed);
     }
     var w = walletById(s.rdns) || wallets()[0];
     if (!w) throw new Error("Your wallet isn't available in this browser. Sign in again.");
     var accts = await w.provider.request({ method: "eth_requestAccounts" });
     if (!accts || (accts[0] || "").toLowerCase() !== s.address) throw new Error("Your wallet is on another account. Switch to " + U.short(s.address) + " and try again.");
+    await onChain(w.provider, Number(typed.domain && typed.domain.chainId));
     return w.provider.request({ method: "eth_signTypedData_v4", params: [s.address, JSON.stringify(typed)] });
   }
 
@@ -153,6 +188,7 @@ window.ReinsAuth = (function () {
   // ---------------------------------------------------------------- the panel
   var G_ICON = '<svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
   var open_ = null;
+  var closed = function () { var e = new Error("Sign in to continue."); e.code = "closed"; return e; };
 
   /** The sign-in panel. Resolves with the address once signed in; rejects when closed. */
   function open() {
@@ -209,7 +245,7 @@ window.ReinsAuth = (function () {
     panel.addEventListener("click", async function (e) {
       var b = e.target.closest("button");
       if (!b) return;
-      if (b.classList.contains("auth-x")) { close(new Error("closed")); return; }
+      if (b.classList.contains("auth-x")) { close(closed()); return; }
       err.hidden = true;
       busy(b, true);
       try {
@@ -222,9 +258,9 @@ window.ReinsAuth = (function () {
         err.hidden = false;
       }
     });
-    back.addEventListener("mousedown", function (e) { if (e.target === back) close(new Error("closed")); });
+    back.addEventListener("mousedown", function (e) { if (e.target === back) close(closed()); });
     function onKey(e) {
-      if (e.key === "Escape") { e.preventDefault(); close(new Error("closed")); return; }
+      if (e.key === "Escape") { e.preventDefault(); close(closed()); return; }
       if (e.key !== "Tab") return;
       var f = Array.prototype.filter.call(panel.querySelectorAll("button:not([disabled]), a[href]"), function (x) { return x.offsetParent !== null; });
       if (!f.length) return;
@@ -295,6 +331,8 @@ window.ReinsAuth = (function () {
     document.body.appendChild(t);
     setTimeout(function () { t.remove(); }, 6000);
   }
+
+  window.addEventListener("storage", function (e) { if (e.key === KEY) changed(session()); });
 
   return {
     open: open, menu: menu, session: session, restore: restore, signOut: signOut, signTypedData: signTypedData, wallets: wallets,

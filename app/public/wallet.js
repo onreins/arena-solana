@@ -35,6 +35,8 @@ window.ReinsWallet = (function () {
   }
 
   async function ensureChain() {
+    if (viaGoogle) throw new Error("You're signed in with Google. This needs a browser wallet such as MetaMask: sign out and connect one.");
+    if (!eth) throw new Error("No wallet found. Install a browser wallet, then reload.");
     var c = await config();
     var hex = "0x" + c.chainId.toString(16);
     try {
@@ -73,6 +75,7 @@ window.ReinsWallet = (function () {
 
   function explain(err) {
     if (err && err.code === 4001) return "You declined in the wallet, so nothing was sent.";
+    if (err && err.code === "closed") return "Sign in to continue.";
     return (err && (err.shortMessage || err.message)) || "Something went wrong.";
   }
 
