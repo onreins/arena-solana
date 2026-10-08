@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<title>Privacy · Reins</title>
+<meta name="description" content="What Reins collects, what it doesn't, and who else sees what.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;1,400;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/app.css">
+<link rel="stylesheet" href="/mobile.css">
+<style>
+  .legal { max-width: 720px; padding: 40px 0 64px; }
+  .legal h1 { font: 600 34px/1.15 var(--sans); letter-spacing: -.02em; }
+  .legal .when { margin-top: 8px; color: var(--ink-3); }
+  .legal h2 { margin-top: 32px; font: 600 18px var(--sans); }
+  .legal p, .legal li { margin-top: 10px; color: var(--ink-2); font-size: 15px; line-height: 1.65; }
+  .legal ul { margin: 0; padding-left: 20px; }
+  .legal a { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+  .legal b { color: #fff; font-weight: 600; }
+</style>
+
+<a class="skip" href="#main">Skip to content</a>
+<aside id="side"></aside>
+<header id="top"></header>
+
+<main id="main">
+  <article class="legal">
+    <h1>Privacy</h1>
+    <p class="when">Last updated 8 October 2026</p>
+
+    <p>Reins (app.reins.one) shows trading records that live on a public blockchain. We keep as little about you as we can.
+      We don't run ads, analytics or tracking cookies, and we don't sell anything about anyone.</p>
+
+    <h2>What is public by design</h2>
+    <p>Arena records live on Circle's Arc blockchain, which anyone can read. That includes your wallet address, the calls
+      you lock and reveal, and any name, bio or link you set on your profile. Anything written there stays in the chain's
+      history and can't be deleted, by you or by us, so don't put anything private in a profile.</p>
+
+    <h2>Signing in</h2>
+    <ul>
+      <li><b>With a browser wallet</b> (MetaMask, Rabby and others): we see your wallet's public address. Your keys never leave your wallet.</li>
+      <li><b>With Google</b>: Google confirms who you are to Circle, which keeps a wallet on Arc for you (a Circle user-controlled wallet).
+        Our server passes requests between your browser and Circle and stores nothing about you. Google's and Circle's own privacy
+        policies cover what they handle.</li>
+    </ul>
+    <p>Which account you're signed in with is kept in your own browser (local storage), not on our servers. Signing out removes it.</p>
+
+    <h2>What stays in your browser</h2>
+    <p>When you lock a call on this site, the details needed to reveal it later (including a secret that hides it, and any stop and
+      target you set) are kept in your browser's local storage. Clearing your browser's data removes them.</p>
+
+    <h2>What our servers keep</h2>
+    <ul>
+      <li><b>Abuse limits.</b> To keep the free gas relay and sign-in from being abused, we count requests per IP address in
+        short-lived counters (hours to a day) and then discard them.</li>
+      <li><b>Hosting logs.</b> Our host, Vercel, keeps standard request logs (such as IP address, page and time) for a short period.</li>
+    </ul>
+
+    <h2>Other services your browser talks to</h2>
+    <p>Pages load fonts from Google Fonts and live prices from Hyperliquid's public API, and read the Arc blockchain through its
+      public RPC. Each of them sees your IP address when your browser contacts it.</p>
+
+    <h2>Questions</h2>
+    <p>Open an issue at <a href="https://github.com/onreins/arena/issues" target="_blank" rel="noopener">github.com/onreins/arena</a>.
+      If this policy changes, the date above changes with it.</p>
+  </article>
+
+  <footer class="foot">
+    <span>Paper calls scored at public prices. Not investment advice.</span>
+    <span id="foot-net"></span>
+  </footer>
+</main>
+
+<script src="/wallet.js"></script>
+<script src="/ui.js"></script>
+<script>window.ReinsUI && window.ReinsUI.topbar("privacy");</script>
