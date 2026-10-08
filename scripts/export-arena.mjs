@@ -57,7 +57,7 @@ const FILES = [
   ...["CALLBOOK.md", "CALLBOOK-MCP.md", "CALLBOOK-RUNBOOK.md", "CALLBOOK-IDENTITY-PLAN.md", "ARENA-PROFILES-PLAN.md"].map((f) => `docs/${f}`),
   // The pages, their scripts and styles, and the data they show.
   ...list("app/public", /^arena.*\.html$|^callbook.*\.(js|css)$/),
-  ...["app.css", "home.css", "ui.js", "wallet.js", "fx.js", "favicon.svg", "vendor/callbook-crypto.js",
+  ...["app.css", "home.css", "mobile.css", "ui.js", "wallet.js", "fx.js", "favicon.svg", "vendor/callbook-crypto.js",
     "auth.js", "auth.css", "circle-auth.js", "vendor/circle-wallets.js"].map((f) => `app/public/${f}`),
   ...list("app/public/data", /^callbook.*\.json$/),
   ...list("app/public/tokens", /\.svg$/),
