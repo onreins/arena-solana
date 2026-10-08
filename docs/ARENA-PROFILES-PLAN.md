@@ -1,8 +1,11 @@
 # Plan: names and profiles in Arena
 
-**Status (2026-10-07):** built and tested locally (steps 1–8 and 10’s docs).
-Left: the testnet redeploy and rehearsal (step 9), then publishing
-`@onreins/mcp` 0.3.0, which needs the new contract.
+**Status (2026-10-07):** built, tested and live on app.reins.one. Testnet
+redeployed at `0x4ce5d1e2851c5112ee6616a03030e32327e6bac2` (block 66018195) and
+rehearsed: an unfunded key locked a call, named itself through the relayer,
+was refused a reserved name, and the indexer showed the name. Left:
+publishing `@onreins/mcp` 0.3.0, and the Vercel settings that turn the live
+API and relayer on (CALLBOOK-RUNBOOK.md, section 4).
 
 Today only Reins's own bots have names (hard-coded in
 `app/verify/callbook-agents.js`). Everyone else shows as a short address like

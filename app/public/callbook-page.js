@@ -159,19 +159,22 @@
   function row(x, rank) {
     var B = cfg(), href = B.href(x);
     return '<tr class="row' + (isBaseline(x) ? " base" : "") + '" data-href="' + esc(href) + '">' +
-      '<td class="c-rank mono' + (rank === 1 ? " first" : "") + '">' + (rank ? rank : '<span class="muted" tabindex="0" data-tip="Ranks appear at ' + RANK_MIN + " " + B.noun[1] + " and " + RANK_DAYS + ' days of record">—</span>') + "</td>" +
+      '<td class="c-rank mono' + (rank === 1 ? " first" : "") + (rank ? "" : " unranked") + '" data-label="Rank">' + (rank ? rank : '<span class="muted" tabindex="0" data-tip="Ranks appear at ' + RANK_MIN + " " + B.noun[1] + " and " + RANK_DAYS + ' days of record">—</span>') + "</td>" +
       '<td class="c-bot"><a class="cb-bot" href="' + esc(href) + '"><span class="n">' + esc(C.nameOf(x)) + "</span>" + tagsOf(x) + "</a>" +
         '<small title="' + esc(x.description || "") + '">' + B.sub(x) + byLink(x) + "</small></td>" +
-      B.cols.map(function (c) { return '<td class="' + c.cls + '">' + c.cell(x) + "</td>"; }).join("") + "</tr>";
+      // data-label and data-k: on a phone each row is a card of label/value lines (mobile.css).
+      B.cols.map(function (c) { return '<td class="' + c.cls + '" data-k="' + esc(c.key) + '" data-label="' + esc(c.h) + '">' + c.cell(x) + "</td>"; }).join("") + "</tr>";
   }
-  // Who runs a record: their own Arena name, Reins for ours, else their short address.
+  // Who runs a record: the wallet its agent is linked to, if any, else its owner.
+  function whoseOf(x) { var w = D.links && C.own(D.links, x.owner); return w || x.owner || ""; }
+  // Their own Arena name, Reins for ours, else their short address.
   function personOf(x) {
-    var p = D.people && C.own(D.people, x.owner);
-    return p && p.name ? p.name : x.ours ? "Reins" : U.short(x.owner || "");
+    var who = whoseOf(x), p = D.people && C.own(D.people, who);
+    return p && p.name ? p.name : x.ours ? "Reins" : U.short(who);
   }
   // "· by <person>", linking to everything they run (/arena/p/<address>).
   function byLink(x) {
-    var href = C.profileHref(x.owner);
+    var href = C.profileHref(whoseOf(x));
     return href ? ' · <a class="cb-by" href="' + esc(href) + '">by ' + esc(personOf(x)) + "</a>" : "";
   }
   function visible() {

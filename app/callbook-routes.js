@@ -12,6 +12,9 @@
  *   POST /api/callbook/relay/seal   gasless seal: { bookId, p, callHash, deadline, signature }
  *   POST /api/callbook/relay/reveal any reveal, with its preimage
  *   POST /api/callbook/relay/profile gasless profile: { account, bookId, name, bio, link, deadline, signature }
+ *   POST /api/callbook/relay/link   link an agent to a wallet: { agent, wallet, deadline, agentSig, walletSig }
+ *   POST /api/callbook/relay/unlink { agent, signer, deadline, signature } (signer: the agent or its wallet)
+ *   POST /api/callbook/relay/link-check  check a link request's agent half; sends nothing
  *   (the relay routes answer 503 unless CALLBOOK_RELAYER_KEY is set; see app/verify/callbook-relay.js)
  *
  * Read from the network in CALLBOOK_NETWORK (see app/verify/callbook-network.js),
@@ -42,10 +45,14 @@ const TTL_MS = 60_000;
 const ID_RE = /^\d{1,12}$/;
 const REPORT_CACHE = 200;
 const REPORTS_PER_MINUTE = 30;
+const LINK_READ_TTL_MS = 5_000;
+const linkReads = new Map(); // agent -> { at, body }: GET /api/callbook/link/:agent, briefly
 const VIEWS = parseAbi([
   "function identityRegistry() view returns (address)",
   "function ownerOf(uint256 agentId) view returns (address)",
   "function tokenURI(uint256 agentId) view returns (string)",
+  "function walletOf(address agent) view returns (address)",
+  "function linkNonces(address agent) view returns (uint256)",
 ]);
 
 export function mountCallbook(app, { env: rawEnv = process.env, source, now = () => Math.floor(Date.now() / 1000) } = {}) {
@@ -137,6 +144,29 @@ export function mountCallbook(app, { env: rawEnv = process.env, source, now = ()
     res.status(502).json({ error: "couldn't read Callbook right now" });
   };
 
+  /** GET /api/callbook/link/:agent -> { agent, wallet (or null), nonce }: what an unlink or link signs against. */
+  app.get("/api/callbook/link/:agent", async (req, res) => {
+    if (!net) return res.status(404).json({ error: "Arena isn't configured on this server" });
+    if (!/^0x[0-9a-fA-F]{40}$/.test(req.params.agent)) return res.status(400).json({ error: "that isn't an address" });
+    try {
+      // Each answer costs two RPC reads: limited per client, and kept a few seconds.
+      if ((await counter.hit(`link-read:${ipBucket(req.ip)}`, 60)) > REPORTS_PER_MINUTE) return res.status(429).json({ error: "too many requests; try again in a minute" });
+      const key = req.params.agent.toLowerCase(), hit = linkReads.get(key);
+      if (hit && Date.now() - hit.at < LINK_READ_TTL_MS) return res.set("cache-control", "no-store").json(hit.body);
+      client ??= clientFor(net);
+      const [wallet, nonce] = await Promise.all([
+        client.readContract({ address: net.address, abi: VIEWS, functionName: "walletOf", args: [req.params.agent] }),
+        client.readContract({ address: net.address, abi: VIEWS, functionName: "linkNonces", args: [req.params.agent] }),
+      ]);
+      const body = { agent: key, wallet: /^0x0{40}$/.test(wallet) ? null : wallet.toLowerCase(), nonce: String(nonce) };
+      if (linkReads.size > 1_000) linkReads.clear();
+      linkReads.set(key, { at: Date.now(), body });
+      res.set("cache-control", "no-store").json(body);
+    } catch (err) {
+      fail(res, err);
+    }
+  });
+
   // With no network configured, the routes point at the static export, so a
   // page loads it without an error in the browser's console.
   app.get("/api/callbook", async (_req, res) => {
@@ -208,14 +238,16 @@ export function mountCallbook(app, { env: rawEnv = process.env, source, now = ()
     });
     return relayer;
   };
-  for (const action of ["lock", "seal", "reveal", "profile"]) {
+  // Route name -> relayer function. link-check sends nothing: it checks a link request's agent half.
+  const RELAY = { lock: "lock", seal: "seal", reveal: "reveal", profile: "profile", link: "link", unlink: "unlink", "link-check": "linkCheck" };
+  for (const [action, fn] of Object.entries(RELAY)) {
     app.post(`/api/callbook/relay/${action}`, async (req, res) => {
       if (relayOff) return res.status(503).json({ error: relayOff });
       try {
         const r = await getRelayer();
-        res.json(await r[action](req.body ?? {}, { ip: req.ip }));
-        // The next read shows the new call. A name waits for the next minute's rebuild: it's cheap to send, so it's no reason to rebuild.
-        if (action !== "profile") cache = null;
+        res.json(await r[fn](req.body ?? {}, { ip: req.ip }));
+        // The next read shows a new call or link. A name waits for the next minute's rebuild: it's cheap to send, so it's no reason to rebuild.
+        if (action !== "profile" && action !== "link-check") cache = null;
       } catch (err) {
         if (err instanceof RelayError) return res.status(err.status).json({ error: err.message, ...err.extra });
         log(`relay ${action}: ${brief(err)}`);

@@ -16,7 +16,7 @@ import http from "node:http";
 import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { createPublicClient, createWalletClient, http as viemHttp, defineChain, toHex, parseEventLogs } from "viem";
+import { createPublicClient, createWalletClient, http as viemHttp, defineChain, toHex, parseEventLogs, verifyTypedData } from "viem";
 import { mnemonicToAccount, generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
@@ -536,6 +536,30 @@ describe("on a local node", () => {
     assert.equal((await cb.profile()).profile, null);
   });
 
+  test("linking: the agent signs its half and hands back the page where the wallet confirms", async (t) => {
+    if (!nodeUp) return t.skip(`no Hardhat node at ${RPC}`);
+    const key = generatePrivateKey();
+    const agent = privateKeyToAccount(key).address;
+    const wallet = mnemonicToAccount("test test test test test test test test test test test junk", { addressIndex: 7 }).address;
+    const cb = sdk(key, { apiUrl: "https://app.example" });
+    await assert.rejects(cb.linkRequest({ wallet: "0x123" }), /isn't a wallet address/);
+    await assert.rejects(cb.linkRequest({ wallet: agent }), /own address/);
+    const r = await cb.linkRequest({ wallet });
+    const u = new URL(r.url);
+    assert.equal(u.origin + u.pathname, "https://app.example/arena/link");
+    assert.equal(u.searchParams.get("agent"), agent);
+    assert.equal(u.searchParams.get("wallet"), wallet);
+    assert.match(r.summary, /sign in with 0x.*7 days/);
+    const ok = await verifyTypedData({
+      address: agent, signature: u.searchParams.get("sig"), primaryType: "LinkAgent",
+      domain: { name: "Arena", version: "1", chainId: 31337, verifyingContract: callbook },
+      types: { LinkAgent: [{ name: "agent", type: "address" }, { name: "wallet", type: "address" }, { name: "nonce", type: "uint256" }, { name: "deadline", type: "uint256" }] },
+      message: { agent, wallet, nonce: 0n, deadline: BigInt(u.searchParams.get("deadline")) },
+    });
+    assert.equal(ok, true, "the agent's half is a valid LinkAgent signature");
+    await assert.rejects(cb.unlinkWallet(), /isn't linked/);
+  });
+
   test("a book that only names this key as caller isn't acted in unless listed", async (t) => {
     if (!nodeUp) return t.skip(`no Hardhat node at ${RPC}`);
     const key = keyOf(10);
@@ -613,7 +637,7 @@ describe("the MCP server", () => {
   test("lists its tools, a guide and prompts", async () => {
     const { tools } = await mcp.listTools();
     assert.deepEqual(tools.map((x) => x.name).sort(), [
-      "arena_account", "arena_lock", "arena_markets", "arena_my_books", "arena_open", "arena_profile", "arena_reveal_due", "arena_seal", "arena_status", "arena_verify",
+      "arena_account", "arena_link_wallet", "arena_lock", "arena_markets", "arena_my_books", "arena_open", "arena_profile", "arena_reveal_due", "arena_seal", "arena_status", "arena_unlink_wallet", "arena_verify",
     ]);
     assert.ok(tools.every((x) => x.title && x.description.length > 40));
     const { resources } = await mcp.listResources();

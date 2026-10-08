@@ -16,7 +16,7 @@ import {
   symbolCallHash, lockedHash, readCallbook, evaluateCaller, buildCallbook, REFERENCE_SET, REFERENCE_SET_NAME, GRACE, MAX_LOCKS_PER_BOOK, CALLER_RULES,
 } from "../app/verify/callbook.js";
 import { priceBook, resolveSymbol } from "../app/verify/callbook-prices.js";
-import { createRelayer, DOMAIN, LOCK_TYPES, SEAL_TYPES, PROFILE_TYPES } from "../app/verify/callbook-relay.js";
+import { createRelayer, DOMAIN, LOCK_TYPES, SEAL_TYPES, PROFILE_TYPES, LINK_TYPES, UNLINK_TYPES } from "../app/verify/callbook-relay.js";
 import { profileFor } from "../app/verify/callbook-agents.js";
 import { createAgentCards, cardSource, isPrivateAddress, safeLookup, safeGet } from "../app/verify/arena-agent-card.js";
 import { mountCallbook } from "../app/callbook-routes.js";
@@ -288,6 +288,9 @@ test("the relayer: checks a signed lock off-chain, sends it, reveals it, and the
   const { callbook, fromBlock } = await deployCallbook();
   const relayer = createRelayer({ publicClient: pc, wallet: w(4), callbook, abi: CB(), chainId: 31337, now: () => clock.t });
   const user = w(9);
+  // 20 minutes past an hour, so the call's exit (2 hours on) never lands on a candle open:
+  // the "waiting for its exit price" check below needs its candle not to have opened yet.
+  await pc.request({ method: "evm_mine", params: [`0x${(Math.ceil((await chainNow()) / HOUR) * HOUR + 20 * 60).toString(16)}`] });
   await tickClock();
 
   // The JS preimage is the contract's.
@@ -484,6 +487,46 @@ test("agent cards: inline, https and ipfs files; private addresses refused at co
   release();
   await new Promise((r) => setTimeout(r, 10));
   assert.deepEqual(cards.peek(5), { name: "Slow One", description: "" });
+});
+
+test("the relayer links an agent to a wallet with both halves, the index shows it, and either side unlinks", async (t) => {
+  if (!nodeUp) return t.skip("no Hardhat node at " + RPC);
+  const { callbook, fromBlock } = await deployCallbook();
+  const relayer = createRelayer({ publicClient: pc, wallet: w(4), callbook, abi: CB(), chainId: 31337, now: () => clock.t });
+  const agent = w(9), wallet = w(7);
+  await tickClock();
+  await relayer.lock(await signedLock(callbook, agent)); // the agent has a record
+
+  const deadline = BigInt((await chainNow()) + 3600);
+  const message = { agent: agent.account.address, wallet: wallet.account.address, nonce: 0n, deadline };
+  const sign = (who) => who.signTypedData({ account: who.account, domain: DOMAIN(31337, callbook), types: LINK_TYPES, primaryType: "LinkAgent", message });
+  const body = { agent: message.agent, wallet: message.wallet, deadline: String(deadline), agentSig: await sign(agent) };
+
+  // The link page checks the agent's half before showing anything; nothing is sent.
+  const checked = await relayer.linkCheck(body);
+  assert.deepEqual([checked.nonce, checked.linkedTo], ["0", null]);
+  await assert.rejects(relayer.linkCheck({ ...body, agentSig: await sign(wallet) }), (e) => e.status === 401);
+  await assert.rejects(relayer.linkCheck({ ...body, wallet: body.agent }), (e) => e.status === 400 && /itself/.test(e.message));
+
+  // The wallet's half must be the wallet's.
+  await assert.rejects(relayer.link({ ...body, walletSig: await sign(agent) }), (e) => e.status === 401);
+  const r = await relayer.link({ ...body, walletSig: await sign(wallet) });
+  assert.match(r.txHash, /^0x/);
+  await assert.rejects(relayer.link({ ...body, walletSig: await sign(wallet) }), (e) => e.status === 401, "used once");
+
+  const chain = await readCallbook({ client: pc, address: callbook, fromBlock });
+  assert.equal(chain.links.get(agent.account.address.toLowerCase()).wallet, wallet.account.address.toLowerCase());
+  const built = await buildCallbook({ chain, source: sourceOf(() => 100), asOf: await chainNow(), meta: { mode: "replay" } });
+  assert.deepEqual(built.index.links, { [agent.account.address.toLowerCase()]: wallet.account.address.toLowerCase() });
+
+  // The wallet unlinks it, by signature, through the relayer.
+  const unlinkDeadline = BigInt((await chainNow()) + 600);
+  const unlinkSig = await wallet.signTypedData({ account: wallet.account, domain: DOMAIN(31337, callbook), types: UNLINK_TYPES, primaryType: "UnlinkAgent", message: { agent: message.agent, nonce: 1n, deadline: unlinkDeadline } });
+  await assert.rejects(relayer.unlink({ agent: message.agent, signer: w(8).account.address, deadline: String(unlinkDeadline), signature: unlinkSig }), (e) => e.status === 400 && /only the agent or its wallet/.test(e.message));
+  await relayer.unlink({ agent: message.agent, signer: message.wallet, deadline: String(unlinkDeadline), signature: unlinkSig });
+  const after = await readCallbook({ client: pc, address: callbook, fromBlock, state: chain });
+  assert.equal(after.links.size, 0);
+  await assert.rejects(relayer.unlink({ agent: message.agent, signer: message.wallet, deadline: String(unlinkDeadline), signature: unlinkSig }), (e) => e.status === 400 && /isn't linked/.test(e.message));
 });
 
 test("HTTP: the relay routes are 503 without a key, and work with one; unconfigured routes redirect to the export", async (t) => {

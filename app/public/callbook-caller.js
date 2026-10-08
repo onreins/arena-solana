@@ -67,12 +67,7 @@
     }
     var s = Math.max(0, Math.min(100, sc)), r = 30, c = 2 * Math.PI * r, p = x.score && x.score.parts, m = x.metrics;
     var short = p && !(p.profit > 0) ? (C.isNum(m.totalReturn) && m.totalReturn <= 0 ? "no profit yet" : "profit not steady yet") : p && p.edge <= 0 ? "not beating the coins" : "";
-    var part = function (k, val, note, tip) {
-      var f = Math.max(0, Math.min(1, val || 0));
-      return '<li tabindex="0" data-tip="' + esc(tip) + '"><span class="k">' + esc(k) + '</span><b class="mono' + (f === 0 ? " nil" : "") + '">' + C.num(val) + "</b>" +
-        '<span class="bar" aria-hidden="true"><i style="width:' + (f * 100).toFixed(0) + '%"></i></span><small>' + note + "</small></li>";
-    };
-    var resolved = m.revealed + (m.withheld || 0) + (m.unscorable || 0), why = scoreWhy(x);
+    var why = scoreWhy(x);
     $("val").innerHTML =
       '<div class="cbk-stampcol"><div class="cbk-stampw" data-fx="foil">' + C.seal("cbk-stamp", C.SEAL_WORDS) +
       '<svg class="cbk-arc" viewBox="0 0 100 100" aria-hidden="true"><circle class="t" cx="50" cy="50" r="' + r + '"/>' +
@@ -80,12 +75,7 @@
       '<div class="cbk-score"><b>' + esc(Math.round(s)) + "</b><span>/100</span></div></div>" +
       "<figcaption><b>" + (s === 0 && short ? "Score 0 · " + esc(short) : "Caller score, out of 100") + "</b><span>" +
       (v ? "Published to ERC-8004 <span class=\"nb\">" + esc(C.ago(v.at)) + "</span>" : "Updated after every reveal") + "</span></figcaption></div>" +
-      (p ? '<div class="cbk-parts"><p class="cbk-formula"><b>How it’s built</b> 100 × (0.6·profit + 0.4·edge) × (0.6 + 0.4·risk)</p><ul>' +
-        part("Profit", p.profit, "t = " + esc(C.num(p.profitT)) + (p.profit > 0 ? ", full credit at 3" : C.isNum(m.totalReturn) && m.totalReturn <= 0 ? ", not making money yet" : ", not steady yet"), "clamp(t ÷ 3, 0, 1): the t-statistic of each call's return after costs, when they add up above 0") +
-        part("Edge", p.edge, "t = " + esc(C.num(p.tStat)) + (p.edge <= 0 ? ", not beating the coins" : ", full credit at 3"), "clamp(t ÷ 3, 0, 1): the t-statistic of each call's return after costs, less beta × the coin's own move") +
-        part("Risk", p.risk, "drop " + C.dd(m.maxDrawdown) + (m.maxDrawdown >= R.maxDrawdown ? ", past 40%" : "") + " · keeps " + Math.round(100 * (0.6 + 0.4 * (p.risk || 0))) + "%", "clamp(1 − drawdown ÷ 40%, 0, 1) on the call-by-call curve; it scales the score from 60% to 100%, never adds to it") +
-        "</ul>" + (C.levelLine(x) ? '<p class="cbk-level">' + esc(C.levelLine(x)) + "</p>" : "") +
-        (why ? '<p class="cbk-zero"><b>What’s next.</b> ' + esc(why) + "</p>" : "") + "</div>" : "") + C.skillPanel(x.skill);
+      C.scoreParts(x, "the coin", why) + C.skillPanel(x.skill);
   }
 
   // ------------------------------------------------------------- numbers
@@ -225,7 +215,7 @@
       (v ? row("Posted to ERC-8004", '<span class="cb-hash">' + esc(C.shortHash(v.responseHash, 12, 8)) + "</span><small>score " + esc(v.score) + " · " + esc(C.stamp(v.at)) + "</small>") : "") +
       row("Prices", "Hyperliquid candle opens: 5-minute candles for calls under an hour, hourly for longer<small>entry at the first open at or after the entry time, exit at the first open at or after entry + horizon, less fees and funding</small>") +
       (r.reference ? row("Reference coins", esc(Array.isArray(r.reference) ? r.reference.join(", ") : String(r.reference)) + "<small>for a call that can’t be priced</small>") : "") +
-      row("Rules", '<span class="mono">' + esc(r.version || "arena-v1") + "</span><small>caller score: 100 × record × (0.6·edge + 0.4·risk)</small>");
+      row("Rules", '<span class="mono">' + esc(r.version || "arena-v1") + "</span><small>caller score: 100 × (0.6·profit + 0.4·beats the coin) × (0.6 + 0.4·drops)</small>");
   }
 
   function ticks() {

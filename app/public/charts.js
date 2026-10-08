@@ -43,7 +43,7 @@
   $("nav").innerHTML = U.TABS.map(function (t) {
     return '<a href="' + t[2] + '"' + (t[0] === "charts" ? ' aria-current="page"' : "") + ">" + U.icon(t[0]) + t[1] + "</a>";
   }).join("");
-  U.tabbar("charts");
+  U.phoneMenu("charts", document.querySelector(".tm-top-r"));
 
   function readFavs() {
     try { return JSON.parse(localStorage.getItem(FAV_KEY)) || {}; } catch (e) { return {}; }

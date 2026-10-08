@@ -44,7 +44,7 @@ import { createPriceSource } from "../app/verify/callbook-prices.js";
 import { CallbookError, fail, explain } from "./errors.js";
 import { createMarkets, MIN_VOLUME_USD } from "./markets.js";
 import { Journal, defaultJournalPath } from "./journal.js";
-import { relay, LOCK_TYPES, SEAL_TYPES, PROFILE_TYPES, domainOf } from "./relay.js";
+import { relay, LOCK_TYPES, SEAL_TYPES, PROFILE_TYPES, LINK_TYPES, UNLINK_TYPES, domainOf } from "./relay.js";
 import { checkProfile, profileForDisplay } from "../app/verify/arena-names.js";
 import { profileKey } from "../app/verify/callbook-chain.js";
 import { profileFor } from "../app/verify/callbook-agents.js";
@@ -60,6 +60,8 @@ const ABI = CALLBOOK.abi;
 /** Treat a key as having gas when it can pay for this much at the current price. */
 const GAS_HEADROOM = 600_000n;
 const LOCK_SIG_TTL = 600;
+// A link request stays usable for a week (less a minute, so the relayer's 7-day cap still takes it).
+const LINK_TTL = 7 * 86_400 - 60;
 /** One queue of locks per key in this process (see the top of the file). */
 const LOCK_QUEUES = new Map();
 const SALT_SECRET = /^(0x)?[0-9a-fA-F]{64}$/;
@@ -714,6 +716,48 @@ export class CallbookClient {
     };
   }
 
+  /**
+   * Ask to link this agent to a person's wallet, so its records show on their
+   * profile. Signs the agent's half of LinkAgent and returns the page where the
+   * wallet signs the other half (gasless). Valid for 7 days, or until used.
+   */
+  async linkRequest({ wallet } = {}) {
+    if (!isAddress(wallet ?? "")) fail(`"${wallet}" isn't a wallet address (0x and 40 hex digits).`, "BadWallet");
+    const w = getAddress(wallet);
+    if (same(w, this.address)) fail("That's this agent's own address. Give the wallet you use in your browser.", "BadWallet");
+    const [nonce, now, current] = await Promise.all([this.view("linkNonces", [this.address]), this.now(), this.view("walletOf", [this.address])]);
+    const deadline = BigInt(now + LINK_TTL);
+    const agentSig = await this.sign(LINK_TYPES, "LinkAgent", { agent: this.address, wallet: w, nonce, deadline });
+    const base = (this.opts.apiUrl ?? DEFAULT_APP_URL).replace(/\/$/, "");
+    const q = new URLSearchParams({ agent: this.address, wallet: w, deadline: String(deadline), sig: agentSig });
+    const url = `${base}/arena/link?${q}`;
+    const already = !/^0x0{40}$/i.test(current) && same(current, w);
+    return {
+      agent: this.address, wallet: w, deadline: Number(deadline), url, alreadyLinked: already,
+      summary: already
+        ? `This agent is already linked to ${w}. Its records show on ${base}/arena/p/${w.toLowerCase()}.`
+        : `Open this link and sign in with ${w} to confirm: ${url} It's free, and it works once, within 7 days.`,
+    };
+  }
+
+  /** Unlink this agent from its wallet (gasless). Its records go back to its own profile. */
+  async unlinkWallet() {
+    const current = await this.view("walletOf", [this.address]);
+    if (/^0x0{40}$/i.test(current)) fail("This agent isn't linked to a wallet.", "NotLinked");
+    const gasless = await this.gasless();
+    let receipt;
+    if (gasless) {
+      const [nonce, now] = await Promise.all([this.view("linkNonces", [this.address]), this.now()]);
+      const deadline = BigInt(now + LOCK_SIG_TTL);
+      const signature = await this.sign(UNLINK_TYPES, "UnlinkAgent", { agent: this.address, nonce, deadline });
+      receipt = await this.relayed("unlink", { agent: this.address, signer: this.address, deadline, signature }, "unlink").catch((e) => { throw this.explain(e); });
+    } else {
+      receipt = await this.send("unlink", [this.address], {});
+    }
+    if (!this.events(receipt, "AgentUnlinked").some((l) => same(l.args.agent, this.address))) fail(`The transaction ${receipt.transactionHash} didn't unlink this agent.`, "BadRelay");
+    return { agent: this.address, wallet: current, gasless, tx: receipt.transactionHash, summary: `Unlinked from ${current}. This agent's records show on its own profile again: ${this.profileUrl()}` };
+  }
+
   /** What Arena shows for this key: its own profile, and each of its books' names. */
   async profile() {
     const state = await this.read();
@@ -723,10 +767,14 @@ export class CallbookClient {
       const shown = profileFor({ chain: state, book: b });
       return { book: b.id, kind: b.kind === "scheduled" ? "strategy" : "calls", shownAs: shown?.name ?? null, from: shown?.source ?? null };
     });
-    const summary = own
+    const linked = await this.view("walletOf", [this.address]).catch(() => null);
+    const wallet = linked && !/^0x0{40}$/i.test(linked) ? linked : null;
+    const base = (this.opts.apiUrl ?? DEFAULT_APP_URL).replace(/\/$/, "");
+    const summary = (own
       ? `You're "${own.name}" in Arena${own.bio ? ` (${own.bio})` : ""}. Your profile: ${url}`
-      : `You have no Arena name yet, so your records show your address. Set one with arena_profile. Your profile: ${url}`;
-    return { address: this.address, profile: own, books, url, summary };
+      : `You have no Arena name yet, so your records show your address. Set one with arena_profile. Your profile: ${url}`) +
+      (wallet ? ` This agent is linked to wallet ${wallet}, so its records also show on ${base}/arena/p/${wallet.toLowerCase()}.` : "");
+    return { address: this.address, profile: own, books, url, linkedWallet: wallet, summary };
   }
 
   /** Record, score, pending calls with countdowns and the next deadline, for one book or all of this key's. */
