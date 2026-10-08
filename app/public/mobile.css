@@ -136,6 +136,11 @@
   .cb-hero h1, .hm-hero h1 { font-size: 32px !important; line-height: 1.08 !important; letter-spacing: -.03em; }
   .cb-hero p, .hm-hero p { font-size: 15px; line-height: 1.55; }
   .page-head h1 { font-size: 30px; line-height: 1.15; }
+  /* The hero's stat strip: was bled to the old box's edges; now a box of its own. */
+  .cb-hero .cb-stats {
+    margin: 4px 0 0 !important; padding: 16px !important; border: 0; border-radius: 16px;
+    background: rgba(255, 255, 255, .03); box-shadow: inset 0 0 0 1px var(--line-2);
+  }
 
   /* Panels and cards: one radius, one inset line, roomy padding. */
   .hm-panel, .cbp-rec, .cbl-card { border-radius: 16px; }
