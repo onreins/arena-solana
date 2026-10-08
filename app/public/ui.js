@@ -262,6 +262,8 @@ window.ReinsUI = (function () {
     b.classList.toggle("signed", !!s);
     b.innerHTML = s ? identicon(s.address, 24) + '<span class="who">' + esc(short(s.address)) + "</span>" + icon("down") : "Sign in";
     b.setAttribute("aria-label", s ? "Your account, " + short(s.address) : "Sign in");
+    // Pages that show something only to you (your own profile) redraw on this.
+    try { window.dispatchEvent(new CustomEvent("reins:session", { detail: s || null })); } catch (e) { /* old browser */ }
   }
   /** Signed in, the address; otherwise the sign-in panel first. Pages await this before acting. */
   async function connect() {

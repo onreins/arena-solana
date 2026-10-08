@@ -52,6 +52,8 @@ export function createApp(env = process.env) {
   });
   // A person's profile: /arena/p/<address> is one page that reads the address itself.
   app.get(/^\/arena\/p\/[^/]+\/?$/, (_req, res) => res.sendFile(path.join(pub, "arena-profile.html")));
+  // Confirming an agent's request to link to your wallet (made by the MCP's arena_link_wallet).
+  app.get(/^\/arena\/link\/?$/, (_req, res) => res.sendFile(path.join(pub, "arena-link.html")));
   app.get(/^\/([\w-]+)$/, (req, res, next) => {
     const page = path.join(pub, `${req.params[0]}.html`);
     if (existsSync(page)) res.sendFile(page);

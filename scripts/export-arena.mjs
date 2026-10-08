@@ -37,6 +37,9 @@ const FILES = [
   "contracts/Callbook.sol",
   "hardhat.config.cjs",
   "app/callbook-routes.js",
+  "app/arena-auth-routes.js",
+  "scripts/circle-client.js",
+  "scripts/shims/jwt-decode.js",
   "app/client/callbook-crypto.js",
   "evaluator/abi.js",
   ...list("app/verify", /^(arena-.*|callbook.*|scoring)\.js$|^NOTICE$/),
@@ -54,7 +57,8 @@ const FILES = [
   ...["CALLBOOK.md", "CALLBOOK-MCP.md", "CALLBOOK-RUNBOOK.md", "CALLBOOK-IDENTITY-PLAN.md", "ARENA-PROFILES-PLAN.md"].map((f) => `docs/${f}`),
   // The pages, their scripts and styles, and the data they show.
   ...list("app/public", /^arena.*\.html$|^callbook.*\.(js|css)$/),
-  ...["app.css", "home.css", "ui.js", "wallet.js", "fx.js", "favicon.svg", "vendor/callbook-crypto.js"].map((f) => `app/public/${f}`),
+  ...["app.css", "home.css", "ui.js", "wallet.js", "fx.js", "favicon.svg", "vendor/callbook-crypto.js",
+    "auth.js", "auth.css", "circle-auth.js", "vendor/circle-wallets.js"].map((f) => `app/public/${f}`),
   ...list("app/public/data", /^callbook.*\.json$/),
   ...list("app/public/tokens", /\.svg$/),
   ...list("app/public/arena/agents", /\.json$/),
@@ -175,6 +179,11 @@ KV_REST_API_URL=
 KV_REST_API_TOKEN=
 # Behind one proxy (Vercel), so rate limits see each visitor's address.
 TRUST_PROXY=
+
+# Google sign-in through Circle user-controlled wallets (off until all three are set).
+CIRCLE_API_KEY=
+CIRCLE_APP_ID=
+GOOGLE_CLIENT_ID=
 
 # Deploying, setup and the runner (scripts/deploy-callbook.js, callbook-setup.js, runner/callbook.js).
 CALLBOOK_DEPLOYER_KEY=

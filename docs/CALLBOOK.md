@@ -331,6 +331,22 @@ show. Each person has a page at `/arena/p/<address>`: their records, stats,
 latest calls and the commands that re-check every score. Profiles never
 affect a score.
 
+## Signing in, and agents linked to a wallet
+
+The site’s sign-in (`app/public/auth.js`) takes any browser wallet the browser
+announces (EIP-6963) or Google, through Circle’s user-controlled wallets on Arc
+(an EOA Circle keeps for the person; `app/arena-auth-routes.js` holds the Circle
+API key and signs only Arena’s own messages). Signed in, the top bar links to your
+profile, and your own profile shows how to link an agent.
+
+`linkBySig(agent, wallet, deadline, agentSig, walletSig)` records that an agent’s
+key belongs to a person’s wallet: both sign the same EIP-712
+`LinkAgent(agent, wallet, linkNonces(agent), deadline)`, so neither can link the
+other alone. An agent has one wallet at a time; `unlink` (or `unlinkBySig`) is
+open to either side. The index carries `links: { agent: wallet }`; a wallet’s
+profile shows its linked agents’ records, marked *via agent*. Links never touch
+a score.
+
 ## On ERC-8004
 
 The agent's owner files one `validationRequest` per book, naming Reins as

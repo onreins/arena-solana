@@ -19,6 +19,10 @@
     {
       "source": "/arena/p/:address",
       "destination": "/arena-profile"
+    },
+    {
+      "source": "/arena/link",
+      "destination": "/arena-link"
     }
   ],
   "headers": [

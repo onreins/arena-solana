@@ -246,6 +246,20 @@ Mainnet https://explorer.arc.io, testnet https://explorer.testnet.arc.io.
 | Seal / reveal | the caller's address page | `seal` every 4h per book, `reveal` 4h later |
 | Score | the validator's address page | `validationResponse` on the ValidationRegistry, tag `callbook-v1` |
 
+## Google sign-in (Circle wallets)
+
+Off until these are set (the Google button simply doesn’t show):
+
+1. Circle Console: an API key, and a user-controlled wallets app (its App ID).
+   Under Authentication Methods → Social Logins → Google, paste the Google client ID.
+2. Google Cloud Console: an OAuth client ID (Web application) with
+   `https://app.reins.one` as an authorised origin and redirect URI
+   (`https://app.reins.one/arena`).
+3. Vercel: `CIRCLE_API_KEY` (server only), `CIRCLE_APP_ID`, `GOOGLE_CLIENT_ID`.
+
+The Circle SDK bundle is `app/public/vendor/circle-wallets.js`; rebuild it with
+`npm run build:circle` after upgrading `@circle-fin/w3s-pw-web-sdk`.
+
 ## 7. What if
 
 **Someone sets an abusive or impersonating name.** Names live on chain and

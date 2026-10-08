@@ -37,6 +37,9 @@ export const CALLBOOK_EVENTS = parseAbi([
   "event RevealedLockedSymbol(uint256 indexed bookId, uint64 indexed callId, string coin, int8 side, uint32 horizon)",
   // Names: bookId 0 is the account itself; the newest event wins and an empty name clears.
   "event Profile(address indexed account, uint256 indexed bookId, string name, string bio, string link)",
+  // An agent's key linked to a person's wallet: its records also show on that wallet's profile.
+  "event AgentLinked(address indexed wallet, address indexed agent)",
+  "event AgentUnlinked(address indexed wallet, address indexed agent)",
 ]);
 
 export const VALIDATION_EVENTS = parseAbi([
@@ -196,6 +199,13 @@ function applyProfileLog(profiles, log, at) {
   });
 }
 
+/** agent -> { wallet, at, tx } for every agent linked now; an unlink removes it. */
+function applyLinkLog(links, log, at) {
+  const agent = log.args.agent.toLowerCase(), wallet = log.args.wallet.toLowerCase();
+  if (log.eventName === "AgentLinked") links.set(agent, { wallet, at, tx: log.transactionHash });
+  else if (links.get(agent)?.wallet === wallet) links.delete(agent);
+}
+
 /** The longest request URI kept: a book descriptor is a few hundred characters. */
 export const MAX_REQUEST_URI = 8_192;
 
@@ -225,7 +235,7 @@ function applyValidationLog(v, log, at, validator) {
  * every request and response naming `validator` (any validator when unset).
  *
  * opts: { client, address, fromBlock, toBlock?, validationRegistry?, validator?, state?, chunk? }
- * Returns { address, chainId, toBlock, books: Map<id, book>, profiles: Map<profileKey, profile>,
+ * Returns { address, chainId, toBlock, books: Map<id, book>, profiles: Map<profileKey, profile>, links: Map<agent, { wallet }>,
  * validation: { requests, responses }, blockTimes }
  * and is itself a valid `state` for the next call.
  */
@@ -237,10 +247,12 @@ export async function readCallbook({ client, address, fromBlock = 0n, toBlock, v
     toBlock: BigInt(fromBlock) - 1n,
     books: new Map(),
     profiles: new Map(),
+    links: new Map(),
     validation: { requests: new Map(), responses: new Map() },
     blockTimes: new Map(),
   };
   s.profiles ??= new Map(); // a snapshot saved before profiles existed
+  s.links ??= new Map();
   const from = s.toBlock + 1n;
   if (from > head) return s;
 
@@ -256,6 +268,7 @@ export async function readCallbook({ client, address, fromBlock = 0n, toBlock, v
     const at = s.blockTimes.get(log.blockNumber);
     if (same(log.address, address)) {
       if (log.eventName === "Profile") applyProfileLog(s.profiles, log, at);
+      else if (log.eventName === "AgentLinked" || log.eventName === "AgentUnlinked") applyLinkLog(s.links, log, at);
       else if (CALLBOOK_EVENTS.some((e) => e.name === log.eventName)) applyCallbookLog(s.books, log, at);
     } else if (VALIDATION_EVENTS.some((e) => e.name === log.eventName)) {
       applyValidationLog(s.validation, log, at, validator);
@@ -268,8 +281,8 @@ export async function readCallbook({ client, address, fromBlock = 0n, toBlock, v
 
 // ------------------------------------------------------------------ snapshots
 
-// 2: states carry profiles. A version-1 snapshot may have scanned past Profile events without keeping them, so it is read again from the start.
-const SNAPSHOT_VERSION = 2;
+// 3: states carry profiles and links. An older snapshot may have scanned past those events without keeping them, so it is read again from the start.
+const SNAPSHOT_VERSION = 3;
 const big = (_, v) => (typeof v === "bigint" ? `${v}n` : v instanceof Map ? { __map: [...v.entries()] } : v);
 const unbig = (_, v) => {
   if (typeof v === "string" && /^\d+n$/.test(v)) return BigInt(v.slice(0, -1));

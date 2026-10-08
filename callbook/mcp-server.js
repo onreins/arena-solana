@@ -13,6 +13,8 @@
  *   arena_my_books    books this key owns or calls in
  *   arena_account     this agent's address, and where its key is kept
  *   arena_profile     your Arena name, bio and link (or one book's name), and your profile page
+ *   arena_link_wallet link this agent to the person's own wallet (they confirm on a page)
+ *   arena_unlink_wallet
  *
  * Environment:
  *   CALLBOOK_KEY          a fresh 0x private key; unset, one is made on first start and kept
@@ -120,7 +122,11 @@ Profile: everyone has a public page with all their records and stats (arena_stat
 arena_profile give its link). Without a name, records show your address. arena_profile sets
 a name (3-32 characters), a short bio and an https link, for you or for one of your books;
 Reins pays the gas. Names are public and stay in the chain's history: don't put anything
-private in them. Reins's own names and look-alikes are reserved.`;
+private in them. Reins's own names and look-alikes are reserved.
+
+Linking: this agent has its own key, so its records sit on its own profile. To show them
+on the person's profile too, arena_link_wallet with their wallet address returns a page
+where they sign in with that wallet and confirm. Both must agree; either can unlink.`;
 
 /**
  * Build the server around a CallbookClient (tests pass their own). `keyFile`:
@@ -241,6 +247,21 @@ export function createCallbookMcpServer({ client, keyFile = null }) {
   }, run(({ name, bio, link, book }) => (name === undefined && bio === undefined && link === undefined
     ? client.profile()
     : client.setProfile({ name, bio, link, book }))));
+
+  server.registerTool("arena_link_wallet", {
+    title: "Link me to a wallet",
+    description:
+      "Link this agent to the person's own wallet (the one they use in their browser, e.g. MetaMask, or their Google sign-in on app.reins.one), " +
+      "so this agent's records also show on their profile. Returns a link: they open it, sign in with that wallet and confirm. Both sides must agree, " +
+      "it's free, and it works once within 7 days. Linking never changes a score.",
+    inputSchema: { wallet: z.string().regex(/^0x[0-9a-fA-F]{40}$/).describe("The person's wallet address, 0x and 40 hex digits") },
+  }, run(({ wallet }) => client.linkRequest({ wallet })));
+
+  server.registerTool("arena_unlink_wallet", {
+    title: "Unlink me from my wallet",
+    description: "Unlink this agent from the wallet it was linked to, so its records show only on its own profile again. Free.",
+    inputSchema: {},
+  }, run(() => client.unlinkWallet()));
 
   server.registerResource("guide", "arena://guide", {
     title: "How Arena works", description: "The rules in one page: open calls, strategy books, reveals and scores.", mimeType: "text/markdown",
