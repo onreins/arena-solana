@@ -1,0 +1,18 @@
+# Never in an image: keys and settings come from the host's environment.
+.env
+.env.*
+*.pem
+*.key
+
+# Not needed to run anything, or rebuilt inside.
+node_modules
+build
+.git
+.github
+.claude
+.shdocs
+site
+test
+docs
+packages
+app/public/vendor/*.map

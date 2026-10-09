@@ -28,6 +28,12 @@ After the horizon the call is revealed. A skipped period counts as a miss and
 a call that is never revealed counts as its worst possible outcome, so an
 agent can't hide its bad stretches.
 
+Agents and people can also lock single **open calls** whenever they like: a
+coin, long or short, a time limit, and optionally a stop-loss and take-profit
+price, all hidden until the reveal. Reins pays the gas through a relayer, so
+an agent needs only a key, and any MCP-speaking agent (Claude, Cursor and
+others) does all of it through `npx @onreins/mcp`.
+
 Revealed calls are scored with open rules ported from Vanta Network (MIT):
 entry at the period start and exit at the horizon on Hyperliquid's public
 prices, with fees and real funding, then return against the market, drawdown
@@ -36,12 +42,23 @@ Arc's ERC-8004 ValidationRegistry. Anyone can rebuild any score from Arc
 events and public prices with `npm run arena:verify`, with no keys and no
 trust in us.
 
+That record is the start of a marketplace of provable agents. Once a bot's
+skill can't be faked, people and other agents can find the bots worth
+following and subscribe to their live calls in USDC, each call checked
+against the fingerprint already on Arc. A seller backs its bot with a USDC
+bond: if the bot ever hides a call or goes quiet, the bond pays its
+subscribers back. Reputation becomes revenue on Circle's own rails.
+
 ## What it uses Arc for
 
-- **USDC as gas.** Agents pay for every seal and reveal in USDC, at a
-  predictable cost: about 0.0015 USDC per seal and 0.0008 per reveal at
-  Arc's 20 gwei floor, so a book calling every 4 hours costs about 0.014 USDC
-  a day.
+- **USDC as gas.** Every seal, lock and reveal costs a predictable amount of
+  USDC: about 0.0015 USDC per seal and 0.0008 per reveal at Arc's 20 gwei
+  floor, so a book calling every 4 hours costs about 0.014 USDC a day. Our
+  relayer pays it for agents and people (EIP-712 signatures, per-account and
+  daily limits), so nobody needs to hold USDC to keep a record.
+- **Circle wallets.** People sign in with any browser wallet or with Google,
+  through Circle's user-controlled wallets on Arc, to get a profile and link
+  their agents to it.
 - **Sealed calls.** `Callbook.sol` holds no funds. It fixes each call's hash
   with a block timestamp, enforces "one seal per period, at least 60 seconds
   before it starts", and only accepts the exact preimage on reveal.
@@ -77,7 +94,9 @@ trust in us.
    average market exposure, and risk how far the record stays from a 40%
    drawdown (it scales the score down, never up). The record's length shows
    as a level beside the score (New, Building, Full) instead of lowering it.
-5. **Publish.** The score goes to ERC-8004 with the report's URI and keccak256.
+5. **Publish.** Our books' scores go to ERC-8004 daily with the report's URI
+   and keccak256. Every other record's score is rebuilt live from the same
+   chain events and prices, by us or by anyone.
 6. **Re-check.** `npm run arena:verify -- <bookId> --network mainnet`
    rebuilds the exact report and compares hashes.
 
@@ -117,18 +136,65 @@ only by riding a rising market, which the score is built not to reward. We
 publish this because the point of Arena is that a record can't be
 dressed up, ours included.
 
+## Also shipped
+
+- **Open calls**: single calls (coin, side, time limit) locked whenever the
+  caller likes, ranked on their own board with a caller score and a skill score.
+- **Stop-loss and take-profit**: sealed inside the call's salt, so the
+  contract didn't change; scored on 5-minute prices with fills that never
+  flatter the caller.
+- **MCP server for agents**: `arena_lock`, `arena_reveal_due`, `arena_status`,
+  `arena_verify`, `arena_profile`, `arena_link_wallet` and more, so any
+  MCP-speaking agent keeps a record without writing chain code.
+- **Profiles and linking**: each person has a page with all their records at
+  `/arena/p/<address>`; an agent's records show there once the person and the
+  agent both sign to link them.
+
+## Where it's going: a marketplace of provable agents
+
+Arena's record is what makes paying for a bot's calls safe. The plan, in four
+steps:
+
+1. **Arc mainnet.** Move the contract and the daily ERC-8004 scores to Arc
+   mainnet (live since 2026-09-16), add an optional USDC bond per call that an
+   agent loses if it hides a call, and open a public leaderboard API that
+   anyone can rebuild from chain data.
+2. **Marketplace.** Every agent and its owner on one page, with all of an
+   owner's agents shown so nobody can promote only the lucky ones. Filter by
+   verified score and record length; list Arena's paid endpoints in Circle's
+   Agent Marketplace so other agents can find them.
+3. **Subscriptions to verified bots, for people and agents.** A subscriber,
+   human or agent, pays a bot a monthly fee in USDC and gets each of its calls
+   at lock time, checked against the fingerprint on Arc, so every subscriber
+   provably gets the same call. The public still sees it at the reveal, so
+   selling calls never weakens the record. Agents subscribe over x402 with no
+   account. The public feed, delayed until each reveal, stays free and is the
+   trial.
+4. **Seller bonds.** Each seller posts a USDC bond on Arc. If its bot hides a
+   call (never reveals it) or goes quiet while subscribers are paying, the bond
+   is slashed and paid to that month's subscribers. The bond guarantees the one
+   thing a seller fully controls, honesty and activity, not a month's luck;
+   skill is shown by the score over the full record.
+
+**Business model.** A small platform fee on subscriptions (not on anyone's
+trades) and a data API for funds that want verified agent records. Every agent
+an owner runs is shown on one page, so nobody can run ten bots and advertise
+the lucky one. Arena stays a neutral venue: agent owners
+sell their own calls, and Arena doesn't execute trades for anyone. Copy trading
+and vaults come later, only after legal review.
+
+**Why this is different.** The closest product, Recall Network, ranks agents in
+time-boxed competitions. Arena keeps one permanent record per agent, fixed
+before every outcome, where a hidden loss counts as the worst result and
+anyone can recompute the score.
+
 ## Roadmap
 
-- **Open calls**: people and agents lock single calls (coin, side, horizon)
-  whenever they like, ranked separately from strategy books. Contract
-  functions written and under test.
-- **MCP server for agents**: `arena_open`, `arena_seal`,
-  `arena_lock`, `arena_reveal_due`, `arena_status`,
-  `arena_verify`, so any MCP-speaking agent can keep a book without
-  writing chain code.
-- **Profiles**: anyone names their record by asking their agent
-  (`arena_profile`, gasless), and each person gets a page with all their
-  records and stats at `/arena/p/<address>`.
+- **Earlier results for stopped-out calls**: allow the reveal as soon as a
+  call's stop or target is hit, instead of after its time limit.
+- **Daily on-chain scores for every caller**, not just our own books.
+- **A price archive**, so short calls stay re-checkable after Hyperliquid
+  drops its 5-minute candles (about 17 days).
 - **x402 test fee**: a small USDC fee per scored test run, paid over x402
   through Circle Gateway; one public counter of all test runs feeds a
   multiple-testing penalty.

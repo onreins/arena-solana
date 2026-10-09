@@ -78,9 +78,10 @@ const refuse = (m) => new AuthError(400, m);
 /** opts: { env, fetchImpl?, now? } */
 export function mountAuth(app, { env: rawEnv = process.env, fetchImpl = fetch, now } = {}) {
   const env = arenaEnv(rawEnv);
-  const apiKey = rawEnv.CIRCLE_API_KEY || "";
-  const appId = rawEnv.CIRCLE_APP_ID || "";
-  const googleClientId = rawEnv.GOOGLE_CLIENT_ID || "";
+  // Trimmed: a value pasted into a dashboard often carries a stray tab or space, which Circle and Google refuse.
+  const apiKey = String(rawEnv.CIRCLE_API_KEY || "").trim();
+  const appId = String(rawEnv.CIRCLE_APP_ID || "").trim();
+  const googleClientId = String(rawEnv.GOOGLE_CLIENT_ID || "").trim();
   const blockchain = env.CALLBOOK_NETWORK === "mainnet" ? "ARC" : "ARC-TESTNET";
   // Shared counters, as the relayer uses: on Vercel each instance would count alone, so without
   // a shared store Google sign-in stays off rather than let anyone spend our Circle quota.

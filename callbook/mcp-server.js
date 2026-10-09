@@ -90,6 +90,7 @@ const run = (fn) => async (args) => {
 };
 
 const BOOK = z.union([z.number().int().positive(), z.string().regex(/^\d+$/)]).describe("Book id, e.g. 3");
+const PRICE = z.union([z.number().positive(), z.string().max(40).regex(/^\s*\d*\.?\d+(e[+-]?\d+)?\s*$/i, "a price like 82000 or 0.0042")]).describe("A price in USD, e.g. 82000 or 0.0042");
 const DURATION = (example) => z.string().regex(/^\s*\d+(\.\d+)?\s*[a-zA-Z]+(\s*\d+(\.\d+)?\s*[a-zA-Z]+)*\s*$/, "a duration like 15m, 4h, 1d").describe(`A duration such as ${example}`);
 
 const GUIDE = `# Arena in one page
@@ -105,6 +106,11 @@ Two ways to call:
   the coin and side stay hidden until the reveal. Entry is the first whole minute at least
   60s after locking. Your first lock opens your open-call book. Every lock counts, so
   choose when to call.
+  Exits: add a stop and/or a target price and the call closes at the first one touched
+  (on 5-minute candles), or at the horizon, now its longest hold (7d at most). Fills are
+  conservative: a stop the price gaps through fills at that candle's open, a target at
+  the target, a candle touching both counts as the stop, and a level already crossed at
+  entry closes the call there. They're hidden with the call until the reveal.
 - Strategy books (arena_open kind=strategy, then arena_seal): one call every period
   (e.g. every 4h), long, short or flat, sealed at least 60s before the round starts. A round
   with no call is a miss; flat is a call.
@@ -113,10 +119,12 @@ Reveals: after the horizon, arena_reveal_due reveals everything matured. A call 
 revealed within 7 days of its horizon scores as its worst possible outcome.
 
 Nothing to store: each call's salt is derived from the key, so any machine with the same
-key can reveal. Without CALLBOOK_KEY the key was made on first start and is kept in a file
+key can reveal. The exception is a call with a stop or target: its prices are kept in this
+machine's journal (~/.arena), and only that journal can reveal it. Without CALLBOOK_KEY the key was made on first start and is kept in a file
 (arena_account says where): it never leaves this machine, and it's never shown to you. arena_status shows the record, the score, a skill score with its level (unrated,
 provisional, rated, established: it builds from the number of calls, not days) and what's
-due next. Both scores are published on chain daily.
+due next. Both scores update after each reveal, and anyone can rebuild them from chain data
+and public prices.
 
 Profile: everyone has a public page with all their records and stats (arena_status and
 arena_profile give its link). Without a name, records show your address. arena_profile sets
@@ -151,15 +159,18 @@ export function createCallbookMcpServer({ client, keyFile = null }) {
     title: "Lock a call",
     description:
       "Lock an open call on Arc: a coin, long or short, and how long (horizon, default 4h). The coin and side stay hidden until the reveal. " +
-      "Entry is the first whole minute at least 60s from now; reveal it after the horizon with arena_reveal_due. Without `book`, it goes in your open-call book, " +
-      "which your first lock opens, and Reins pays the gas. Every lock counts toward your score, win or lose.",
+      "Optionally a stop and/or a target price: the call then closes at the first one the price touches, or at the horizon (its longest hold, 7 days at most) if neither is. " +
+      "They're sealed with the call and hidden too. Entry is the first whole minute at least 60s from now; reveal it after the horizon with arena_reveal_due. " +
+      "Without `book`, it goes in your open-call book, which your first lock opens, and Reins pays the gas. Every lock counts toward your score, win or lose.",
     inputSchema: {
       coin: z.string().min(1).max(16).describe("Hyperliquid perp, e.g. ETH, BTC, SOL"),
       side: z.enum(["long", "short"]).describe("long: you expect it to rise; short: to fall"),
-      horizon: DURATION("5m, 15m, 1h, 4h, 1d or 7d").optional().describe("How long the call is held (default 4h)"),
+      horizon: DURATION("5m, 15m, 1h, 4h, 1d or 7d").optional().describe("How long the call is held (default 4h); with a stop or target, the longest it's held (at most 7d)"),
+      stop: PRICE.optional().describe("Stop-loss price: below the current price for a long, above it for a short"),
+      target: PRICE.optional().describe("Take-profit price: above the current price for a long, below it for a short"),
       book: BOOK.optional().describe("A call book with a coin list, if not your open-call book"),
     },
-  }, run(({ coin, side, horizon = "4h", book }) => client.lock({ coin, side, horizon, book })));
+  }, run(({ coin, side, horizon = "4h", book, stop, target }) => client.lock({ coin, side, horizon, book, stop, target })));
 
   server.registerTool("arena_open", {
     title: "Open a book",
