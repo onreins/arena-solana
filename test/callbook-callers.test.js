@@ -545,6 +545,9 @@ test("HTTP: the relay routes are 503 without a key, and work with one; unconfigu
     assert.equal(r.headers.get("location"), "/data/callbook-caller-12.json");
     const relay = await fetch(`${off.url}/api/callbook/relay/lock`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
     assert.equal(relay.status, 503);
+    const health = await (await fetch(`${off.url}/api/callbook/health`)).json();
+    assert.equal(health.ok, false);
+    assert.match(health.problems.join(" "), /isn't configured/);
   } finally {
     await off.close();
   }
@@ -582,6 +585,15 @@ test("HTTP: the relay routes are 503 without a key, and work with one; unconfigu
     const report = await fetch(`${on.url}/api/callbook/report/${body.bookId}?asOf=${await chainNow()}`);
     assert.equal(report.status, 200);
     assert.match(report.headers.get("x-report-hash"), /^0x[0-9a-f]{64}$/);
+    // The board is cached by the CDN too (it reads s-maxage only).
+    assert.match((await fetch(`${on.url}/api/callbook`)).headers.get("cache-control"), /s-maxage=30/);
+    // Health: the relayer is on and funded; without a validator, that's the problem it names.
+    const health = await (await fetch(`${on.url}/api/callbook/health`)).json();
+    assert.equal(health.relayer.on, true);
+    assert.ok(health.relayer.balanceUsdc > 1);
+    assert.equal(health.ok, false);
+    assert.deepEqual(health.problems, ["no validator is set, so no published score is shown"]);
+    assert.ok(Number(health.chain.head) > 0);
   } finally {
     await on.close();
   }

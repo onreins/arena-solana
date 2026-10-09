@@ -30,6 +30,9 @@ import {
 } from "../callbook/proof.js";
 import { parseDuration, formatDuration, horizonGrid, callHorizon, onHorizonGrid, COMMON_HORIZONS } from "../callbook/durations.js";
 import { deriveSalt } from "../runner/callbook.js";
+import { evaluateAny } from "../app/verify/callbook.js";
+import { deriveLocks } from "../app/verify/callbook-callers.js";
+import { exitsOf } from "../app/verify/callbook-exits.js";
 import { artifact } from "../scripts/artifact.js";
 
 const HOUR = 3600, DAY = 86400;
@@ -602,6 +605,76 @@ describe("on a local node", () => {
     assert.equal(done.revealed.length, 6, JSON.stringify(done.failed));
     // 67 minutes is off the old search grid: the public horizon makes it recoverable anyway.
     assert.ok(done.revealed.some((r) => r.horizon === "1h7m"));
+  });
+
+  test("stop and target: sealed in the salt, read from the reveal, and the first touched closes the call", async (t) => {
+    if (!nodeUp) return t.skip(`no Hardhat node at ${RPC}`);
+    // Prices flat at 100 (markets say 100 too), then one 5-minute candle reaching 105.
+    let spikeAt = Infinity;
+    const path5 = {
+      perpNames: async () => NAMES,
+      async load(coins, from, to, interval = "1h") {
+        const step = interval === "5m" ? 300 : HOUR;
+        const candles = {}, funding = {};
+        for (const c of coins) {
+          candles[c] = [];
+          funding[c] = [];
+          for (let t0 = Math.floor(from / step) * step; t0 <= to + step; t0 += step) {
+            const spike = t0 <= spikeAt && spikeAt < t0 + step;
+            candles[c].push({ t: t0, o: 100, h: spike ? 105 : 100.5, l: 99.5, c: 100, v: 1 });
+          }
+        }
+        return { interval, from, to, candles, funding, fundingOk: true };
+      },
+    };
+    const key = keyOf(13);
+    const cb = sdk(key, { priceSource: path5 });
+    await assert.rejects(cb.lock({ coin: "ETH", side: "long", horizon: "1d", stop: 101 }), /ETH is at 100: a long's stop must be below that/);
+    await assert.rejects(cb.lock({ coin: "ETH", side: "long", horizon: "8d", stop: 95 }), /at most 7 days/);
+    await assert.rejects(cb.lock({ coin: "ETH", side: "short", horizon: "1d", stop: 105, target: 110 }), /short's stop must be above its target/);
+
+    const long = await cb.lock({ coin: "ETH", side: "long", horizon: "1d", stop: 95, target: "104.5" });
+    assert.deepEqual([long.stop, long.target], ["95", "104.5"]);
+    assert.match(long.summary, /with stop 95, target 104\.5, held at most 1d/);
+    const short = await cb.lock({ coin: "SOL", side: "short", horizon: "1d", stop: 102, target: 90 });
+    const plain = await cb.lock({ coin: "BTC", side: "long", horizon: "1d" });
+    // Status shows the agent its pending calls' stop and target, from the journal.
+    const pendingNow = (await cb.status({ book: long.bookId })).pending;
+    const seen = pendingNow.find((p) => p.callId === long.callId);
+    assert.deepEqual([seen.stop, seen.target], ["95", "104.5"]);
+    assert.equal(pendingNow.find((p) => p.callId === plain.callId).stop, undefined);
+    spikeAt = Math.max(long.entryAt, short.entryAt) + 2 * HOUR + 60;
+
+    await mineAt(Math.max(long.revealAt, short.revealAt, plain.revealAt) + 1);
+    const done = await cb.revealDue();
+    assert.equal(done.revealed.length, 3, JSON.stringify(done.failed));
+
+    // The indexer found each reveal's salt in its transaction and checked it against the call.
+    const state = await cb.read();
+    const book = state.books.get(long.bookId);
+    assert.deepEqual(exitsOf(book.locks.get(long.callId).reveal.salt), { stop: { value: 95, text: "95" }, target: { value: 104.5, text: "104.5" } });
+    assert.equal(exitsOf(book.locks.get(plain.callId).reveal.salt), null, "an ordinary call's salt has none");
+
+    await mineAt(Math.max(long.revealAt, short.revealAt) + 2 * HOUR);
+    const ev = await evaluateAny({ chain: state, book, source: path5, asOf: await latest() });
+    const byId = new Map(ev.scored.periods.map((c) => [c.callId, c]));
+    const l = byId.get(long.callId), s = byId.get(short.callId), p = byId.get(plain.callId);
+    assert.deepEqual([l.exitReason, l.exit, l.candles], ["target", 104.5, "5m"]);
+    assert.ok(Math.abs(l.move - 0.045) < 1e-9, `long made 4.5% to its target (${l.move})`);
+    assert.ok(l.closedAt > l.entryAt && l.closedAt < l.exitAt, "closed well before its horizon");
+    assert.deepEqual([s.exitReason, s.exit], ["stop", 102], "the spike hit the short's stop");
+    assert.ok(s.ret < -0.02);
+    assert.equal(p.exits, undefined, "no exits: held to its horizon as before");
+    assert.equal(p.exitReason, undefined);
+    // The report carries each exit call's levels and why it closed.
+    const row = ev.report.report.calls.find((c) => c[0] === long.callId);
+    assert.deepEqual(row[7].slice(0, 3), ["95", "104.5", "target"]);
+
+    // A reveal whose salt can't be found scores at its worst.
+    const lost = { ...book, locks: new Map([[long.callId, { ...book.locks.get(long.callId), reveal: { ...book.locks.get(long.callId).reveal, salt: null } }]]) };
+    const [c] = deriveLocks(lost, await latest(), NAMES);
+    assert.equal(c.status, "unscorable");
+    assert.equal(c.saltUnread, true);
   });
 
   test("unknown books and coins are sentences", async (t) => {
