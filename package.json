@@ -60,6 +60,8 @@
     "@circle-fin/x402-batching": "^3.5.0",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "@openzeppelin/contracts": "^5.6.1",
+    "@redstone-finance/evm-connector": "0.9.0",
+    "@redstone-finance/protocol": "0.9.0",
     "@x402/core": "^2.27.0",
     "@x402/evm": "^2.27.0",
     "express": "^4.22.3",
@@ -94,8 +96,6 @@
   "devDependencies": {
     "@circle-fin/w3s-pw-web-sdk": "^1.1.11",
     "@luxalgo/vela": "^0.8.1",
-    "@redstone-finance/evm-connector": "0.9.0",
-    "@redstone-finance/protocol": "0.9.0",
     "esbuild": "0.25.10",
     "hardhat": "^2.29.1"
   }
