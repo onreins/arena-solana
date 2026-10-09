@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/api/arena", "destination": "https://app.reins.one/api/callbook" }
+  ]
+}

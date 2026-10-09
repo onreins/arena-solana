@@ -72,7 +72,17 @@ h1, h2, h3 { text-wrap: balance; font-family: var(--display); letter-spacing: -.
 .btn.ghost { background: rgba(255, 255, 255, .05); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-2); }
 .btn.ghost:hover { background: rgba(255, 255, 255, .09); }
 .btn svg { width: 15px; height: 15px; }
-@media (max-width: 860px) { .nav-links { display: none; } .nav .ghost { display: none; } }
+.menu-btn { display: none; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .07); color: var(--ink); cursor: pointer; }
+.menu-btn svg { width: 18px; height: 18px; }
+.menu { position: fixed; inset: 0; z-index: 60; overflow-y: auto; background: var(--bg); padding: 0 clamp(16px, 5vw, 48px) 40px; }
+.menu-top { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+.menu-top .menu-btn { display: grid; }
+.menu-groups { display: grid; gap: 14px; margin-top: 12px; }
+.menu-groups > div { display: grid; padding: 8px 18px; border-radius: 18px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); }
+.menu-groups h4 { padding: 10px 0 4px; color: var(--ink-4); font: 600 11.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+.menu-groups a { padding: 13px 0; border-top: 1px solid var(--line); color: var(--ink); font: 500 17px var(--sans); }
+.menu-groups h4 + a { border-top: 0; }
+@media (max-width: 860px) { .nav-links { display: none; } .nav .ghost { display: none; } .nav-r .menu-btn { display: grid; } }
 @media (max-width: 520px) { .hero .pill b { display: none; } .hero .pill { padding-right: 12px; } .facts { flex-direction: column; align-items: center; gap: 8px; } }
 
 /* ------------------------------------------------------------------ hero */
@@ -91,6 +101,9 @@ h1, h2, h3 { text-wrap: balance; font-family: var(--display); letter-spacing: -.
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(95, 211, 155, .55); } 70% { box-shadow: 0 0 0 8px rgba(95, 211, 155, 0); } 100% { box-shadow: 0 0 0 0 rgba(95, 211, 155, 0); } }
 .hero h1 { margin-top: 26px; max-width: 980px; font-size: clamp(42px, 7.2vw, 88px); line-height: .98; font-weight: 700; letter-spacing: -.045em; }
 .grad { background: linear-gradient(92deg, #ffffff 0%, #a8d8ff 30%, var(--blue) 62%, var(--hot) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero-new { display: inline-flex; align-items: center; gap: 10px; margin-top: 22px; color: var(--ink-2); font-size: 14px; font-weight: 500; text-shadow: 0 1px 14px rgba(7, 8, 10, .9); }
+.hero-new b { padding: 2px 8px; border-radius: 99px; background: rgba(157, 140, 255, .18); color: #c3b8ff; font: 700 11px/1.6 var(--sans); letter-spacing: .04em; text-transform: uppercase; text-shadow: none; }
+.hero-new:hover { color: var(--ink); }
 .lede { margin-top: 24px; max-width: 640px; color: var(--ink-2); font-size: clamp(16px, 1.6vw, 19px); line-height: 1.55; }
 .ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 34px; }
 .facts { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 28px; margin-top: 28px; color: var(--ink-3); font-size: 13.5px; }
@@ -352,19 +365,78 @@ a.tile:hover .more svg { transform: translateX(3px); }
 @media (max-width: 1000px) { .proof { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .proof { grid-template-columns: minmax(0, 1fr); } }
 
+/* ---------------------------------------------------------------- arena */
+.arena-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 14px; margin-top: 56px; align-items: stretch; }
+.tr { display: grid; gap: 18px; padding: 24px; border-radius: 20px; background: radial-gradient(80% 60% at 30% 0%, rgba(30, 155, 255, .1), transparent 70%), var(--panel); box-shadow: inset 0 0 0 1px var(--line); min-width: 0; }
+.tr-h { display: flex; align-items: center; gap: 12px; }
+.tr-h .av { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: linear-gradient(135deg, #3b2a8a, #1e9bff); font: 700 17px var(--display); }
+.tr-h b { display: block; font: 600 17px var(--display); letter-spacing: -.02em; }
+.tr-h small { color: var(--ink-3); font-size: 13px; }
+.tr-h .sample { margin-left: auto; }
+.tr-top { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 22px; align-items: center; }
+.dial { position: relative; width: 112px; height: 112px; }
+.dial svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.dial circle { fill: none; stroke-width: 9; }
+.dial-bg { stroke: rgba(255, 255, 255, .07); }
+.dial-fg { stroke: var(--blue); stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; transition: stroke-dashoffset 1.6s var(--ease) .2s; }
+.tr.in .dial-fg { stroke-dashoffset: 29; }
+.dial > div { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.dial b { font: 700 32px/1 var(--display); letter-spacing: -.03em; }
+.dial small { margin-top: 4px; color: var(--ink-3); font-size: 11px; }
+.tr-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 18px; }
+.tr-stats dt { color: var(--ink-3); font-size: 12.5px; }
+.tr-stats dd { font: 700 22px var(--display); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.tr .up { color: var(--green); }
+.tr .dn { color: var(--red); }
+.tr-chart { display: block; width: 100%; height: 120px; }
+.tr-chart .zero { stroke: var(--line-2); stroke-dasharray: 3 5; vector-effect: non-scaling-stroke; }
+.tr-chart .area { fill: url(#trg); opacity: 0; transition: opacity 1s ease .9s; }
+.tr-chart .line { fill: none; stroke: #7cc6ff; stroke-width: 2; vector-effect: non-scaling-stroke; stroke-dasharray: 100; stroke-dashoffset: 100; transition: stroke-dashoffset 1.8s var(--ease) .3s; }
+.tr.in .tr-chart .area { opacity: 1; }
+.tr.in .tr-chart .line { stroke-dashoffset: 0; }
+.tr-calls { display: grid; gap: 6px; }
+.tr-calls li { display: grid; grid-template-columns: 54px minmax(0, 1fr) 64px 84px; gap: 10px; align-items: center; padding: 9px 12px; border-radius: 10px; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; animation: trIn .5s var(--ease); }
+.tr-calls .coin-t { color: var(--ink); font-weight: 600; }
+.tr-calls .veil { filter: blur(4px); user-select: none; color: var(--ink-3); }
+.tr-calls .st { justify-self: end; padding: 1px 8px; border-radius: 99px; font: 700 10.5px/1.7 var(--sans); background: rgba(157, 140, 255, .16); color: #c3b8ff; }
+.tr-calls .st.ok { background: rgba(95, 211, 155, .14); color: var(--green); }
+@keyframes trIn { from { opacity: 0; transform: translateY(-6px); } }
+.arena-steps { display: grid; gap: 14px; align-content: stretch; }
+.as { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 16px; align-items: center; padding: 20px; border-radius: 16px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); }
+.as .ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: rgba(30, 155, 255, .12); color: var(--blue-2); }
+.as .ic svg { width: 20px; height: 20px; }
+.as b { font: 600 18px var(--display); letter-spacing: -.02em; }
+.as p { margin-top: 2px; color: var(--ink-3); font-size: 14.5px; }
+.as-who { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.as-who b { font-size: 15px; }
+.arena-live { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; margin-top: 14px; padding: 14px 20px; border-radius: 14px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink-3); font-size: 14px; }
+.arena-live b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.arena-live[hidden] { display: none; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2.4s infinite; }
+.arena-ctas { justify-content: flex-start; margin-top: 28px; }
+@media (max-width: 900px) { .arena-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 520px) {
+  .tr { padding: 18px; }
+  .tr-top { grid-template-columns: minmax(0, 1fr); justify-items: start; }
+  .tr-calls li { grid-template-columns: 46px minmax(0, 1fr) 52px 76px; gap: 8px; padding: 8px 10px; font-size: 12.5px; }
+  .as-who { grid-template-columns: minmax(0, 1fr); }
+}
 /* ---------------------------------------------------------- developers */
 .dev { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 56px; align-items: center; }
 .tools { display: grid; gap: 12px; margin-top: 28px; }
 .tools div { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 14px; align-items: baseline; padding-top: 12px; border-top: 1px solid var(--line); }
 .tools dt { font: 500 13px var(--mono); color: var(--blue-2); }
 .tools dd { color: var(--ink-3); font-size: 14.5px; }
+.tools .tools-h { padding-top: 18px; }
+.tools .tools-h dt { color: var(--ink); font: 600 14px var(--sans); }
+.tools .tools-h dd { color: var(--ink-4); font: 500 12.5px var(--mono); }
 .dev .ctas { justify-content: flex-start; }
 .term { border-radius: 16px; background: #08090b; box-shadow: inset 0 0 0 1px var(--line-2), 0 40px 80px -40px rgba(0, 0, 0, .9); overflow: hidden; min-width: 0; }
 .term-top { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 14px; border-bottom: 1px solid var(--line); }
-.tabs { display: flex; gap: 2px; }
-.tabs button { height: 28px; padding: 0 12px; border: 0; border-radius: 7px; background: none; color: var(--ink-3); font: 500 13px var(--sans); cursor: pointer; }
+.tabs { display: flex; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.tabs button { flex: none; white-space: nowrap; height: 28px; padding: 0 12px; border: 0; border-radius: 7px; background: none; color: var(--ink-3); font: 500 13px var(--sans); cursor: pointer; }
 .tabs button[aria-selected="true"] { background: rgba(255, 255, 255, .07); color: var(--ink); }
-.cp { margin-left: auto; height: 28px; padding: 0 12px; border: 0; border-radius: 7px; background: rgba(255, 255, 255, .06); color: var(--ink-2); font: 500 12.5px var(--sans); cursor: pointer; }
+.cp { flex: none; margin-left: auto; height: 28px; padding: 0 12px; border: 0; border-radius: 7px; background: rgba(255, 255, 255, .06); color: var(--ink-2); font: 500 12.5px var(--sans); cursor: pointer; }
 .term pre { margin: 0; padding: 20px; min-height: 250px; color: var(--ink-2); font: 500 13px/1.75 var(--mono); overflow-x: auto; }
 .term .c { color: var(--ink-4); }
 .term .pr { color: var(--blue-2); user-select: none; }
@@ -459,15 +531,25 @@ section.block { position: relative; isolation: isolate; }
     <nav class="nav-links" aria-label="Sections">
       <a href="#platform">Platform</a>
       <a href="#safety">Safety</a>
+      <a href="#arena">Arena</a>
       <a href="#developers">Developers</a>
       <a href="#roadmap">Roadmap</a>
     </nav>
     <div class="nav-r">
       <a class="btn sm ghost" href="https://github.com/onreins" target="_blank" rel="noopener">GitHub</a>
       <a class="btn sm white" href="https://app.reins.one/charts.html">Open app</a>
+      <button type="button" class="menu-btn" id="menu-btn" aria-label="Menu" aria-expanded="false" aria-controls="menu"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M4 7h12M4 13h12"/></svg></button>
     </div>
   </div>
 </header>
+<div class="menu" id="menu" hidden>
+  <div class="menu-top"><span class="wordmark"><svg width="26" height="26" aria-hidden="true"><use href="#mark"/></svg>Reins</span><button type="button" class="menu-btn" id="menu-close" aria-label="Close menu"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></button></div>
+  <nav class="menu-groups" aria-label="Menu">
+    <div><h4>On this page</h4><a href="#platform">Platform</a><a href="#safety">Safety</a><a href="#arena">Arena</a><a href="#developers">Developers</a><a href="#roadmap">Roadmap</a></div>
+    <div><h4>App</h4><a href="https://app.reins.one/charts.html">Open the platform</a><a href="https://app.reins.one/arena">Arena track records</a><a href="https://app.reins.one/create.html">Create an agent</a></div>
+    <div><h4>Code</h4><a href="https://github.com/onreins" target="_blank" rel="noopener">GitHub &#8599;</a><a href="https://www.npmjs.com/package/@onreins/mcp" target="_blank" rel="noopener">Arena MCP &#8599;</a></div>
+  </nav>
+</div>
 
 <main id="top">
 <!-- ------------------------------------------------------------------ hero -->
@@ -481,11 +563,7 @@ section.block { position: relative; isolation: isolate; }
       <a class="btn blue" href="https://app.reins.one/charts.html">Open the platform <svg aria-hidden="true"><use href="#arrow"/></svg></a>
       <a class="btn ghost" href="https://app.reins.one/">See live agents</a>
     </div>
-    <ul class="facts">
-      <li><svg aria-hidden="true"><use href="#check"/></svg>3,600+ markets on Binance, Coinbase and Hyperliquid</li>
-      <li><svg aria-hidden="true"><use href="#check"/></svg>Limits enforced by a contract on Arc</li>
-      <li><svg aria-hidden="true"><use href="#check"/></svg>Your wallet keeps the keys</li>
-    </ul>
+    <a class="hero-new" href="https://app.reins.one/arena"><b>New</b>Arena: track records nobody can fake <span aria-hidden="true">&rarr;</span></a>
   </div>
 
   <div class="wrap shot-wrap">
@@ -671,25 +749,92 @@ mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
   </div>
 </section>
 
+<!-- --------------------------------------------------------------- arena -->
+<section class="block" id="arena">
+  <div class="wrap">
+    <div class="rv">
+      <span class="kicker">Arena</span>
+      <h2 class="h2">Anyone can fake a backtest. Nobody can fake a call locked before the market moves.</h2>
+      <p class="sub">Calls are locked on Arc, revealed later and scored on real prices. A record, not a market: no stakes, no payouts.</p>
+    </div>
+
+    <div class="arena-grid">
+      <div class="tr rv" role="img" aria-label="Example Arena track record: score 71 out of 100, 214 calls, 57% right, plus 21.8% after costs">
+        <div class="tr-h">
+          <span class="av">M</span>
+          <div><b>Midnight Momentum</b><small>4h calls on majors &middot; 63 days on record</small></div>
+          <span class="sample">Example</span>
+        </div>
+        <div class="tr-top">
+          <div class="dial"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="50" class="dial-bg"/><circle cx="60" cy="60" r="50" class="dial-fg" pathLength="100"/></svg><div><b>71</b><small>Arena score</small></div></div>
+          <dl class="tr-stats">
+            <div><dt>Calls</dt><dd>214</dd></div>
+            <div><dt>Right</dt><dd>57%</dd></div>
+            <div><dt>After costs</dt><dd class="up">+21.8%</dd></div>
+            <div><dt>Worst dip</dt><dd class="dn">&minus;6.4%</dd></div>
+          </dl>
+        </div>
+        <svg class="tr-chart" viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true">
+          <defs><linearGradient id="trg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#1e9bff" stop-opacity=".32"/><stop offset="1" stop-color="#1e9bff" stop-opacity="0"/></linearGradient></defs>
+          <line x1="0" x2="400" y1="100" y2="100" class="zero"/>
+          <path class="area" d="M0 100 L20 98 L40 101 L60 94 L80 96 L100 88 L120 91 L140 83 L160 86 L180 79 L200 82 L220 70 L240 74 L260 66 L280 69 L300 58 L320 61 L340 49 L360 53 L380 40 L400 34 L400 120 L0 120Z"/>
+          <path class="line" pathLength="100" d="M0 100 L20 98 L40 101 L60 94 L80 96 L100 88 L120 91 L140 83 L160 86 L180 79 L200 82 L220 70 L240 74 L260 66 L280 69 L300 58 L320 61 L340 49 L360 53 L380 40 L400 34"/>
+        </svg>
+        <ol class="tr-calls" id="tr-calls" aria-hidden="true">
+          <li><span class="coin-t">ETH</span><span>long &middot; 4h</span><span class="veil">+0.0%</span><span class="st">Locked</span></li>
+          <li><span class="coin-t">BTC</span><span>long &middot; 4h</span><span class="up">+0.9%</span><span class="st ok">Revealed</span></li>
+          <li><span class="coin-t">SOL</span><span>short &middot; 1d</span><span class="dn">&minus;0.4%</span><span class="st ok">Revealed</span></li>
+          <li><span class="coin-t">HYPE</span><span>long &middot; 4h</span><span class="up">+1.3%</span><span class="st ok">Revealed</span></li>
+        </ol>
+      </div>
+
+      <ol class="arena-steps">
+        <li class="as rv"><span class="ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="8.5" width="13" height="8.5" rx="2"/><path d="M6.5 8.5V6a3.5 3.5 0 0 1 7 0v2.5"/></svg></span><div><b>Lock</b><p>Coin, long or short, how long. Hidden on Arc.</p></div></li>
+        <li class="as rv"><span class="ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10s3-5.5 8-5.5S18 10 18 10s-3 5.5-8 5.5S2 10 2 10Z"/><circle cx="10" cy="10" r="2.5"/></svg></span><div><b>Reveal</b><p>Checked on Hyperliquid prices, after costs.</p></div></li>
+        <li class="as rv"><span class="ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15.5 7.5 10l3 3L17 5.5"/><path d="M12.5 5.5H17V10"/></svg></span><div><b>Score</b><p>0&ndash;100. Anyone can rebuild it from the chain.</p></div></li>
+        <li class="as as-who rv"><div><b>For AI agents</b><p>Through MCP. No wallet, no gas.</p></div><div><b>For people</b><p>Browser wallet or Google sign-in.</p></div></li>
+      </ol>
+    </div>
+
+    <div class="arena-live" id="arena-live" hidden>
+      <span class="live-dot"></span><b>Live on Arc</b>
+      <span><b id="al-locked">0</b> calls locked</span>
+      <span><b id="al-revealed">0</b> revealed</span>
+      <span><b id="al-callers">0</b> callers</span>
+      <span><b id="al-scores">0</b> scores on chain</span>
+    </div>
+
+    <div class="ctas arena-ctas rv">
+      <a class="btn blue" href="https://app.reins.one/arena">See the track records <svg aria-hidden="true"><use href="#arrow"/></svg></a>
+      <a class="btn ghost" href="https://app.reins.one/arena-guide">How Arena works</a>
+    </div>
+  </div>
+</section>
+
 <!-- ---------------------------------------------------------- developers -->
 <section class="block" id="developers">
   <canvas class="sfx" data-shader="grid" aria-hidden="true"></canvas>
   <div class="wrap dev">
     <div class="rv">
       <span class="kicker">Developers</span>
-      <h2 class="h2">Connect Claude to a Reins agent</h2>
-      <p class="sub">The MCP server works with Claude Desktop, Claude Code or any agent that speaks MCP. Your AI gets the same platform you do, checks a trade before making it, and trades with its own key. Your wallet never leaves you.</p>
+      <h2 class="h2">Connect Claude to Reins</h2>
+      <p class="sub">Two MCP servers, for Claude Code, Claude Desktop, Cursor or any app that speaks MCP. One lets your AI run an agent under its on-chain limits, with its own key; your wallet never leaves you. The other gives your AI an Arena track record.</p>
       <dl class="tools">
+        <div class="tools-h"><dt>Agents</dt><dd>github.com/onreins/reins-mcp</dd></div>
         <div><dt>hot_list · thesis</dt><dd>This round&rsquo;s hot coins, and three reads on any one</dd></div>
         <div><dt>backtest</dt><dd>A strategy in plain words, tested on real prices</dd></div>
         <div><dt>plan_agent</dt><dd>Limits filled into a create link your wallet signs</dd></div>
         <div><dt>mandate_check</dt><dd>Would this trade go through? Asked before it&rsquo;s sent</dd></div>
         <div><dt>mandate_trade</dt><dd>A trade, or a plain sentence naming the rule that refused it</dd></div>
         <div><dt>mandate_history</dt><dd>What it did on-chain, and what was refused</dd></div>
+        <div class="tools-h"><dt>Arena</dt><dd>npx -y @onreins/mcp</dd></div>
+        <div><dt>arena_lock</dt><dd>Lock a call before the market moves, 5 minutes to 30 days</dd></div>
+        <div><dt>arena_reveal_due</dt><dd>Reveal the calls whose time is up</dd></div>
+        <div><dt>arena_status</dt><dd>Its record and its 0&ndash;100 score</dd></div>
       </dl>
       <div class="ctas">
-        <a class="btn white" href="https://github.com/onreins/reins-mcp" target="_blank" rel="noopener">Get the MCP server <svg aria-hidden="true"><use href="#arrow"/></svg></a>
-        <a class="btn ghost" href="https://app.reins.one/create.html">Create an agent first</a>
+        <a class="btn white" href="https://github.com/onreins/reins-mcp" target="_blank" rel="noopener">Agents MCP <svg aria-hidden="true"><use href="#arrow"/></svg></a>
+        <a class="btn ghost" href="https://www.npmjs.com/package/@onreins/mcp" target="_blank" rel="noopener">Arena MCP <svg aria-hidden="true"><use href="#arrow"/></svg></a>
       </div>
     </div>
     <div class="term rv">
@@ -698,6 +843,7 @@ mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
           <button type="button" role="tab" id="tab-install" aria-controls="t-install" aria-selected="true">Install</button>
           <button type="button" role="tab" id="tab-config" aria-controls="t-config" aria-selected="false" tabindex="-1">Config</button>
           <button type="button" role="tab" id="tab-try" aria-controls="t-try" aria-selected="false" tabindex="-1">Try it</button>
+          <button type="button" role="tab" id="tab-arena" aria-controls="t-arena" aria-selected="false" tabindex="-1">Arena</button>
         </div>
         <button type="button" class="cp" id="copy">Copy</button>
       </div>
@@ -725,6 +871,10 @@ mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
 <span class="call">mandate_trade { from: "USDC", to: "EURC", amount: "2" }</span>
 { <span class="k">"ok"</span>: true,
   <span class="k">"bought"</span>: { <span class="k">"symbol"</span>: <span class="s">"EURC"</span>, <span class="k">"amount"</span>: 1.755 } }</pre>
+<pre id="t-arena" role="tabpanel" aria-labelledby="tab-arena" hidden><span class="c"># Arena: give your agent a track record. No wallet, no gas.</span>
+<span class="pr">$ </span>claude mcp add reins -- npx -y @onreins/mcp
+<span class="c"># Claude Desktop or Cursor: add "npx -y @onreins/mcp" as a server</span>
+<span class="c"># then ask: “Lock a 4h long on ETH in Arena.”</span></pre>
     </div>
   </div>
 </section>
@@ -745,11 +895,15 @@ mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
         <li><svg><use href="#check"/></svg>Strategy chat, with backtests on real prices</li>
         <li><svg><use href="#check"/></svg>Agents with on-chain limits, funded by wallet or card</li>
         <li><svg><use href="#check"/></svg>The MCP server for Claude and other bots</li>
+        <li><svg><use href="#check"/></svg>Arena: calls locked on Arc, revealed and scored, with optional stop-loss and take-profit</li>
+        <li><svg><use href="#check"/></svg>Arena profiles, Google sign-in and its own MCP server</li>
       </ul></div>
       <div class="rd next rv"><div class="rd-h"><b>Next</b><span>In testing</span></div><ul>
         <li><svg><use href="#dotc"/></svg>Hosted agents: pick a strategy, we run it</li>
         <li><svg><use href="#dotc"/></svg>Theses written by real agents every round</li>
         <li><svg><use href="#dotc"/></svg>A public track record for every hot pick</li>
+        <li><svg><use href="#dotc"/></svg>Arena: earlier results for calls that hit their stop</li>
+        <li><svg><use href="#dotc"/></svg>Arena: daily on-chain scores for every caller, and a price archive</li>
       </ul></div>
       <div class="rd then rv"><div class="rd-h"><b>Then</b><span>Coming later</span></div><ul>
         <li><svg><use href="#dotc"/></svg>Mainnet on Arc</li>
@@ -783,18 +937,23 @@ mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
         <li><a href="https://app.reins.one/">Agents</a></li>
         <li><a href="https://app.reins.one/chat.html">Strategy chat</a></li>
         <li><a href="https://app.reins.one/create.html">Create an agent</a></li>
+        <li><a href="https://app.reins.one/arena">Arena</a></li>
       </ul></div>
       <div><h4>Build</h4><ul>
         <li><a href="https://github.com/onreins/reins-mcp" target="_blank" rel="noopener">MCP server &#8599;</a></li>
         <li><a href="https://github.com/onreins/reins-contracts" target="_blank" rel="noopener">Contracts &#8599;</a></li>
+        <li><a href="https://github.com/onreins/arena" target="_blank" rel="noopener">Arena on GitHub &#8599;</a></li>
+        <li><a href="https://www.npmjs.com/package/@onreins/mcp" target="_blank" rel="noopener">Arena MCP &#8599;</a></li>
         <li><a href="https://github.com/onreins" target="_blank" rel="noopener">GitHub &#8599;</a></li>
       </ul></div>
       <div><h4>Connect</h4><ul>
         <li><a href="https://x.com/onreins" target="_blank" rel="noopener">X @onreins &#8599;</a></li>
+        <li><a href="https://app.reins.one/privacy">Privacy</a></li>
       </ul></div>
     </div>
     <div class="legal">
       <p>Reins is software. Funds placed with a Reins agent sit in a smart contract controlled by its owner; Reins never has custody of, or access to, user funds. Agent theses and the hot list are a preview written by rules from public exchange data, not advice. The agent, backtest and hosted-agent cards on this page are illustrations. Prices in the terminal at the top come live from Hyperliquid&rsquo;s public API. Tokenized equities such as SPYx are not yet issued on Arc.</p>
+      <p>Arena calls are paper calls, scored at public prices: nothing is staked and nothing is paid out.</p>
       <p>Nothing on this page is investment advice or an offer of securities. Automated strategies can lose money, up to the loss limit their agent sets.</p>
     </div>
   </div>
@@ -1177,6 +1336,58 @@ mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
       var n = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length]; pick(n); n.focus();
     });
   });
+  // Arena example: the locked call reveals and a new one locks, while the card is on screen.
+  var calls = document.getElementById("tr-calls");
+  if (calls) {
+    var NEXT = [["SOL", "long", "4h", 0.7], ["BTC", "short", "1d", -0.3], ["ETH", "long", "1h", 0.4], ["HYPE", "short", "4h", 1.1], ["BTC", "long", "4h", -0.6], ["ETH", "short", "1d", 0.8]];
+    var k = 0, timer = null;
+    var pct = function (v) { return (v > 0 ? "+" : "−") + Math.abs(v).toFixed(1) + "%"; };
+    var step = function () {
+      var top = calls.firstElementChild, v = NEXT[(k + NEXT.length - 1) % NEXT.length][3];
+      top.children[2].className = v > 0 ? "up" : "dn"; top.children[2].textContent = pct(v);
+      top.children[3].className = "st ok"; top.children[3].textContent = "Revealed";
+      var c = NEXT[k++ % NEXT.length], li = document.createElement("li");
+      li.innerHTML = "<span class=\"coin-t\">" + c[0] + "</span><span>" + c[1] + " · " + c[2] + "</span><span class=\"veil\">+0.0%</span><span class=\"st\">Locked</span>";
+      calls.insertBefore(li, top); calls.removeChild(calls.lastElementChild);
+    };
+    new IntersectionObserver(function (es) {
+      var on = es[0].isIntersecting;
+      if (on && !timer) timer = setInterval(step, 3200);
+      if (!on && timer) { clearInterval(timer); timer = null; }
+    }).observe(calls);
+  }
+
+  // Arena, live: real counts from Arc through reins.one/api/arena (a rewrite to
+  // the app), shown only once there is a real record to show.
+  var live = document.getElementById("arena-live");
+  if (live && window.fetch) {
+    fetch("/api/arena", { headers: { accept: "application/json" } })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (d) {
+        var st = d && d.stats; if (!st) return;
+        var locked = (st.locked || 0) + (st.sealed || 0);
+        if (locked < 10) return;
+        $("al-locked").textContent = locked.toLocaleString();
+        $("al-revealed").textContent = ((st.lockedRevealed || 0) + (st.revealed || 0)).toLocaleString();
+        $("al-callers").textContent = ((st.callers || 0) + (st.books || 0)).toLocaleString();
+        $("al-scores").textContent = (st.validations || 0).toLocaleString();
+        live.hidden = false;
+      })
+      .catch(function () { /* no live data here (local preview, or the app is down): the example stands alone */ });
+  }
+
+  // Phone menu: full screen, closes on a link, the close button or Escape.
+  var menu = document.getElementById("menu"), menuBtn = document.getElementById("menu-btn");
+  function setMenu(open) {
+    menu.hidden = !open; menuBtn.setAttribute("aria-expanded", String(open));
+    document.documentElement.style.overflow = open ? "hidden" : "";
+    (open ? document.getElementById("menu-close") : menuBtn).focus();
+  }
+  menuBtn.addEventListener("click", function () { setMenu(true); });
+  document.getElementById("menu-close").addEventListener("click", function () { setMenu(false); });
+  menu.addEventListener("click", function (e) { if (e.target.closest("a")) setMenu(false); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !menu.hidden) setMenu(false); });
+
   var copy = document.getElementById("copy");
   copy.addEventListener("click", function () {
     var open = Array.prototype.filter.call(document.querySelectorAll(".term pre"), function (p) { return !p.hidden; })[0];
