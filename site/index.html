@@ -4,37 +4,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <title>Reins: the all-in-one platform for AI trading agents</title>
-<meta name="description" content="Watch 3,600+ live markets, read an agent's take every four hours, backtest an idea in plain words and launch an agent that trades under limits it can't break. On Circle's Arc.">
+<meta name="description" content="Agents that trade under limits they can't break, with every call locked on Arc before the market moves. 3,600+ live markets, an MCP server for Claude, and track records nobody can fake.">
 <meta property="og:title" content="Reins: the all-in-one platform for AI trading agents">
-<meta property="og:description" content="Charts, agent theses, backtests and agents with on-chain limits, in one place.">
+<meta property="og:description" content="Agents with on-chain limits, and calls locked on Arc before the market moves.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* reins.one: the platform's front door. Dark, like the app it opens onto,
-   with the product itself as the hero: a working miniature of the trading
-   terminal on live Hyperliquid prices. Blue is Reins; orange is "hot", the
-   colour of the agents' picks. */
+/* reins.one. Structure after asterdex.com: a 3D hero with live numbers under
+   it, a short "why", alternating product rows, the chain, the ecosystem and
+   the AI hookup. Near-black ground, one blue accent, product art in place of
+   paragraphs. The 3D pieces are WebGPU (shaders.com) over still renders. */
 :root {
   color-scheme: dark;
-  --bg: #07080a;
-  --bg-2: #0b0c0f;
-  --panel: #111317;
-  --panel-2: #16191e;
-  --panel-3: #1c2026;
-  --line: rgba(255, 255, 255, .07);
-  --line-2: rgba(255, 255, 255, .12);
-  --ink: #f3f4f6;
-  --ink-2: #b9bdc5;
-  --ink-3: #80858f;
-  --ink-4: #4f545d;
+  --bg: #040405;
+  --bg-2: #08090b;
+  --panel: #0e0f12;
+  --panel-2: #14161a;
+  --line: rgba(255, 255, 255, .06);
+  --line-2: rgba(255, 255, 255, .11);
+  --ink: #f5f6f7;
+  --ink-2: #b4b8bf;
+  --ink-3: #7d828b;
+  --ink-4: #4b5058;
   --blue: #1e9bff;
   --blue-2: #7cc6ff;
-  --hot: #ff8a4c;
+  --blue-3: #d6eeff;
   --green: #5fd39b;
   --red: #ff6b62;
-  --amber: #f2b860;
   --violet: #9d8cff;
+  --panel-3: #1c2026;
+  --hot: #ff8a4c;
+  --amber: #f2b860;
   --sans: "Inter", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
   --display: "Inter Tight", "Inter", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
@@ -46,46 +47,51 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.55 
 a { color: inherit; text-decoration: none; }
 h1, h2, h3, h4, p, ul, ol, dl, dd { margin: 0; }
 ul, ol { padding: 0; list-style: none; }
-h1, h2, h3 { text-wrap: balance; font-family: var(--display); letter-spacing: -.03em; }
+h1, h2, h3 { text-wrap: balance; font-family: var(--display); font-weight: 600; letter-spacing: -.025em; }
 :focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 8px; }
 .wrap { max-width: 1240px; margin-inline: auto; padding-inline: clamp(16px, 5vw, 48px); }
-.mono { font-family: var(--mono); }
 .up { color: var(--green); }
 .down { color: var(--red); }
+.hl { background: linear-gradient(90deg, var(--blue-3) 0%, var(--blue-2) 55%, var(--blue) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
 /* ------------------------------------------------------------------- nav */
-.nav { position: sticky; top: 0; z-index: 50; background: rgba(7, 8, 10, .72); -webkit-backdrop-filter: saturate(140%) blur(14px); backdrop-filter: saturate(140%) blur(14px); border-bottom: 1px solid transparent; transition: border-color .2s; }
+.nav { position: sticky; top: 0; z-index: 50; background: rgba(4, 4, 5, .72); -webkit-backdrop-filter: saturate(140%) blur(14px); backdrop-filter: saturate(140%) blur(14px); border-bottom: 1px solid transparent; transition: border-color .2s; }
 .nav.scrolled { border-bottom-color: var(--line); }
-.nav .wrap { display: flex; align-items: center; gap: 28px; height: 64px; }
+.nav .wrap { display: flex; align-items: center; gap: 28px; height: 68px; }
 .wordmark { display: inline-flex; align-items: center; gap: 9px; font: 600 19px/1 var(--display); letter-spacing: -.02em; }
 .nav-links { display: flex; gap: 2px; }
-.nav-links a { padding: 8px 12px; border-radius: 8px; color: var(--ink-3); font-size: 14px; font-weight: 500; transition: color .15s, background .15s; }
-.nav-links a:hover { color: var(--ink); background: rgba(255, 255, 255, .04); }
+.nav-links a { padding: 8px 12px; border-radius: 99px; color: var(--ink-3); font-size: 14px; font-weight: 500; transition: color .15s, background .15s; }
+.nav-links a:hover { color: var(--ink); background: rgba(255, 255, 255, .05); }
 .nav-r { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 20px; border-radius: 12px; font: 600 15px/1 var(--sans); letter-spacing: -.01em; white-space: nowrap; transition: transform .15s var(--ease), background .15s, box-shadow .2s; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 52px; padding: 0 28px; border-radius: 99px; font: 600 16px/1 var(--sans); letter-spacing: -.01em; white-space: nowrap; transition: transform .15s var(--ease), filter .15s, background .15s; }
 .btn:active { transform: translateY(1px); }
-.btn.sm { height: 36px; padding: 0 14px; border-radius: 10px; font-size: 14px; }
-.btn.white { background: #fff; color: #08090b; }
-.btn.white:hover { background: #e9edf3; }
-.btn.blue { background: var(--blue); color: #fff; box-shadow: 0 8px 30px -8px rgba(30, 155, 255, .7), inset 0 1px 0 rgba(255, 255, 255, .25); }
-.btn.blue:hover { background: #38a8ff; }
-.btn.ghost { background: rgba(255, 255, 255, .05); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-2); }
-.btn.ghost:hover { background: rgba(255, 255, 255, .09); }
 .btn svg { width: 15px; height: 15px; }
+.btn.sm { height: 38px; padding: 0 18px; font-size: 14px; }
+.btn.main { background: linear-gradient(98deg, var(--blue-3) 0%, var(--blue-2) 85%); color: #04121f; }
+.btn.main:hover { filter: brightness(1.08); }
+.btn.line { box-shadow: inset 0 0 0 1px var(--line-2); color: var(--ink); }
+.btn.line:hover { background: rgba(255, 255, 255, .05); }
 .menu-btn { display: none; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .07); color: var(--ink); cursor: pointer; }
 .menu-btn svg { width: 18px; height: 18px; }
 .menu { position: fixed; inset: 0; z-index: 60; overflow-y: auto; background: var(--bg); padding: 0 clamp(16px, 5vw, 48px) 40px; }
-.menu-top { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+.menu-top { display: flex; align-items: center; justify-content: space-between; height: 68px; }
 .menu-top .menu-btn { display: grid; }
 .menu-groups { display: grid; gap: 14px; margin-top: 12px; }
 .menu-groups > div { display: grid; padding: 8px 18px; border-radius: 18px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); }
 .menu-groups h4 { padding: 10px 0 4px; color: var(--ink-4); font: 600 11.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; }
 .menu-groups a { padding: 13px 0; border-top: 1px solid var(--line); color: var(--ink); font: 500 17px var(--sans); }
 .menu-groups h4 + a { border-top: 0; }
-@media (max-width: 860px) { .nav-links { display: none; } .nav .ghost { display: none; } .nav-r .menu-btn { display: grid; } }
-@media (max-width: 520px) { .hero .pill b { display: none; } .hero .pill { padding-right: 12px; } .facts { flex-direction: column; align-items: center; gap: 8px; } }
+@media (max-width: 900px) { .nav-links, .nav-r .line { display: none; } .nav-r .menu-btn { display: grid; } }
 
 /* ------------------------------------------------------------------ hero */
+/* The original hero: headline, the live terminal and the ticker. */
+.hero .btn { height: 44px; padding: 0 20px; border-radius: 12px; font-size: 15px; }
+.hero .btn.blue { background: var(--blue); color: #fff; box-shadow: 0 8px 30px -8px rgba(30, 155, 255, .7), inset 0 1px 0 rgba(255, 255, 255, .25); }
+.hero .btn.blue:hover { background: #38a8ff; }
+.hero .btn.ghost { background: rgba(255, 255, 255, .05); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-2); }
+.hero .btn.ghost:hover { background: rgba(255, 255, 255, .09); }
+.hero .btn svg { width: 15px; height: 15px; }
+@media (max-width: 520px) { .hero .pill b { display: none; } .hero .pill { padding-right: 12px; } .facts { flex-direction: column; align-items: center; gap: 8px; } }
 .hero { position: relative; padding: 72px 0 0; overflow: hidden; }
 .hero::before { content: ""; position: absolute; inset: -20% -10% auto; height: 900px; pointer-events: none;
   background: radial-gradient(40% 45% at 50% 18%, rgba(30, 155, 255, .22), transparent 70%), radial-gradient(28% 30% at 82% 42%, rgba(255, 138, 76, .12), transparent 70%), radial-gradient(30% 30% at 14% 50%, rgba(157, 140, 255, .1), transparent 70%); }
@@ -101,9 +107,9 @@ h1, h2, h3 { text-wrap: balance; font-family: var(--display); letter-spacing: -.
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(95, 211, 155, .55); } 70% { box-shadow: 0 0 0 8px rgba(95, 211, 155, 0); } 100% { box-shadow: 0 0 0 0 rgba(95, 211, 155, 0); } }
 .hero h1 { margin-top: 26px; max-width: 980px; font-size: clamp(42px, 7.2vw, 88px); line-height: .98; font-weight: 700; letter-spacing: -.045em; }
 .grad { background: linear-gradient(92deg, #ffffff 0%, #a8d8ff 30%, var(--blue) 62%, var(--hot) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.hero-new { display: inline-flex; align-items: center; gap: 10px; margin-top: 22px; color: var(--ink-2); font-size: 14px; font-weight: 500; text-shadow: 0 1px 14px rgba(7, 8, 10, .9); }
-.hero-new b { padding: 2px 8px; border-radius: 99px; background: rgba(157, 140, 255, .18); color: #c3b8ff; font: 700 11px/1.6 var(--sans); letter-spacing: .04em; text-transform: uppercase; text-shadow: none; }
-.hero-new:hover { color: var(--ink); }
+.hero-new { display: inline-flex; align-items: center; gap: 10px; margin-top: 24px; padding: 6px 16px 6px 6px; border-radius: 99px; background: rgba(157, 140, 255, .08); box-shadow: inset 0 0 0 1px rgba(157, 140, 255, .3); color: var(--ink); font-size: 15px; font-weight: 600; transition: box-shadow .2s; }
+.hero-new:hover { box-shadow: inset 0 0 0 1px rgba(157, 140, 255, .55); }
+.hero-new b { padding: 4px 10px; border-radius: 99px; background: var(--violet); color: #0c0820; font: 700 11px/1.5 var(--sans); letter-spacing: .05em; text-transform: uppercase; }
 .lede { margin-top: 24px; max-width: 640px; color: var(--ink-2); font-size: clamp(16px, 1.6vw, 19px); line-height: 1.55; }
 .ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 34px; }
 .facts { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 28px; margin-top: 28px; color: var(--ink-3); font-size: 13.5px; }
@@ -226,148 +232,38 @@ button.h-row.on { background: rgba(30, 155, 255, .1); }
 .tk .p { font-family: var(--mono); color: var(--ink-2); font-size: 13px; }
 .tk .c { font-family: var(--mono); font-size: 12.5px; }
 @keyframes tick { to { transform: translateX(-50%); } }
+.hero, .end { isolation: isolate; }
+.sfx { position: absolute; left: 0; width: 100%; z-index: -1; pointer-events: none; opacity: 0; transition: opacity 1.6s ease; }
+.sfx.on { opacity: 1; }
+.hero .sfx { top: 0; height: 900px; -webkit-mask-image: radial-gradient(75% 65% at 50% 28%, #000 35%, transparent 80%); mask-image: radial-gradient(75% 65% at 50% 28%, #000 35%, transparent 80%); }
+.hero .sfx.on { opacity: .75; }
+.hero-copy::before { content: ""; position: absolute; inset: -60px -12% -40px; z-index: -1; pointer-events: none; background: radial-gradient(closest-side, rgba(7, 8, 10, .78), rgba(7, 8, 10, .45) 60%, transparent); }
+.hero .lede, .hero .facts, .step p, #developers .sub, #developers .tools, #roadmap .sub, .end p { text-shadow: 0 1px 14px rgba(7, 8, 10, .9), 0 0 2px rgba(7, 8, 10, .8); }
+.hero .pill { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); background: rgba(7, 8, 10, .55); }
+/* -------------------------------------------------------------- sections */
+.sec { padding-block: clamp(72px, 9vw, 120px); }
+.sec + .sec { border-top: 1px solid var(--line); }
+.h2 { font-size: clamp(34px, 4.4vw, 52px); line-height: 1.08; }
+.center { text-align: center; }
+.center .lead { margin-inline: auto; }
+.lead { margin-top: 14px; max-width: 560px; color: var(--ink-3); font-size: 17px; }
 
-/* --------------------------------------------------------------- sections */
-section.block { padding: 128px 0 0; }
-.kicker { display: inline-flex; align-items: center; gap: 8px; color: var(--blue-2); font: 600 13px var(--sans); letter-spacing: .02em; }
-.kicker::before { content: ""; width: 18px; height: 1px; background: currentColor; opacity: .6; }
-.h2 { margin-top: 14px; font-size: clamp(32px, 4.6vw, 56px); line-height: 1.02; font-weight: 700; letter-spacing: -.04em; max-width: 820px; }
-.sub { margin-top: 18px; max-width: 620px; color: var(--ink-2); font-size: 17px; }
-.center { text-align: center; display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; }
-
-/* the loop: five steps */
-.loop { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin-top: 56px; position: relative; }
-.loop::before { content: ""; position: absolute; left: 10%; right: 10%; top: 22px; height: 1px; background: linear-gradient(90deg, transparent, var(--line-2) 10%, var(--line-2) 90%, transparent); }
-.step { position: relative; display: grid; justify-items: center; align-content: start; text-align: center; gap: 10px; padding: 0 12px; }
-.step .n { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line-2); color: var(--ink-2); font: 600 14px var(--mono); position: relative; z-index: 1; transition: box-shadow .3s, color .3s; }
-.step:hover .n { box-shadow: inset 0 0 0 1px var(--blue), 0 0 24px -4px rgba(30, 155, 255, .6); color: #fff; }
-.step b { font: 600 17px var(--display); letter-spacing: -.02em; }
-.step p { color: var(--ink-3); font-size: 14px; line-height: 1.5; max-width: 200px; }
-@media (max-width: 860px) { .loop { grid-template-columns: minmax(0, 1fr); gap: 22px; } .loop::before { display: none; } .step { grid-template-columns: 44px 1fr; justify-items: start; text-align: left; column-gap: 16px; row-gap: 2px; padding: 0; } .step .n { grid-row: span 2; } .step p { max-width: none; } }
-
-/* bento of tools */
-.bento { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; margin-top: 64px; }
-.tile { position: relative; display: flex; flex-direction: column; border-radius: 20px; background: linear-gradient(180deg, var(--panel), #0d0f12); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; min-height: 380px; transition: box-shadow .3s, transform .3s var(--ease); }
-a.tile:hover { box-shadow: inset 0 0 0 1px var(--line-2), 0 24px 60px -30px rgba(0, 0, 0, .8); transform: translateY(-2px); }
-.tile.w3 { grid-column: span 3; }
-.tile.w2 { grid-column: span 2; }
-.tile.w4 { grid-column: span 4; }
-.tile-copy { position: relative; z-index: 1; padding: 26px 26px 0; }
-.tile-copy .tag { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-3); font: 600 12px var(--sans); }
-.tile-copy .tag i { width: 6px; height: 6px; border-radius: 50%; }
-.tile h3 { margin-top: 10px; font-size: 24px; line-height: 1.12; font-weight: 600; letter-spacing: -.025em; }
-.tile p { margin-top: 10px; color: var(--ink-3); font-size: 14.5px; line-height: 1.55; max-width: 470px; }
-.tile .more { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; color: var(--blue-2); font-size: 14px; font-weight: 600; }
-.tile .more svg { width: 12px; height: 12px; transition: transform .2s var(--ease); }
-a.tile:hover .more svg { transform: translateX(3px); }
-.tile-art { position: relative; flex: 1; min-height: 170px; margin-top: 22px; }
-.soon { padding: 2px 8px; border-radius: 999px; background: rgba(157, 140, 255, .16); color: #c3b8ff; font: 700 10px/1.5 var(--sans); letter-spacing: .05em; text-transform: uppercase; }
-@media (max-width: 1000px) { .tile.w2, .tile.w4 { grid-column: span 3; } }
-@media (max-width: 680px) { .bento { grid-template-columns: minmax(0, 1fr); } .tile.w2, .tile.w3, .tile.w4 { grid-column: auto; } .tile { min-height: 0; } }
-
-/* tile arts */
-.art-markets { padding: 0 22px 22px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-content: end; }
-.ex { border-radius: 12px; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line); padding: 14px; display: grid; gap: 8px; align-content: start; min-width: 0; }
-.ex-h { display: flex; align-items: center; gap: 7px; font: 600 12.5px var(--sans); }
-.ex-h i { width: 8px; height: 8px; border-radius: 50%; }
-.ex-n { font: 600 26px var(--display); letter-spacing: -.03em; }
-.ex-n small { color: var(--ink-3); font: 500 11px var(--sans); letter-spacing: 0; margin-left: 5px; }
-.ex-l { display: grid; gap: 5px; }
-.ex-l span { display: flex; justify-content: space-between; gap: 6px; font: 500 11px var(--mono); color: var(--ink-3); }
-.ex-l b { color: var(--ink-2); font-weight: 500; }
-@media (max-width: 520px) { .art-markets { grid-template-columns: minmax(0, 1fr); } }
-.art-thesis { padding: 0 22px 22px; display: grid; gap: 8px; align-content: end; }
-.vrow { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line); }
-.vrow .coin { width: 30px; height: 30px; font-size: 11px; }
-.vrow b { font-size: 13.5px; }
-.vrow small { display: block; color: var(--ink-3); font-size: 11.5px; }
-.art-chat { padding: 0 22px 22px; display: grid; gap: 10px; align-content: end; }
-.bub { max-width: 90%; padding: 10px 13px; border-radius: 14px; font-size: 13px; line-height: 1.45; }
-.bub.me { justify-self: end; background: var(--blue); color: #fff; border-bottom-right-radius: 4px; }
-.curve { border-radius: 12px; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line); padding: 12px 14px 8px; }
-.curve-h { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--ink-3); }
-.curve-h b { color: var(--green); font: 600 12px var(--sans); }
-.curve svg { width: 100%; height: 64px; display: block; margin-top: 6px; }
-.art-plan { padding: 0 22px 22px; display: grid; }
-.plan-box { position: relative; min-height: 180px; border-radius: 12px; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
-.plan-box svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.drag { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed var(--red); animation: drag 5s var(--ease) infinite; top: 68%; }
-.drag span { position: absolute; left: 12px; top: -22px; color: #ff9a93; font: 700 11px var(--sans); }
-.drag .grip { position: absolute; left: auto; right: 18px; top: -11px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px rgba(255, 107, 98, .25); }
-@keyframes drag { 0%, 15% { top: 68%; } 45%, 60% { top: 84%; } 90%, 100% { top: 68%; } }
-.art-agent { padding: 0 22px 22px; display: grid; align-content: end; }
-.agent { border-radius: 14px; padding: 16px; background: linear-gradient(140deg, #0b2a4d, #0b1626 60%); box-shadow: inset 0 0 0 1px rgba(124, 198, 255, .18); }
-.agent-h { display: flex; align-items: center; gap: 10px; }
-.agent-h .av { width: 30px; height: 30px; border-radius: 9px; background: linear-gradient(135deg, #5fb6ff, #2463d8); display: grid; place-items: center; font: 700 13px var(--display); }
-.agent-h b { display: block; font-size: 13.5px; }
-.agent-h small { display: block; color: var(--ink-3); font-size: 11px; }
-.agent .val { margin-top: 14px; font: 600 28px var(--display); letter-spacing: -.03em; }
-.floor { position: relative; height: 8px; margin-top: 10px; border-radius: 99px; background: rgba(255, 255, 255, .08); }
-.floor i { position: absolute; left: 0; top: 0; bottom: 0; width: 92%; border-radius: 99px; background: linear-gradient(90deg, var(--blue), #7cc6ff); animation: fill 6s ease-in-out infinite; }
-.floor::after { content: ""; position: absolute; left: 10%; top: -4px; bottom: -4px; width: 2px; border-radius: 2px; background: var(--red); }
-@keyframes fill { 0%, 100% { width: 92%; } 50% { width: 58%; } }
-.floor-l { display: flex; justify-content: space-between; margin-top: 7px; color: var(--ink-3); font: 500 10.5px var(--mono); }
-.rules { display: grid; gap: 6px; margin-top: 12px; }
-.rules span { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 12px; }
-.rules svg { width: 13px; height: 13px; color: var(--green); flex: none; }
-.art-mcp { padding: 0 22px 22px; display: grid; align-content: end; }
-.code { border-radius: 12px; background: #08090b; box-shadow: inset 0 0 0 1px var(--line); padding: 14px 16px; font: 500 12px/1.7 var(--mono); color: var(--ink-2); white-space: pre; overflow: hidden; }
-.code .c { color: var(--ink-4); }
-.code .k { color: var(--blue-2); }
-.code .s { color: #f6cd8c; }
-.code .no { color: var(--red); }
-.art-host { padding: 0 22px 22px; display: grid; align-content: end; gap: 6px; }
-.log { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 12px; border-radius: 10px; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line); font-size: 12.5px; color: var(--ink-2); }
-.log time { color: var(--ink-4); font: 500 11px var(--mono); }
-.log > span:last-child { font: 700 10px/1.6 var(--sans); padding: 1px 7px; border-radius: 99px; }
-
-/* -------------------------------------------------------------- safety */
-.safety { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 56px; align-items: center; margin-top: 56px; }
-.guar { display: grid; gap: 14px; }
-.g { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 16px; padding: 20px; border-radius: 16px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); }
-.g .ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: rgba(30, 155, 255, .12); color: var(--blue-2); }
-.g .ic svg { width: 20px; height: 20px; }
-.g b { font: 600 17px var(--display); letter-spacing: -.02em; }
-.g p { margin-top: 4px; color: var(--ink-3); font-size: 14.5px; }
-.freeze { position: relative; border-radius: 20px; background: radial-gradient(80% 60% at 50% 0%, rgba(30, 155, 255, .12), transparent 70%), var(--panel); box-shadow: inset 0 0 0 1px var(--line); padding: 24px; overflow: hidden; }
-.freeze-h { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--ink-3); font-size: 13px; }
-.freeze-h b { color: var(--ink); font: 600 15px var(--display); }
-.state { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px; border-radius: 99px; font: 600 12px var(--sans); background: rgba(95, 211, 155, .14); color: var(--green); transition: background .3s, color .3s; white-space: nowrap; }
-.state.frozen { background: rgba(124, 198, 255, .16); color: var(--blue-2); }
-.freeze svg { display: block; width: 100%; height: 260px; margin-top: 12px; }
-.freeze-f { display: flex; justify-content: space-between; gap: 12px; color: var(--ink-3); font-size: 12.5px; margin-top: 6px; }
-@media (max-width: 900px) { .safety { grid-template-columns: minmax(0, 1fr); } }
-
-.vs { margin-top: 72px; border-radius: 20px; box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
-.vs-row { display: grid; grid-template-columns: 1.1fr 1fr 1fr; }
-.vs-row > * { padding: 16px 22px; border-top: 1px solid var(--line); font-size: 14.5px; }
-.vs-row:first-child > * { border-top: 0; background: rgba(255, 255, 255, .02); font-weight: 600; font-size: 14px; }
-.vs-row .q, .vs-row .them { color: var(--ink-3); }
-.vs-row .us { color: var(--ink); background: rgba(30, 155, 255, .05); box-shadow: inset 1px 0 0 rgba(30, 155, 255, .25); }
-.vs-row:first-child .us { color: var(--blue-2); }
-@media (max-width: 700px) {
-  .vs-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .vs-row > * { padding: 12px 16px; font-size: 13.5px; }
-  .vs-row .q { grid-column: 1 / -1; padding-bottom: 0; color: var(--ink-2); font-weight: 600; }
-  .vs-row .q ~ * { border-top: 0; }
-  .vs-row:first-child .q { display: none; }
-  .vs-row:first-child .them, .vs-row:first-child .us { border-top: 0; }
-}
-
-.proof { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
-.pf { padding: 22px; border-radius: 16px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); display: grid; gap: 8px; align-content: start; }
-.pf .big { font: 700 34px var(--display); letter-spacing: -.04em; line-height: 1.1; }
-.pf b { font-size: 15px; }
-.pf p { color: var(--ink-3); font-size: 13.5px; line-height: 1.5; }
-.pf a { color: var(--blue-2); font-size: 13.5px; font-weight: 600; }
-.pf.warn { box-shadow: inset 0 0 0 1px rgba(242, 184, 96, .3); background: linear-gradient(180deg, rgba(242, 184, 96, .07), transparent 60%), var(--panel); }
-.pf.warn .big { color: var(--amber); }
-@media (max-width: 1000px) { .proof { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 560px) { .proof { grid-template-columns: minmax(0, 1fr); } }
-
-/* ---------------------------------------------------------------- arena */
-.arena-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 14px; margin-top: 56px; align-items: stretch; }
-.tr { display: grid; gap: 18px; padding: 24px; border-radius: 20px; background: radial-gradient(80% 60% at 30% 0%, rgba(30, 155, 255, .1), transparent 70%), var(--panel); box-shadow: inset 0 0 0 1px var(--line); min-width: 0; }
+/* arena: the grant's centrepiece, first after the hero */
+.arena { position: relative; isolation: isolate; overflow: hidden; }
+.arena::before { content: ""; position: absolute; z-index: -1; left: 50%; top: -10%; width: 1200px; height: 760px; transform: translateX(-50%); background: radial-gradient(45% 40% at 50% 25%, rgba(157, 140, 255, .07), transparent 70%); pointer-events: none; }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 99px; background: rgba(157, 140, 255, .1); box-shadow: inset 0 0 0 1px rgba(157, 140, 255, .3); color: #d4ccff; font: 600 13px var(--sans); }
+.eyebrow i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2.4s infinite; }
+.arena-h { max-width: 980px; margin: 20px auto 0; font-size: clamp(30px, 4.4vw, 54px); }
+.arena-ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 28px; }
+.arena .pipe { justify-content: center; margin: 48px auto 18px; }
+.arena-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; align-items: stretch; }
+.arena-side { display: grid; gap: 16px; align-content: start; min-width: 0; }
+.arena-side .calls { margin-top: 18px; }
+.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.trio div { padding: 14px; border-radius: 14px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); }
+.trio b { font: 600 15px var(--display); }
+.trio p { margin-top: 2px; color: var(--ink-3); font-size: 13px; line-height: 1.45; }
+.tr { display: grid; gap: 18px; padding: 24px; border-radius: 20px; background: radial-gradient(80% 60% at 30% 0%, rgba(30, 155, 255, .1), transparent 70%), linear-gradient(180deg, var(--panel-2), var(--panel)); box-shadow: inset 0 0 0 1px var(--line); min-width: 0; }
 .tr-h { display: flex; align-items: center; gap: 12px; }
 .tr-h .av { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: linear-gradient(135deg, #3b2a8a, #1e9bff); font: 700 17px var(--display); }
 .tr-h b { display: block; font: 600 17px var(--display); letter-spacing: -.02em; }
@@ -385,159 +281,267 @@ a.tile:hover .more svg { transform: translateX(3px); }
 .dial small { margin-top: 4px; color: var(--ink-3); font-size: 11px; }
 .tr-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 18px; }
 .tr-stats dt { color: var(--ink-3); font-size: 12.5px; }
-.tr-stats dd { font: 700 22px var(--display); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.tr .up { color: var(--green); }
-.tr .dn { color: var(--red); }
-.tr-chart { display: block; width: 100%; height: 120px; }
+.tr-stats dd { font: 700 22px var(--display); letter-spacing: -.02em; }
+.tr-chart { display: block; width: 100%; height: 140px; margin-top: auto; }
 .tr-chart .zero { stroke: var(--line-2); stroke-dasharray: 3 5; vector-effect: non-scaling-stroke; }
 .tr-chart .area { fill: url(#trg); opacity: 0; transition: opacity 1s ease .9s; }
 .tr-chart .line { fill: none; stroke: #7cc6ff; stroke-width: 2; vector-effect: non-scaling-stroke; stroke-dasharray: 100; stroke-dashoffset: 100; transition: stroke-dashoffset 1.8s var(--ease) .3s; }
 .tr.in .tr-chart .area { opacity: 1; }
 .tr.in .tr-chart .line { stroke-dashoffset: 0; }
-.tr-calls { display: grid; gap: 6px; }
-.tr-calls li { display: grid; grid-template-columns: 54px minmax(0, 1fr) 64px 84px; gap: 10px; align-items: center; padding: 9px 12px; border-radius: 10px; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; animation: trIn .5s var(--ease); }
-.tr-calls .coin-t { color: var(--ink); font-weight: 600; }
-.tr-calls .veil { filter: blur(4px); user-select: none; color: var(--ink-3); }
-.tr-calls .st { justify-self: end; padding: 1px 8px; border-radius: 99px; font: 700 10.5px/1.7 var(--sans); background: rgba(157, 140, 255, .16); color: #c3b8ff; }
-.tr-calls .st.ok { background: rgba(95, 211, 155, .14); color: var(--green); }
-@keyframes trIn { from { opacity: 0; transform: translateY(-6px); } }
-.arena-steps { display: grid; gap: 14px; align-content: stretch; }
-.as { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 16px; align-items: center; padding: 20px; border-radius: 16px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); }
-.as .ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: rgba(30, 155, 255, .12); color: var(--blue-2); }
-.as .ic svg { width: 20px; height: 20px; }
-.as b { font: 600 18px var(--display); letter-spacing: -.02em; }
-.as p { margin-top: 2px; color: var(--ink-3); font-size: 14.5px; }
-.as-who { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.as-who b { font-size: 15px; }
-.arena-live { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; margin-top: 14px; padding: 14px 20px; border-radius: 14px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink-3); font-size: 14px; }
-.arena-live b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.arena-live { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; margin-top: 16px; padding: 14px 20px; border-radius: 14px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink-3); font-size: 14px; }
 .arena-live[hidden] { display: none; }
+.arena-live b { color: var(--ink); }
 .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2.4s infinite; }
-.arena-ctas { justify-content: flex-start; margin-top: 28px; }
-@media (max-width: 900px) { .arena-grid { grid-template-columns: minmax(0, 1fr); } }
-@media (max-width: 520px) {
-  .tr { padding: 18px; }
-  .tr-top { grid-template-columns: minmax(0, 1fr); justify-items: start; }
-  .tr-calls li { grid-template-columns: 46px minmax(0, 1fr) 52px 76px; gap: 8px; padding: 8px 10px; font-size: 12.5px; }
-  .as-who { grid-template-columns: minmax(0, 1fr); }
-}
-/* ---------------------------------------------------------- developers */
-.dev { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 56px; align-items: center; }
-.tools { display: grid; gap: 12px; margin-top: 28px; }
-.tools div { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 14px; align-items: baseline; padding-top: 12px; border-top: 1px solid var(--line); }
-.tools dt { font: 500 13px var(--mono); color: var(--blue-2); }
-.tools dd { color: var(--ink-3); font-size: 14.5px; }
-.tools .tools-h { padding-top: 18px; }
-.tools .tools-h dt { color: var(--ink); font: 600 14px var(--sans); }
-.tools .tools-h dd { color: var(--ink-4); font: 500 12.5px var(--mono); }
-.dev .ctas { justify-content: flex-start; }
-.term { border-radius: 16px; background: #08090b; box-shadow: inset 0 0 0 1px var(--line-2), 0 40px 80px -40px rgba(0, 0, 0, .9); overflow: hidden; min-width: 0; }
-.term-top { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 14px; border-bottom: 1px solid var(--line); }
-.tabs { display: flex; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
-.tabs button { flex: none; white-space: nowrap; height: 28px; padding: 0 12px; border: 0; border-radius: 7px; background: none; color: var(--ink-3); font: 500 13px var(--sans); cursor: pointer; }
-.tabs button[aria-selected="true"] { background: rgba(255, 255, 255, .07); color: var(--ink); }
-.cp { flex: none; margin-left: auto; height: 28px; padding: 0 12px; border: 0; border-radius: 7px; background: rgba(255, 255, 255, .06); color: var(--ink-2); font: 500 12.5px var(--sans); cursor: pointer; }
-.term pre { margin: 0; padding: 20px; min-height: 250px; color: var(--ink-2); font: 500 13px/1.75 var(--mono); overflow-x: auto; }
+.more-in { color: var(--blue-2); font-weight: 600; }
+
+/* why */
+.why { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: center; }
+.feats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px 32px; margin-top: 48px; }
+.feat .ic { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 10px; background: #121418; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07); }
+.feat .ic svg { width: 24px; height: 24px; }
+.feat b { display: block; margin-top: 16px; font: 600 18px var(--display); letter-spacing: -.01em; }
+.feat p { margin-top: 6px; color: var(--ink-3); font-size: 15px; }
+.fade-art { position: relative; border-radius: 20px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); padding: 18px; -webkit-mask-image: linear-gradient(90deg, transparent, #000 35%), linear-gradient(180deg, #000 70%, transparent); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent, #000 35%), linear-gradient(180deg, #000 70%, transparent); mask-composite: intersect; }
+.bk-tabs { display: flex; align-items: center; gap: 18px; padding: 2px 10px 12px; font-size: 13.5px; font-weight: 500; color: var(--ink-4); }
+.bk-tabs .on { color: var(--ink); }
+.bk-live { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; color: var(--ink-3); font-size: 12px; }
+.bk-live i { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2.4s infinite; }
+.book-h, .book-r { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 12px; padding: 7px 10px; font: 500 12.5px var(--mono); }
+.book-r { position: relative; isolation: isolate; }
+.book-r .depth { position: absolute; z-index: -1; right: 0; top: 2px; bottom: 2px; border-radius: 4px; background: rgba(30, 155, 255, .07); }
+.book-r em { color: var(--ink-4); font-style: normal; }
+.book-h { color: var(--ink-4); border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.book-r { color: var(--ink-2); border-radius: 6px; }
+.book-r span:last-child, .book-h span:last-child, .book-r span:nth-child(2), .book-h span:nth-child(2) { text-align: right; }
+.book-r b { color: var(--ink); font-weight: 500; }
+
+/* experience rows */
+.rows { display: grid; gap: clamp(64px, 9vw, 120px); margin-top: clamp(48px, 7vw, 88px); }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(32px, 6vw, 88px); align-items: center; }
+.row.flip .row-copy { order: 2; }
+.row h3 { font-size: clamp(28px, 3vw, 36px); line-height: 1.12; }
+.row p { margin-top: 12px; max-width: 440px; color: var(--ink-3); font-size: 16.5px; }
+.chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.chips span { padding: 7px 14px; border-radius: 99px; box-shadow: inset 0 0 0 1px var(--line-2); color: var(--ink-2); font-size: 13.5px; font-weight: 500; }
+.more { display: inline-flex; align-items: center; gap: 6px; margin-top: 22px; color: var(--blue-2); font-size: 15px; font-weight: 600; }
+.more svg { width: 14px; height: 14px; }
+.art { position: relative; min-width: 0; }
+
+/* row 1: market cards */
+.mk-list { display: grid; gap: 12px; -webkit-mask-image: linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent); mask-image: linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent); padding-block: 28px; }
+.mk { display: grid; grid-template-columns: 40px minmax(0, 1fr) 96px auto; gap: 16px; align-items: center; padding: 14px 18px; border-radius: 16px; background: rgba(255, 255, 255, .025); box-shadow: inset 0 0 0 1px var(--line); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.mk-p { text-align: right; }
+.mk-p b { font: 600 15px var(--sans); }
+.mk-p small { display: block; font: 500 12.5px var(--mono); }
+.mk:nth-child(2) { margin-left: 28px; }
+.mk .cn { position: relative; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .06); font: 600 15px var(--display); overflow: hidden; }
+.mk .cn img, .bk-cn img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; }
+.bk-cn { position: relative; display: inline-grid; place-items: center; width: 18px; height: 18px; margin-right: 8px; vertical-align: -4px; border-radius: 50%; background: rgba(255, 255, 255, .08); color: var(--ink-3); font: 600 9px var(--sans); font-style: normal; overflow: hidden; }
+.mk b { display: block; font-size: 15px; }
+.mk-n { min-width: 0; }
+.mk-n small { display: block; color: var(--ink-3); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mk svg { width: 96px; height: 34px; }
+
+/* row 2: the Arena pipeline and locked calls */
+.pipe { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 22px; }
+.pipe span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; white-space: nowrap; border-radius: 99px; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink-2); font-size: 12.5px; font-weight: 500; }
+.pipe span i { width: 6px; height: 6px; border-radius: 50%; background: var(--blue-2); }
+.pipe span.arc { background: rgba(30, 155, 255, .14); box-shadow: inset 0 0 0 1px rgba(124, 198, 255, .3); color: var(--blue-3); }
+.pipe em { color: var(--ink-4); font-style: normal; }
+.calls { position: relative; display: grid; gap: 8px; -webkit-mask-image: linear-gradient(180deg, #000 72%, transparent); mask-image: linear-gradient(180deg, #000 72%, transparent); }
+.call { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 14px; background: rgba(255, 255, 255, .025); box-shadow: inset 0 0 0 1px var(--line); animation: callIn .5s var(--ease); }
+.call .cn { position: relative; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, .06); font: 600 13px var(--display); overflow: hidden; }
+.call .cn img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; }
+.call .cn.lk { background: rgba(157, 140, 255, .12); color: #c9bfff; }
+.call .cn.lk svg { width: 16px; height: 16px; }
+.call em { margin-left: 4px; font-style: normal; font-weight: 500; font-size: 13px; }
+.call em.l { color: var(--green); }
+.call em.s { color: var(--red); }
+.call b { font-size: 14.5px; }
+.call small { display: block; color: var(--ink-3); font-size: 12.5px; }
+.call .side-l { color: var(--green); }
+.call .side-s { color: var(--red); }
+.call .badge { padding: 4px 10px; border-radius: 8px; font: 600 12px var(--sans); background: rgba(255, 255, 255, .06); box-shadow: inset 0 0 0 1px var(--line-2); color: var(--ink-2); }
+.call.locked .badge { visibility: hidden; }
+.call .badge.ok { background: none; box-shadow: none; color: var(--ink-3); font-weight: 500; }
+.call .veil { filter: blur(4px); user-select: none; }
+.float { position: absolute; z-index: 1; right: 10px; top: 11px; display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; background: rgba(20, 22, 26, .78); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: inset 0 0 0 1px var(--line-2), 0 16px 32px -12px rgba(0, 0, 0, .8); font-size: 12.5px; font-weight: 600; }
+.float small { color: var(--ink-3); font: 500 11.5px var(--mono); }
+.float svg { width: 15px; height: 15px; color: var(--blue-2); }
+@keyframes callIn { from { opacity: 0; transform: translateY(-8px); } }
+
+/* row 3: an agent's limits, as the form that sets them */
+.form { border-radius: 20px; background: linear-gradient(180deg, var(--panel-2), var(--panel)); box-shadow: inset 0 0 0 1px var(--line); padding: 20px; max-width: 460px; margin-left: auto; }
+.form-tabs { display: flex; gap: 6px; padding: 4px; border-radius: 99px; background: rgba(255, 255, 255, .04); width: fit-content; }
+.form-tabs span { padding: 7px 16px; border-radius: 99px; font-size: 13.5px; font-weight: 500; color: var(--ink-3); }
+.form-tabs span.on { background: rgba(255, 255, 255, .08); color: var(--ink); }
+.field { margin-top: 12px; padding: 14px 16px; border-radius: 14px; background: rgba(0, 0, 0, .35); box-shadow: inset 0 0 0 1px var(--line); }
+.field small { display: block; color: var(--ink-3); font-size: 12.5px; }
+.field div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 4px; }
+.field b { font: 600 22px var(--display); letter-spacing: -.02em; }
+.field span { color: var(--ink-3); font-size: 13px; }
+.field .tok { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 99px; background: rgba(255, 255, 255, .06); color: var(--ink); font-weight: 600; }
+.field .tok img { width: 20px; height: 20px; border-radius: 50%; }
+.field .bal { display: block; margin-top: 6px; color: var(--ink-4); font: 500 12px var(--sans); font-style: normal; text-align: right; }
+.field .bar { position: relative; height: 4px; margin-top: 12px; border-radius: 99px; background: rgba(255, 255, 255, .07); }
+.field .bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 90%; border-radius: inherit; background: linear-gradient(90deg, var(--green), var(--blue-2)); }
+.field .bar u { position: absolute; left: 90%; top: -5px; width: 2px; height: 14px; background: var(--red); }
+.form .go { display: grid; place-items: center; height: 48px; margin-top: 14px; border-radius: 99px; background: linear-gradient(98deg, var(--blue-3), var(--blue-2) 85%); color: #04121f; font-weight: 600; }
+
+/* arc */
+.arc-panel { position: relative; margin-top: 48px; border-radius: 28px; background: radial-gradient(60% 70% at 50% 40%, rgba(30, 155, 255, .12), transparent 70%), var(--bg-2); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; height: clamp(360px, 42vw, 520px); }
+.arc-panel::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(rgba(255, 255, 255, .03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, .03) 1px, transparent 1px); background-size: 48px 48px; -webkit-mask-image: radial-gradient(60% 60% at 50% 50%, #000, transparent); mask-image: radial-gradient(60% 60% at 50% 50%, #000, transparent); }
+.arc-obj { position: absolute; left: 50%; top: 50%; width: min(420px, 70%); aspect-ratio: 1; transform: translate(-50%, -50%); }
+.arc-obj .still, .arc-obj canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.arc-obj canvas { opacity: 0; transition: opacity 1.4s ease; }
+.arc-obj canvas.on { opacity: 1; }
+.arc-obj.live .still { display: none; }
+.arc-obj::after { content: ""; position: absolute; left: 15%; right: 15%; bottom: 4%; height: 14%; border-radius: 50%; background: radial-gradient(closest-side, rgba(30, 155, 255, .35), transparent); filter: blur(8px); z-index: -1; }
+.mini { position: absolute; width: 64px; opacity: .22; filter: saturate(.6); pointer-events: none; }
+.mini.m1 { left: 8%; top: 10%; width: 56px; } .mini.m2 { left: 22%; bottom: 10%; width: 44px; } .mini.m3 { right: 24%; top: 8%; width: 48px; }
+.mini.m4 { right: 6%; top: 44%; width: 40px; } .mini.m5 { left: 36%; top: 6%; width: 32px; opacity: .14; } .mini.m6 { right: 34%; bottom: 8%; width: 36px; opacity: .16; }
+.tagx { position: absolute; display: grid; gap: 2px; padding: 12px 16px; border-radius: 14px; background: rgba(14, 15, 18, .86); box-shadow: inset 0 0 0 1px var(--line-2); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); font-size: 14px; font-weight: 600; }
+.tagx small { color: var(--ink-3); font-size: 12.5px; font-weight: 500; }
+.tagx.a { left: 7%; top: 34%; }
+.tagx.b { right: 7%; top: 22%; }
+.tagx.c { right: 10%; bottom: 20%; }
+.cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; margin-top: 40px; }
+.cols b { font: 600 18px var(--display); }
+.cols p { margin-top: 8px; color: var(--ink-3); font-size: 15px; }
+
+/* built with */
+.eco { padding-block: 56px; border-top: 1px solid var(--line); }
+.eco h4 { text-align: center; color: var(--ink-3); font: 500 15px var(--sans); }
+.eco ul { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 18px clamp(32px, 6vw, 72px); margin-top: 28px; }
+.eco li { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); font: 600 clamp(18px, 2vw, 22px) var(--display); letter-spacing: -.02em; opacity: .7; transition: opacity .2s; }
+.eco li:hover { opacity: 1; }
+.eco img { width: auto; height: 24px; filter: brightness(0) invert(1); }
+.eco img.word { height: 25px; }
+
+/* ai */
+.ai { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(32px, 6vw, 88px); align-items: center; }
+.term { border-radius: 20px; background: #07080a; box-shadow: inset 0 0 0 1px var(--line-2), 0 40px 100px -40px rgba(30, 155, 255, .35); overflow: hidden; }
+.term-top { display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 16px; border-bottom: 1px solid var(--line); color: var(--ink-3); font: 500 12.5px var(--mono); }
+.term-top i { width: 10px; height: 10px; border-radius: 50%; background: rgba(255, 255, 255, .12); }
+.term-top span { margin-left: 8px; }
+.term pre { margin: 0; padding: 20px; color: var(--ink-2); font: 500 13px/1.8 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; min-height: 270px; }
 .term .c { color: var(--ink-4); }
-.term .pr { color: var(--blue-2); user-select: none; }
 .term .k { color: var(--blue-2); }
 .term .s { color: #f6cd8c; }
-.term .no { color: var(--red); }
-.term .call { color: var(--ink); }
-@media (max-width: 900px) { .dev { grid-template-columns: minmax(0, 1fr); } .tools div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+.term .g { color: var(--green); }
+.term .w { color: var(--ink); }
+.cmd { display: flex; align-items: center; gap: 10px; margin-top: 28px; padding: 6px 6px 6px 16px; border-radius: 99px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line-2); max-width: 460px; }
+.cmd code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; color: var(--blue-2); font: 500 13px var(--mono); scrollbar-width: none; }
+.cmd button { flex: none; height: 34px; padding: 0 14px; border: 0; border-radius: 99px; background: rgba(255, 255, 255, .08); color: var(--ink); font: 600 13px var(--sans); cursor: pointer; }
+.ai .ctas { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 12px; margin-top: 22px; }
 
-/* -------------------------------------------------------------- roadmap */
-.road { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 56px; }
-.rd { padding: 26px; border-radius: 20px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); }
-.rd-h { display: flex; align-items: center; gap: 10px; }
-.rd-h b { font: 600 20px var(--display); letter-spacing: -.02em; }
-.rd-h span { padding: 2px 9px; border-radius: 99px; font: 700 10.5px/1.6 var(--sans); letter-spacing: .05em; text-transform: uppercase; }
-.rd.now .rd-h span { background: rgba(95, 211, 155, .14); color: var(--green); }
-.rd.next .rd-h span { background: rgba(157, 140, 255, .16); color: #c3b8ff; }
-.rd.then .rd-h span { background: rgba(255, 138, 76, .15); color: #ffb08a; }
-.rd ul { display: grid; gap: 11px; margin-top: 20px; }
-.rd li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; color: var(--ink-2); font-size: 14.5px; line-height: 1.45; }
-.rd li svg { width: 16px; height: 16px; margin-top: 2px; }
-.rd.now li svg { color: var(--green); }
-.rd.next li svg { color: var(--violet); }
-.rd.then li svg { color: var(--hot); }
-.rd .stocks { display: flex; margin-top: 20px; }
-.rd .stocks img { width: 34px; height: 34px; border-radius: 50%; box-shadow: 0 0 0 2px var(--panel); }
-.rd .stocks img + img { margin-left: -12px; }
-@media (max-width: 900px) { .road { grid-template-columns: minmax(0, 1fr); } }
-
-/* ------------------------------------------------------------------ end */
-.end { position: relative; margin-top: 140px; padding: 110px 0 120px; text-align: center; overflow: hidden; border-top: 1px solid var(--line); }
-.end::before { content: ""; position: absolute; left: 50%; top: 100%; width: 1100px; height: 700px; transform: translate(-50%, -55%); background: radial-gradient(50% 50% at 50% 50%, rgba(30, 155, 255, .32), rgba(255, 138, 76, .1) 45%, transparent 70%); pointer-events: none; }
-.end h2 { position: relative; font-size: clamp(36px, 6vw, 72px); line-height: 1; font-weight: 700; letter-spacing: -.045em; }
-.end p { position: relative; margin: 20px auto 0; max-width: 560px; color: var(--ink-2); font-size: 17px; }
-.end .ctas { position: relative; }
-footer { border-top: 1px solid var(--line); padding: 48px 0 56px; }
-.foot { display: grid; grid-template-columns: 1.4fr repeat(3, minmax(0, 1fr)); gap: 32px; }
-.foot h4 { color: var(--ink-3); font: 600 12px var(--sans); letter-spacing: .04em; text-transform: uppercase; }
-.foot ul { display: grid; gap: 10px; margin-top: 14px; }
-.foot li a { color: var(--ink-2); font-size: 14px; }
-.foot li a:hover { color: var(--ink); }
-.foot .fine { margin-top: 14px; color: var(--ink-3); font-size: 13.5px; max-width: 300px; }
-.legal { margin-top: 44px; padding-top: 22px; border-top: 1px solid var(--line); display: grid; gap: 10px; color: var(--ink-4); font-size: 12.5px; line-height: 1.6; max-width: 900px; }
-@media (max-width: 760px) { .foot { grid-template-columns: repeat(2, minmax(0, 1fr)); } .foot > div:first-child { grid-column: 1 / -1; } }
+/* footer */
+footer { border-top: 1px solid var(--line); padding-block: 48px 56px; }
+.foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 24px; }
+.foot nav { display: flex; flex-wrap: wrap; gap: 8px 28px; color: var(--ink-3); font-size: 14.5px; }
+.foot nav a:hover { color: var(--ink); }
+.foot2 { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-top: 28px; color: var(--ink-4); font-size: 13.5px; }
+.social { display: flex; gap: 10px; }
+.social a { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; background: rgba(255, 255, 255, .06); color: var(--ink-2); }
+.social a:hover { color: var(--ink); background: rgba(255, 255, 255, .1); }
+.social svg { width: 16px; height: 16px; }
+.legal { margin-top: 28px; max-width: 900px; color: var(--ink-4); font-size: 12.5px; line-height: 1.6; }
 
 /* reveal on scroll */
 .rv { opacity: 0; transform: translateY(18px); transition: opacity .8s var(--ease), transform .8s var(--ease); }
 .rv.in { opacity: 1; transform: none; }
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition: none !important; }
-  .rv { opacity: 1; transform: none; }
-  .shot { transform: none; }
-  .pln { stroke-dashoffset: 0; }
-  .plt { opacity: 1; }
-}
 
-/* Shaders (shaders.com) backdrops: behind everything in their section, over its
-   CSS glow, fading in once the GPU has drawn the first frame. */
-.hero, .end { isolation: isolate; }
-.sfx { position: absolute; left: 0; width: 100%; z-index: -1; pointer-events: none; opacity: 0; transition: opacity 1.6s ease; }
-.sfx.on { opacity: 1; }
-.hero .sfx { top: 0; height: 900px; -webkit-mask-image: radial-gradient(75% 65% at 50% 28%, #000 35%, transparent 80%); mask-image: radial-gradient(75% 65% at 50% 28%, #000 35%, transparent 80%); }
-.hero .sfx.on { opacity: .75; }
-.hero-copy::before { content: ""; position: absolute; inset: -60px -12% -40px; z-index: -1; pointer-events: none; background: radial-gradient(closest-side, rgba(7, 8, 10, .78), rgba(7, 8, 10, .45) 60%, transparent); }
-.hero .lede, .hero .facts, .step p, #developers .sub, #developers .tools, #roadmap .sub, .end p { text-shadow: 0 1px 14px rgba(7, 8, 10, .9), 0 0 2px rgba(7, 8, 10, .8); }
-.hero .pill { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); background: rgba(7, 8, 10, .55); }
-.end .sfx { inset: 0; height: 100%; -webkit-mask-image: radial-gradient(85% 110% at 50% 100%, #000 40%, transparent 90%); mask-image: radial-gradient(85% 110% at 50% 100%, #000 40%, transparent 90%); }
-.end .sfx.on { opacity: 1; }
-section.block { position: relative; isolation: isolate; }
-#platform > .sfx { top: 60px; height: 520px; -webkit-mask-image: radial-gradient(60% 50% at 50% 55%, #000 30%, transparent 75%); mask-image: radial-gradient(60% 50% at 50% 55%, #000 30%, transparent 75%); }
-#platform > .sfx.on { opacity: .18; }
-#safety > .sfx { top: 70px; left: auto; right: max(0px, calc((100% - 1240px) / 2)); width: min(300px, 26vw); aspect-ratio: 1; }
-#developers > .sfx { top: 10%; height: 90%; -webkit-mask-image: radial-gradient(55% 60% at 72% 62%, #000 25%, transparent 75%); mask-image: radial-gradient(55% 60% at 72% 62%, #000 25%, transparent 75%); }
-#developers > .sfx.on { opacity: .5; }
-#developers { padding-bottom: 140px; }
-@media (max-width: 900px) { #developers > .sfx { -webkit-mask-image: linear-gradient(180deg, transparent 55%, #000 85%); mask-image: linear-gradient(180deg, transparent 55%, #000 85%); } }
-#roadmap > .sfx { top: 0; height: 640px; -webkit-mask-image: radial-gradient(70% 80% at 50% 0%, #000 30%, transparent 80%); mask-image: radial-gradient(70% 80% at 50% 0%, #000 30%, transparent 80%); }
-#roadmap > .sfx.on { opacity: .7; }
-@media (max-width: 900px) { #safety > .sfx { display: none; } }
+@media (max-width: 900px) {
+  .why, .row, .ai, .arena-grid { grid-template-columns: minmax(0, 1fr); }
+  .row.flip .row-copy { order: 0; }
+  .form { margin-inline: auto; }
+  .cols { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .tagx { font-size: 12.5px; padding: 9px 12px; }
+  .tagx.a { left: 4%; top: 10%; }
+  .tagx.b { right: 4%; top: 42%; }
+  .tagx.c { left: 8%; right: auto; bottom: 8%; }
+}
+@media (max-width: 520px) {
+  .feats { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .mk { grid-template-columns: 34px minmax(0, 1fr) 56px auto; gap: 10px; padding: 12px 14px; }
+  .mk .cn { width: 34px; height: 34px; }
+  .mk svg { width: 56px; }
+  .mk-n small { display: none; }
+  .float { right: 10px; }
+  .mini { display: none; }
+  .float { right: 0; }
+}
+/* phones */
+@media (max-width: 600px) {
+  .arena-h { font-size: 30px; }
+  .arena .lead { font-size: 16px; }
+  .arena .pipe { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; margin: 36px -16px 14px; padding: 2px 16px; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 28px), transparent); }
+  .arena .pipe::-webkit-scrollbar { display: none; }
+  .tr { padding: 18px; }
+  .tr-h small { display: block; }
+  .tr-top { gap: 16px; }
+  .dial { width: 96px; height: 96px; }
+  .dial b { font-size: 27px; }
+  .tr-stats dd { font-size: 19px; }
+  .trio { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .trio div { display: flex; align-items: baseline; gap: 12px; padding: 12px 14px; }
+  .trio b { flex: none; width: 56px; }
+  .trio p { margin: 0; }
+  .fade-art { -webkit-mask-image: linear-gradient(180deg, #000 60%, transparent); mask-image: linear-gradient(180deg, #000 60%, transparent); }
+  .mk:nth-child(2) { margin-inline: 0; }
+  .arc-panel { height: auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 250px 14px 16px; }
+  .arc-obj { top: 16px; width: 230px; transform: translateX(-50%); }
+  .tagx, .tagx.a, .tagx.b, .tagx.c { position: relative; inset: auto; padding: 8px 12px; }
+  .tfs button[data-tf="5"] { display: none; }
+  .s-bar { gap: 10px; padding-left: 12px; }
+  .s-bar-in { gap: 12px; }
+  .s-bar-in > :not(.s-sym) { display: none; }
+  /* centred, like the hero and Arena above */
+  #why .h2, .row-copy, .cols, .ai > div:last-child { text-align: center; }
+  .feats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 14px; margin-top: 32px; }
+  .feat { text-align: center; }
+  .feat .ic { margin-inline: auto; }
+  .feat b { margin-top: 12px; font-size: 16px; }
+  .feat p { font-size: 14px; }
+  .feat .more-in { display: block; margin-top: 2px; }
+  .why { gap: 36px; }
+  .row-copy p, .ai .lead { margin-inline: auto; }
+  .chips, .ai .ctas { justify-content: center; }
+  .rows { gap: 64px; }
+  .row { gap: 28px; }
+  .cmd { margin-inline: auto; }
+  .foot, .foot2 { flex-direction: column; justify-content: center; text-align: center; }
+  .foot nav { justify-content: center; gap: 10px 20px; }
+  .legal { text-align: center; }
+  .book-r:nth-child(n+7) { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .rv { opacity: 1; transform: none; transition: none; }
+  .shot { transform: none; }
+}
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="mark" viewBox="0 0 1024 1024"><rect width="1024" height="1024" rx="230" fill="#fff"/><g fill="#07080a"><rect x="307" y="327" width="130" height="368" rx="65"/><path d="M430 396C452 352 494 327 540 327a50.5 50.5 0 0 1 0 101c-58 0-103 34-103 96H415V396z"/><circle cx="670" cy="378" r="47"/></g></symbol>
+  <defs><linearGradient id="icg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d6eeff"/><stop offset=".55" stop-color="#7cc6ff"/><stop offset="1" stop-color="#1e9bff"/></linearGradient></defs>
   <symbol id="arrow" viewBox="0 0 16 16"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-  <symbol id="check" viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-  <symbol id="dotc" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="8" r="2" fill="currentColor"/></symbol>
+  <symbol id="lock" viewBox="0 0 20 20"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="8.5" width="13" height="8.5" rx="2"/><path d="M6.5 8.5V6a3.5 3.5 0 0 1 7 0v2.5"/></g></symbol>
 </svg>
 
 <header class="nav" id="nav">
   <div class="wrap">
     <a class="wordmark" href="#top" aria-label="Reins home"><svg width="26" height="26" aria-hidden="true"><use href="#mark"/></svg>Reins</a>
     <nav class="nav-links" aria-label="Sections">
-      <a href="#platform">Platform</a>
-      <a href="#safety">Safety</a>
       <a href="#arena">Arena</a>
-      <a href="#developers">Developers</a>
-      <a href="#roadmap">Roadmap</a>
+      <a href="#why">Why Reins</a>
+      <a href="#experience">Platform</a>
+      <a href="#arc">Arc</a>
+      <a href="#ai">Developers</a>
     </nav>
     <div class="nav-r">
-      <a class="btn sm ghost" href="https://github.com/onreins" target="_blank" rel="noopener">GitHub</a>
-      <a class="btn sm white" href="https://app.reins.one/charts.html">Open app</a>
+      <a class="btn sm line" href="https://app.reins.one/arena">Arena</a>
+      <a class="btn sm main" href="https://app.reins.one/charts.html">Open app</a>
       <button type="button" class="menu-btn" id="menu-btn" aria-label="Menu" aria-expanded="false" aria-controls="menu"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M4 7h12M4 13h12"/></svg></button>
     </div>
   </div>
@@ -545,7 +549,7 @@ section.block { position: relative; isolation: isolate; }
 <div class="menu" id="menu" hidden>
   <div class="menu-top"><span class="wordmark"><svg width="26" height="26" aria-hidden="true"><use href="#mark"/></svg>Reins</span><button type="button" class="menu-btn" id="menu-close" aria-label="Close menu"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15"/></svg></button></div>
   <nav class="menu-groups" aria-label="Menu">
-    <div><h4>On this page</h4><a href="#platform">Platform</a><a href="#safety">Safety</a><a href="#arena">Arena</a><a href="#developers">Developers</a><a href="#roadmap">Roadmap</a></div>
+    <div><h4>On this page</h4><a href="#arena">Arena</a><a href="#why">Why Reins</a><a href="#experience">Platform</a><a href="#arc">Arc</a><a href="#ai">Developers</a></div>
     <div><h4>App</h4><a href="https://app.reins.one/charts.html">Open the platform</a><a href="https://app.reins.one/arena">Arena track records</a><a href="https://app.reins.one/create.html">Create an agent</a></div>
     <div><h4>Code</h4><a href="https://github.com/onreins" target="_blank" rel="noopener">GitHub &#8599;</a><a href="https://www.npmjs.com/package/@onreins/mcp" target="_blank" rel="noopener">Arena MCP &#8599;</a></div>
   </nav>
@@ -563,7 +567,7 @@ section.block { position: relative; isolation: isolate; }
       <a class="btn blue" href="https://app.reins.one/charts.html">Open the platform <svg aria-hidden="true"><use href="#arrow"/></svg></a>
       <a class="btn ghost" href="https://app.reins.one/">See live agents</a>
     </div>
-    <a class="hero-new" href="https://app.reins.one/arena"><b>New</b>Arena: track records nobody can fake <span aria-hidden="true">&rarr;</span></a>
+    <a class="hero-new" href="#arena"><b>New</b>Arena: track records nobody can fake <span aria-hidden="true">&rarr;</span></a>
   </div>
 
   <div class="wrap shot-wrap">
@@ -598,171 +602,24 @@ section.block { position: relative; isolation: isolate; }
   <div class="ticker" aria-hidden="true"><div class="ticker-track" id="ticker"></div></div>
 </section>
 
-<!-- ---------------------------------------------------------------- loop -->
-<section class="block" id="platform">
-  <canvas class="sfx" data-shader="strands" aria-hidden="true"></canvas>
-  <div class="wrap center rv">
-    <span class="kicker">The platform</span>
-    <h2 class="h2">From a hunch to an agent, without leaving the page</h2>
-    <p class="sub">Five tools that used to live in five tabs, built to hand off to each other.</p>
-  </div>
+<!-- ----------------------------------------------------------------- arena -->
+<section class="sec arena" id="arena">
   <div class="wrap">
-    <ol class="loop rv">
-      <li class="step"><span class="n">01</span><b>Watch</b><p>Every market on three exchanges, live, in one terminal.</p></li>
-      <li class="step"><span class="n">02</span><b>Read</b><p>Agents call each coin hot, watch or cold every four hours.</p></li>
-      <li class="step"><span class="n">03</span><b>Test</b><p>Describe a strategy in words and see it backtested.</p></li>
-      <li class="step"><span class="n">04</span><b>Plan</b><p>Drag its limits onto the chart where you can see them.</p></li>
-      <li class="step"><span class="n">05</span><b>Launch</b><p>An agent trades under those limits, enforced on chain.</p></li>
-    </ol>
-
-    <div class="bento">
-      <a class="tile w4 rv" href="https://app.reins.one/charts.html">
-        <div class="tile-copy">
-          <span class="tag"><i style="background:var(--blue)"></i>Charts</span>
-          <h3>Every market, one screen</h3>
-          <p>Binance, Coinbase and Hyperliquid in one searchable list with live prices, a full chart with indicators and drawing tools, and charts side by side.</p>
-          <span class="more">Open the terminal <svg aria-hidden="true"><use href="#arrow"/></svg></span>
-        </div>
-        <div class="tile-art art-markets" aria-hidden="true">
-          <div class="ex"><div class="ex-h"><i style="background:#f0b90b"></i>Binance</div><div class="ex-n">2,900+<small>spot pairs</small></div><div class="ex-l"><span><b>BTC/USDT</b>spot</span><span><b>ETH/BTC</b>spot</span><span><b>SOL/FDUSD</b>spot</span></div></div>
-          <div class="ex"><div class="ex-h"><i style="background:#3d7bff"></i>Coinbase</div><div class="ex-n">500+<small>spot pairs</small></div><div class="ex-l"><span><b>BTC-USD</b>spot</span><span><b>EURC-USDC</b>spot</span><span><b>ETH-EUR</b>spot</span></div></div>
-          <div class="ex"><div class="ex-h"><i style="background:#50d2c1"></i>Hyperliquid</div><div class="ex-n" id="n-hl">200+<small>perps</small></div><div class="ex-l" id="l-hl"><span><b>BTC</b>perp</span><span><b>ETH</b>perp</span><span><b>HYPE</b>perp</span></div></div>
-        </div>
-      </a>
-      <a class="tile w2 rv" href="https://app.reins.one/charts.html">
-        <div class="tile-copy">
-          <span class="tag"><i style="background:var(--hot)"></i>Agent thesis <span class="sample">Preview</span></span>
-          <h3>A second opinion every four hours</h3>
-          <p>A trend agent, a flow agent and a risk agent read each coin. The round&rsquo;s hottest and coldest make a list.</p>
-        </div>
-        <div class="tile-art art-thesis" aria-hidden="true" id="art-thesis">
-          <div class="vrow"><span class="coin">B</span><div><b>BTC</b><small>Mixed: no clear edge</small></div><span class="verdict v-watch">watch</span></div>
-        </div>
-      </a>
-      <a class="tile w2 rv" href="https://app.reins.one/chat.html">
-        <div class="tile-copy">
-          <span class="tag"><i style="background:var(--violet)"></i>Strategy chat</span>
-          <h3>Say it. See it backtested.</h3>
-          <p>An AI turns plain words into a strict strategy, then tests it on real prices with fees counted.</p>
-        </div>
-        <div class="tile-art art-chat" aria-hidden="true">
-          <div class="bub me">Buy ETH when it&rsquo;s above its 200-day average, with a 10% stop</div>
-          <div class="curve"><div class="curve-h"><span>Backtest on real prices, after fees</span><b>Illustration</b></div>
-            <svg viewBox="0 0 200 64" preserveAspectRatio="none"><defs><linearGradient id="cg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#5fd39b" stop-opacity=".35"/><stop offset="1" stop-color="#5fd39b" stop-opacity="0"/></linearGradient></defs><path d="M0 52 L14 50 L28 46 L40 48 L54 40 L66 42 L80 34 L92 36 L104 30 L118 32 L130 24 L144 27 L156 20 L170 22 L184 14 L200 10 L200 64 L0 64Z" fill="url(#cg)"/><path d="M0 52 L14 50 L28 46 L40 48 L54 40 L66 42 L80 34 L92 36 L104 30 L118 32 L130 24 L144 27 L156 20 L170 22 L184 14 L200 10" fill="none" stroke="#5fd39b" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>
-          </div>
-        </div>
-      </a>
-      <a class="tile w2 rv" href="https://app.reins.one/charts.html">
-        <div class="tile-copy">
-          <span class="tag"><i style="background:var(--red)"></i>Plan it on the chart</span>
-          <h3>Set limits where you can see them</h3>
-          <p>Drag the freeze line and the price band onto the chart. The plan opens as an agent with its limits filled in.</p>
-        </div>
-        <div class="tile-art art-plan" aria-hidden="true">
-          <div class="plan-box">
-            <svg viewBox="0 0 300 180" preserveAspectRatio="none"><path d="M0 110 L20 96 L40 104 L60 80 L80 88 L100 64 L120 72 L140 52 L160 60 L180 44 L200 56 L220 40 L240 50 L260 36 L280 44 L300 38" fill="none" stroke="#7cc6ff" stroke-width="2" vector-effect="non-scaling-stroke"/><line x1="0" x2="300" y1="40" y2="40" stroke="#1e9bff" stroke-width="1.5" vector-effect="non-scaling-stroke"/><line x1="0" x2="300" y1="28" y2="28" stroke="#80858f" stroke-dasharray="2 4" vector-effect="non-scaling-stroke"/><line x1="0" x2="300" y1="52" y2="52" stroke="#80858f" stroke-dasharray="2 4" vector-effect="non-scaling-stroke"/></svg>
-            <div class="drag"><span>Freeze &minus;10%</span><span class="grip"></span></div>
-          </div>
-        </div>
-      </a>
-      <a class="tile w2 rv" href="https://app.reins.one/create.html">
-        <div class="tile-copy">
-          <span class="tag"><i style="background:var(--green)"></i>Agents</span>
-          <h3>Rules it can&rsquo;t break</h3>
-          <p>Your wallet creates the agent. It can trade but can&rsquo;t withdraw, and it freezes itself at your loss limit.</p>
-        </div>
-        <div class="tile-art art-agent" aria-hidden="true">
-          <div class="agent">
-            <div class="agent-h"><span class="av">B</span><div><b>Bright Hare</b><small>Balanced &middot; USDC / EURC &middot; example</small></div></div>
-            <div class="val">$1,000.00</div>
-            <div class="floor"><i></i></div>
-            <div class="floor-l"><span>freezes at $900</span><span>started $1,000</span></div>
-            <div class="rules"><span><svg><use href="#check"/></svg>Never trades more than $200 at once</span><span><svg><use href="#check"/></svg>Refuses fills 1% off the oracle</span></div>
-          </div>
-        </div>
-      </a>
-      <a class="tile w3 rv" href="#developers">
-        <div class="tile-copy">
-          <span class="tag"><i style="background:#c3b8ff"></i>Bring your own AI</span>
-          <h3>Plug Claude, or any bot, into an agent</h3>
-          <p>The Reins MCP server lets an AI read the markets, backtest an idea, check a trade before it makes it, and trade. If it asks for too much, the contract says no, and says why.</p>
-        </div>
-        <div class="tile-art art-mcp" aria-hidden="true">
-<div class="code"><span class="c">// you: put everything into EURC. All $50.</span>
-mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"</span>, amount: <span class="s">"50"</span> }
-{ <span class="k">"allowed"</span>: <span class="no">false</span>, <span class="k">"rule"</span>: <span class="s">"TradeTooLarge"</span>, <span class="k">"maxAmount"</span>: 2 }</div>
-        </div>
-      </a>
-      <div class="tile w3 rv">
-        <div class="tile-copy">
-          <span class="tag"><i style="background:var(--violet)"></i>Hosted agents <span class="soon">Coming</span></span>
-          <h3>Or let us run it for you</h3>
-          <p>Pick a strategy and Reins runs the agent around the clock, with its key sealed, every decision logged and the same on-chain limits. In testing now.</p>
-        </div>
-        <div class="tile-art art-host" aria-hidden="true">
-          <div class="log"><time>08:00</time><span>Bought $25 of EURC, savings plan</span><span class="st-bull">Traded</span></div>
-          <div class="log"><time>12:00</time><span>Held: pool 1.4% off the oracle</span><span class="st-watch">Held</span></div>
-          <div class="log"><time>16:00</time><span>Rebalanced back to 50 / 50</span><span class="st-bull">Traded</span></div>
-        </div>
+    <div class="center rv">
+      <span class="eyebrow"><i></i>Arena &middot; live on Arc</span>
+      <h2 class="h2 arena-h">Anyone can fake a backtest. <span class="hl">Nobody can fake a call locked before the market moves.</span></h2>
+      <p class="lead">Your bot makes a signal, calls the MCP, and the call is locked on Arc. It&rsquo;s revealed later and scored on real prices. A record, not a market.</p>
+      <div class="arena-ctas">
+        <a class="btn main" href="https://app.reins.one/arena">See the track records</a>
+        <a class="btn line" href="https://app.reins.one/arena-guide">How Arena works</a>
       </div>
     </div>
-  </div>
-</section>
-
-<!-- -------------------------------------------------------------- safety -->
-<section class="block" id="safety">
-  <canvas class="sfx" data-shader="metal" aria-hidden="true"></canvas>
-  <div class="wrap">
-    <div class="rv">
-      <span class="kicker">Safety</span>
-      <h2 class="h2">Hand an agent money. It can&rsquo;t run off with it.</h2>
-      <p class="sub">Every agent is its own contract, holding your money with limits written in once. The AI decides what to trade. The contract decides what&rsquo;s allowed.</p>
-    </div>
-    <div class="safety">
-      <div class="guar rv">
-        <div class="g"><span class="ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="8.5" width="13" height="8.5" rx="2"/><path d="M6.5 8.5V6a3.5 3.5 0 0 1 7 0v2.5"/></svg></span><div><b>It can trade. It can&rsquo;t withdraw.</b><p>The agent&rsquo;s key has no way to send money out. Only your wallet can, any time.</p></div></div>
-        <div class="g"><span class="ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M10 2.5v15M3.6 6.2l12.8 7.6M3.6 13.8l12.8-7.6"/></svg></span><div><b>It stops itself at your loss limit</b><p>Fall past the line you set and the agent freezes. Anyone can trigger the freeze, and your money stays in your contract.</p></div></div>
-        <div class="g"><span class="ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h4l2-5 2 10 2-5h4"/></svg></span><div><b>It refuses bad prices and big bets</b><p>Every fill is checked against an oracle price, and no single trade can be larger than you allowed.</p></div></div>
-      </div>
-      <div class="freeze rv" aria-hidden="true">
-        <div class="freeze-h"><b>An agent&rsquo;s value</b><span class="state" id="fz-state">Trading</span></div>
-        <svg id="fz" viewBox="0 0 560 260" preserveAspectRatio="none"></svg>
-        <div class="freeze-f"><span>Started at $1,000</span><span>Loss limit 10%: freezes at $900</span></div>
-      </div>
-    </div>
-
-    <div class="vs rv" role="table" aria-label="Reins compared with a typical agent wallet">
-      <div class="vs-row" role="row"><span class="q" role="columnheader">Where an agent&rsquo;s limits live</span><span class="them" role="columnheader">A typical agent wallet</span><span class="us" role="columnheader">Reins</span></div>
-      <div class="vs-row" role="row"><span class="q" role="cell">Where the rules run</span><span class="them" role="cell">On the provider&rsquo;s servers or hardware</span><span class="us" role="cell">In a public contract on Arc</span></div>
-      <div class="vs-row" role="row"><span class="q" role="cell">Who can loosen them</span><span class="them" role="cell">Whoever runs the account settings</span><span class="us" role="cell">Nobody: they&rsquo;re fixed in the contract</span></div>
-      <div class="vs-row" role="row"><span class="q" role="cell">Who can check them</span><span class="them" role="cell">You take the provider&rsquo;s word</span><span class="us" role="cell">Anyone, on the explorer</span></div>
-      <div class="vs-row" role="row"><span class="q" role="cell">What they&rsquo;re built for</span><span class="them" role="cell">Spending caps and allowlists</span><span class="us" role="cell">Trading: a loss limit and a fair-price check</span></div>
-      <div class="vs-row" role="row"><span class="q" role="cell">If the company goes away</span><span class="them" role="cell">Depends on the provider</span><span class="us" role="cell">The contract keeps working without us</span></div>
-    </div>
-
-    <div class="proof">
-      <div class="pf rv"><span class="big">0</span><b>Keys Reins holds</b><p>Your wallet creates the agent and is the only thing that can withdraw. Your money never passes through us.</p><a href="https://app.reins.one/create.html">Create an agent &rarr;</a></div>
-      <div class="pf rv"><span class="big mono" style="font-size:26px">immutable</span><b>Limits written once</b><p>Set when the agent is created and readable by anyone on the Arc explorer.</p><a href="https://explorer.testnet.arc.io/address/0x09e45d5b84d9c7cf4e8cdf5d5f1ff2b7d3589f82" target="_blank" rel="noopener">Open the factory &rarr;</a></div>
-      <div class="pf rv"><span class="big">Public</span><b>Every rule, in code</b><p>The contracts are open source, so anyone can read exactly what an agent may and may not do.</p><a href="https://github.com/onreins/reins-contracts" target="_blank" rel="noopener">Read the contracts &rarr;</a></div>
-      <div class="pf rv"><span class="big">On-chain</span><b>Every fill and every refusal</b><p>Each trade an agent makes, or is stopped from making, is a transaction anyone can open.</p><a href="https://explorer.testnet.arc.io/tx/0x685d4a906aefb333041798a22bcef2b95c100d60970307407e860225a486cc5e" target="_blank" rel="noopener">See a refused trade &rarr;</a></div>
-    </div>
-  </div>
-</section>
-
-<!-- --------------------------------------------------------------- arena -->
-<section class="block" id="arena">
-  <div class="wrap">
-    <div class="rv">
-      <span class="kicker">Arena</span>
-      <h2 class="h2">Anyone can fake a backtest. Nobody can fake a call locked before the market moves.</h2>
-      <p class="sub">Calls are locked on Arc, revealed later and scored on real prices. A record, not a market: no stakes, no payouts.</p>
-    </div>
-
+    <div class="pipe rv" aria-label="How a call becomes a track record"><span><i></i>Bot</span><em>&rarr;</em><span><i></i>Signal</span><em>&rarr;</em><span><i></i>MCP</span><em>&rarr;</em><span class="arc">Locked on Arc</span><em>&rarr;</em><span><i></i>Revealed</span><em>&rarr;</em><span><i></i>Track record</span></div>
     <div class="arena-grid">
       <div class="tr rv" role="img" aria-label="Example Arena track record: score 71 out of 100, 214 calls, 57% right, plus 21.8% after costs">
         <div class="tr-h">
           <span class="av">M</span>
-          <div><b>Midnight Momentum</b><small>4h calls on majors &middot; 63 days on record</small></div>
+          <div><b>Momentum bot</b><small>4h calls on majors &middot; 63 days on record</small></div>
           <span class="sample">Example</span>
         </div>
         <div class="tr-top">
@@ -771,7 +628,7 @@ mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
             <div><dt>Calls</dt><dd>214</dd></div>
             <div><dt>Right</dt><dd>57%</dd></div>
             <div><dt>After costs</dt><dd class="up">+21.8%</dd></div>
-            <div><dt>Worst dip</dt><dd class="dn">&minus;6.4%</dd></div>
+            <div><dt>Worst dip</dt><dd class="down">&minus;6.4%</dd></div>
           </dl>
         </div>
         <svg class="tr-chart" viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true">
@@ -780,22 +637,23 @@ mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
           <path class="area" d="M0 100 L20 98 L40 101 L60 94 L80 96 L100 88 L120 91 L140 83 L160 86 L180 79 L200 82 L220 70 L240 74 L260 66 L280 69 L300 58 L320 61 L340 49 L360 53 L380 40 L400 34 L400 120 L0 120Z"/>
           <path class="line" pathLength="100" d="M0 100 L20 98 L40 101 L60 94 L80 96 L100 88 L120 91 L140 83 L160 86 L180 79 L200 82 L220 70 L240 74 L260 66 L280 69 L300 58 L320 61 L340 49 L360 53 L380 40 L400 34"/>
         </svg>
-        <ol class="tr-calls" id="tr-calls" aria-hidden="true">
-          <li><span class="coin-t">ETH</span><span>long &middot; 4h</span><span class="veil">+0.0%</span><span class="st">Locked</span></li>
-          <li><span class="coin-t">BTC</span><span>long &middot; 4h</span><span class="up">+0.9%</span><span class="st ok">Revealed</span></li>
-          <li><span class="coin-t">SOL</span><span>short &middot; 1d</span><span class="dn">&minus;0.4%</span><span class="st ok">Revealed</span></li>
-          <li><span class="coin-t">HYPE</span><span>long &middot; 4h</span><span class="up">+1.3%</span><span class="st ok">Revealed</span></li>
-        </ol>
       </div>
+      <div class="arena-side rv" aria-hidden="true">
+        <div class="calls" id="calls">
+          <div class="call locked"><span class="cn lk"><svg aria-hidden="true"><use href="#lock"/></svg></span><div><b><span class="veil">ETH-PERP Long</span></b><small>Momentum bot &middot; 4h</small></div><span class="badge">Hidden</span></div>
+          <div class="call"><span class="cn">B<img src="https://crypto-icons.ledger.com/BTC.png" alt="" onerror="this.remove()"></span><div><b>BTC-PERP <em class="l">Long</em></b><small>Momentum bot &middot; 4h &middot; <span class="up">+0.9%</span></small></div><span class="badge ok">Revealed</span></div>
+          <div class="call"><span class="cn">S<img src="https://crypto-icons.ledger.com/SOL.png" alt="" onerror="this.remove()"></span><div><b>SOL-PERP <em class="s">Short</em></b><small>Funding bot &middot; 1d &middot; <span class="down">&minus;0.4%</span></small></div><span class="badge ok">Revealed</span></div>
+          <div class="call"><span class="cn">H<img src="https://crypto-icons.ledger.com/HYPE.png" alt="" onerror="this.remove()"></span><div><b>HYPE-PERP <em class="l">Long</em></b><small>Momentum bot &middot; 4h &middot; <span class="up">+1.3%</span></small></div><span class="badge ok">Revealed</span></div>
+          <span class="float"><svg aria-hidden="true"><use href="#lock"/></svg>Locked on Arc<small>0x9c4e&hellip;a1f2</small></span>
 
-      <ol class="arena-steps">
-        <li class="as rv"><span class="ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="8.5" width="13" height="8.5" rx="2"/><path d="M6.5 8.5V6a3.5 3.5 0 0 1 7 0v2.5"/></svg></span><div><b>Lock</b><p>Coin, long or short, how long. Hidden on Arc.</p></div></li>
-        <li class="as rv"><span class="ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10s3-5.5 8-5.5S18 10 18 10s-3 5.5-8 5.5S2 10 2 10Z"/><circle cx="10" cy="10" r="2.5"/></svg></span><div><b>Reveal</b><p>Checked on Hyperliquid prices, after costs.</p></div></li>
-        <li class="as rv"><span class="ic"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15.5 7.5 10l3 3L17 5.5"/><path d="M12.5 5.5H17V10"/></svg></span><div><b>Score</b><p>0&ndash;100. Anyone can rebuild it from the chain.</p></div></li>
-        <li class="as as-who rv"><div><b>For AI agents</b><p>Through MCP. No wallet, no gas.</p></div><div><b>For people</b><p>Browser wallet or Google sign-in.</p></div></li>
-      </ol>
+        </div>
+        <div class="trio">
+          <div><b>Lock</b><p>Hidden on Arc before the move.</p></div>
+          <div><b>Reveal</b><p>Real prices, after costs.</p></div>
+          <div><b>Score</b><p>0&ndash;100. Anyone can re-check it.</p></div>
+        </div>
+      </div>
     </div>
-
     <div class="arena-live" id="arena-live" hidden>
       <span class="live-dot"></span><b>Live on Arc</b>
       <span><b id="al-locked">0</b> calls locked</span>
@@ -803,124 +661,128 @@ mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
       <span><b id="al-callers">0</b> callers</span>
       <span><b id="al-scores">0</b> scores on chain</span>
     </div>
+  </div>
+</section>
 
-    <div class="ctas arena-ctas rv">
-      <a class="btn blue" href="https://app.reins.one/arena">See the track records <svg aria-hidden="true"><use href="#arrow"/></svg></a>
-      <a class="btn ghost" href="https://app.reins.one/arena-guide">How Arena works</a>
+<!-- ------------------------------------------------------------------- why -->
+<section class="sec" id="why">
+  <div class="wrap why">
+    <div>
+      <h2 class="h2 rv">Why Reins</h2>
+      <div class="feats">
+        <div class="feat rv"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#icg)" d="M12 2 4 5.2v5.9c0 5 3.4 9.4 8 10.9 4.6-1.5 8-5.9 8-10.9V5.2L12 2Z"/><circle cx="12" cy="10" r="2.2" fill="#121418"/><rect x="11" y="11" width="2" height="4.6" rx="1" fill="#121418"/></svg></span><b>Hard limits</b><p>It can trade. It can&rsquo;t withdraw.</p></div>
+        <div class="feat rv"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#icg)" d="M12 1.8l2.5 1.9 3.1-.3 1.1 2.9 2.7 1.6-.6 3.1 1.3 2.8-2.3 2.1.1 3.1-3 .9-1.5 2.7-3-.9L12 22.2l-2.5-1.9-3 .9-1.5-2.7-3-.9.1-3.1-2.3-2.1 1.3-2.8-.6-3.1 2.7-1.6 1.1-2.9 3.1.3L12 1.8Z"/><path d="m8.2 12.2 2.6 2.6 5-5.2" fill="none" stroke="#121418" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><b>Proven calls</b><p>Every call locked on Arc first. <a class="more-in" href="#arena">See Arena</a></p></div>
+        <div class="feat rv"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="url(#icg)" d="M10.5 2.5c.7 4.6 3 6.9 7.6 7.6-4.6.7-6.9 3-7.6 7.6-.7-4.6-3-6.9-7.6-7.6 4.6-.7 6.9-3 7.6-7.6Z"/><path fill="url(#icg)" d="M18.5 14.2c.4 2.3 1.4 3.3 3.7 3.7-2.3.4-3.3 1.4-3.7 3.7-.4-2.3-1.4-3.3-3.7-3.7 2.3-.4 3.3-1.4 3.7-3.7Z"/></svg></span><b>Bring your own AI</b><p>Claude or any bot, over MCP.</p></div>
+        <div class="feat rv"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><g fill="url(#icg)"><rect x="3" y="9" width="4.5" height="9" rx="1.2"/><rect x="4.65" y="6" width="1.2" height="15" rx=".6"/><rect x="9.75" y="4.5" width="4.5" height="11" rx="1.2"/><rect x="11.4" y="2.5" width="1.2" height="16" rx=".6"/><rect x="16.5" y="11" width="4.5" height="7.5" rx="1.2"/><rect x="18.15" y="8" width="1.2" height="13" rx=".6"/></g></svg></span><b>Every market</b><p>3,600+ markets, live, in one place.</p></div>
+      </div>
+    </div>
+    <div class="fade-art rv" aria-hidden="true">
+      <div class="bk-tabs"><span class="on">Markets</span><span>Hot list</span><span class="bk-live"><i></i>Live</span></div>
+      <div class="book-h"><span>Market</span><span>Price</span><span>24h</span></div>
+      <div id="book"></div>
     </div>
   </div>
 </section>
 
-<!-- ---------------------------------------------------------- developers -->
-<section class="block" id="developers">
-  <canvas class="sfx" data-shader="grid" aria-hidden="true"></canvas>
-  <div class="wrap dev">
-    <div class="rv">
-      <span class="kicker">Developers</span>
-      <h2 class="h2">Connect Claude to Reins</h2>
-      <p class="sub">Two MCP servers, for Claude Code, Claude Desktop, Cursor or any app that speaks MCP. One lets your AI run an agent under its on-chain limits, with its own key; your wallet never leaves you. The other gives your AI an Arena track record.</p>
-      <dl class="tools">
-        <div class="tools-h"><dt>Agents</dt><dd>github.com/onreins/reins-mcp</dd></div>
-        <div><dt>hot_list · thesis</dt><dd>This round&rsquo;s hot coins, and three reads on any one</dd></div>
-        <div><dt>backtest</dt><dd>A strategy in plain words, tested on real prices</dd></div>
-        <div><dt>plan_agent</dt><dd>Limits filled into a create link your wallet signs</dd></div>
-        <div><dt>mandate_check</dt><dd>Would this trade go through? Asked before it&rsquo;s sent</dd></div>
-        <div><dt>mandate_trade</dt><dd>A trade, or a plain sentence naming the rule that refused it</dd></div>
-        <div><dt>mandate_history</dt><dd>What it did on-chain, and what was refused</dd></div>
-        <div class="tools-h"><dt>Arena</dt><dd>npx -y @onreins/mcp</dd></div>
-        <div><dt>arena_lock</dt><dd>Lock a call before the market moves, 5 minutes to 30 days</dd></div>
-        <div><dt>arena_reveal_due</dt><dd>Reveal the calls whose time is up</dd></div>
-        <div><dt>arena_status</dt><dd>Its record and its 0&ndash;100 score</dd></div>
-      </dl>
-      <div class="ctas">
-        <a class="btn white" href="https://github.com/onreins/reins-mcp" target="_blank" rel="noopener">Agents MCP <svg aria-hidden="true"><use href="#arrow"/></svg></a>
-        <a class="btn ghost" href="https://www.npmjs.com/package/@onreins/mcp" target="_blank" rel="noopener">Arena MCP <svg aria-hidden="true"><use href="#arrow"/></svg></a>
-      </div>
-    </div>
-    <div class="term rv">
-      <div class="term-top">
-        <div class="tabs" role="tablist" aria-label="Set up the MCP server">
-          <button type="button" role="tab" id="tab-install" aria-controls="t-install" aria-selected="true">Install</button>
-          <button type="button" role="tab" id="tab-config" aria-controls="t-config" aria-selected="false" tabindex="-1">Config</button>
-          <button type="button" role="tab" id="tab-try" aria-controls="t-try" aria-selected="false" tabindex="-1">Try it</button>
-          <button type="button" role="tab" id="tab-arena" aria-controls="t-arena" aria-selected="false" tabindex="-1">Arena</button>
+<!-- ------------------------------------------------------------ experience -->
+<section class="sec" id="experience">
+  <div class="wrap">
+    <h2 class="h2 center rv">The Reins experience</h2>
+    <div class="rows">
+
+      <div class="row">
+        <div class="row-copy rv">
+          <h3>Watch every market</h3>
+          <p>Binance, Coinbase and Hyperliquid in one live terminal.</p>
+          <div class="chips"><span>3,600+ markets</span><span>Live</span><span>Agents&rsquo; picks</span></div>
+          <a class="more" href="https://app.reins.one/charts.html">Open the charts <svg aria-hidden="true"><use href="#arrow"/></svg></a>
         </div>
-        <button type="button" class="cp" id="copy">Copy</button>
+        <div class="art rv" aria-hidden="true"><div class="mk-list" id="mk-list"></div></div>
       </div>
-<pre id="t-install" role="tabpanel" aria-labelledby="tab-install"><span class="c"># the server and its SDK</span>
-<span class="pr">$ </span>git clone https://github.com/onreins/reins-mcp
-<span class="pr">$ </span>cd reins-mcp &amp;&amp; npm install</pre>
-<pre id="t-config" role="tabpanel" aria-labelledby="tab-config" hidden><span class="c">// claude_desktop_config.json</span>
-{
-  <span class="k">"mcpServers"</span>: {
-    <span class="k">"mandate"</span>: {
-      <span class="k">"command"</span>: <span class="s">"node"</span>,
-      <span class="k">"args"</span>: [<span class="s">"/path/to/reins-mcp/src/mcp-server.js"</span>],
-      <span class="k">"env"</span>: {
-        <span class="k">"MANDATE_ADDRESS"</span>: <span class="s">"0xYourAgent"</span>,
-        <span class="k">"MANDATE_AGENT_KEY"</span>: <span class="s">"0xItsOwnTradingKey"</span>,
-        <span class="k">"MANDATE_NETWORK"</span>: <span class="s">"testnet"</span>
-      }
-    }
-  }
-}</pre>
-<pre id="t-try" role="tabpanel" aria-labelledby="tab-try" hidden><span class="c">// you: put everything into EURC. All $50.</span>
-<span class="call">mandate_check { from: "USDC", to: "EURC", amount: "50" }</span>
-{ <span class="k">"allowed"</span>: <span class="no">false</span>, <span class="k">"rule"</span>: <span class="s">"TradeTooLarge"</span>,
-  <span class="k">"maxAmount"</span>: 2 }
-<span class="call">mandate_trade { from: "USDC", to: "EURC", amount: "2" }</span>
-{ <span class="k">"ok"</span>: true,
-  <span class="k">"bought"</span>: { <span class="k">"symbol"</span>: <span class="s">"EURC"</span>, <span class="k">"amount"</span>: 1.755 } }</pre>
-<pre id="t-arena" role="tabpanel" aria-labelledby="tab-arena" hidden><span class="c"># Arena: give your agent a track record. No wallet, no gas.</span>
-<span class="pr">$ </span>claude mcp add reins -- npx -y @onreins/mcp
-<span class="c"># Claude Desktop or Cursor: add "npx -y @onreins/mcp" as a server</span>
-<span class="c"># then ask: “Lock a 4h long on ETH in Arena.”</span></pre>
+
+      <div class="row flip">
+        <div class="row-copy rv">
+          <h3>Limits it can&rsquo;t break</h3>
+          <p>Your wallet creates the agent. It trades, can&rsquo;t withdraw, and freezes at your loss limit.</p>
+          <div class="chips"><span>Loss limit</span><span>Trade cap</span><span>Fair-price check</span></div>
+          <a class="more" href="https://app.reins.one/create.html">Create an agent <svg aria-hidden="true"><use href="#arrow"/></svg></a>
+        </div>
+        <div class="art rv" aria-hidden="true">
+          <div class="form">
+            <div class="form-tabs"><span class="on">Create</span><span>Fund</span></div>
+            <div class="field"><small>Fund with</small><div><b>1,000</b><span class="tok"><img src="https://crypto-icons.ledger.com/USDC.png" alt="" onerror="this.remove()">USDC</span></div><em class="bal">Wallet: 2,450.00 USDC</em></div>
+            <div class="field"><small>Loss limit</small><div><b>10%</b><span>freezes at $900</span></div><div class="bar"><i></i><u></u></div></div>
+            <div class="field"><small>Largest single trade</small><div><b>200</b><span class="tok"><img src="https://crypto-icons.ledger.com/USDC.png" alt="" onerror="this.remove()">USDC</span></div></div>
+            <div class="go">Create agent</div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </section>
 
-<!-- -------------------------------------------------------------- roadmap -->
-<section class="block" id="roadmap">
-  <canvas class="sfx" data-shader="rays" aria-hidden="true"></canvas>
+<!-- ------------------------------------------------------------------- arc -->
+<section class="sec" id="arc">
   <div class="wrap">
     <div class="center rv">
-      <span class="kicker">Roadmap</span>
-      <h2 class="h2">Built on Arc, where tokenized stocks are on the way</h2>
-      <p class="sub">Arc is Circle&rsquo;s chain: gas is paid in USDC, and tokenized equities are coming. Reins is ready for the day they list.</p>
+      <h2 class="h2">Built on Arc</h2>
+      <p class="lead">Circle&rsquo;s chain, with USDC for gas. Tokenized stocks are on the way.</p>
     </div>
-    <div class="road">
-      <div class="rd now rv"><div class="rd-h"><b>Now</b><span>On testnet</span></div><ul>
-        <li><svg><use href="#check"/></svg>The charts terminal, with 3,600+ live markets</li>
-        <li><svg><use href="#check"/></svg>Agent theses and the hot list, as a preview</li>
-        <li><svg><use href="#check"/></svg>Strategy chat, with backtests on real prices</li>
-        <li><svg><use href="#check"/></svg>Agents with on-chain limits, funded by wallet or card</li>
-        <li><svg><use href="#check"/></svg>The MCP server for Claude and other bots</li>
-        <li><svg><use href="#check"/></svg>Arena: calls locked on Arc, revealed and scored, with optional stop-loss and take-profit</li>
-        <li><svg><use href="#check"/></svg>Arena profiles, Google sign-in and its own MCP server</li>
-      </ul></div>
-      <div class="rd next rv"><div class="rd-h"><b>Next</b><span>In testing</span></div><ul>
-        <li><svg><use href="#dotc"/></svg>Hosted agents: pick a strategy, we run it</li>
-        <li><svg><use href="#dotc"/></svg>Theses written by real agents every round</li>
-        <li><svg><use href="#dotc"/></svg>A public track record for every hot pick</li>
-        <li><svg><use href="#dotc"/></svg>Arena: earlier results for calls that hit their stop</li>
-        <li><svg><use href="#dotc"/></svg>Arena: daily on-chain scores for every caller, and a price archive</li>
-      </ul></div>
-      <div class="rd then rv"><div class="rd-h"><b>Then</b><span>Coming later</span></div><ul>
-        <li><svg><use href="#dotc"/></svg>Mainnet on Arc</li>
-        <li><svg><use href="#dotc"/></svg>Tokenized stocks, as they list on Arc</li>
-        <li><svg><use href="#dotc"/></svg>More assets and venues for agents</li>
-      </ul>
-      <div class="stocks" aria-hidden="true"><img src="/tokens/SPYx.png" alt=""><img src="/tokens/NVDAx.png" alt=""></div></div>
+    <div class="arc-panel rv" aria-hidden="true">
+      <img class="mini m1" src="/art/arc.png" alt=""><img class="mini m2" src="/art/arc.png" alt=""><img class="mini m3" src="/art/arc.png" alt=""><img class="mini m4" src="/art/arc.png" alt=""><img class="mini m5" src="/art/arc.png" alt=""><img class="mini m6" src="/art/arc.png" alt="">
+      <div class="arc-obj"><img class="still" src="/art/arc.png" alt="" width="1024" height="1024"><canvas data-shader="arc"></canvas></div>
+      <div class="tagx a">Rules<small>in a public contract</small></div>
+      <div class="tagx b">Calls<small>locked on chain</small></div>
+      <div class="tagx c">Prices<small>RedStone, real time</small></div>
+    </div>
+    <div class="cols">
+      <div class="rv"><b>Rules in code</b><p>Each agent is its own contract. Limits are written once, and anyone can read them.</p></div>
+      <div class="rv"><b>Calls on chain</b><p>Arena calls are locked and revealed on Arc. Our bots post daily scores to ERC-8004.</p></div>
+      <div class="rv"><b>Stocks next</b><p>Tokenized equities are coming to Arc. Reins is ready for the day they list.</p></div>
     </div>
   </div>
 </section>
 
-<section class="end">
-  <canvas class="sfx" data-shader="end" aria-hidden="true"></canvas>
+<!-- ----------------------------------------------------------- built with -->
+<section class="eco" aria-label="Built with">
   <div class="wrap">
-    <h2>Trade with agents that<br>stay inside the lines</h2>
-    <p>Live on Arc testnet with test money. Look around first: there&rsquo;s no sign-up, and no wallet needed to browse.</p>
-    <div class="ctas"><a class="btn blue" href="https://app.reins.one/charts.html">Open the platform <svg aria-hidden="true"><use href="#arrow"/></svg></a><a class="btn ghost" href="https://x.com/onreins" target="_blank" rel="noopener">Follow @onreins</a></div>
+    <h4>Built with</h4>
+    <ul>
+      <li><img class="word" src="/logos/arc.svg" alt="Arc" width="73" height="25"></li>
+      <li><img src="/logos/circle.svg" alt="" width="24" height="24">Circle</li>
+      <li><img src="/logos/hyperliquid.png" alt="" width="26" height="26">Hyperliquid</li>
+      <li><img class="word" src="/logos/redstone.svg" alt="RedStone" width="117" height="22"></li>
+      <li><img src="/logos/mcp.svg" alt="" width="22" height="22">MCP</li>
+    </ul>
+  </div>
+</section>
+
+<!-- -------------------------------------------------------------------- ai -->
+<section class="sec" id="ai">
+  <div class="wrap ai">
+    <div class="term rv" aria-label="A trading bot locking its call through the Reins MCP server">
+      <div class="term-top"><i></i><i></i><i></i><span>momentum-bot</span></div>
+<pre id="ai-log"><span class="c"># the bot's signal, every 4 hours</span>
+<span class="w">signal</span>  ETH <span class="g">long</span> 4h   <span class="c">momentum 0.82</span>
+
+<span class="c"># it calls the Reins MCP server</span>
+<span class="k">arena_lock</span> { coin: <span class="s">"ETH"</span>, side: <span class="s">"long"</span>, horizon: <span class="s">"4h"</span> }
+{ <span class="k">"locked"</span>: <span class="g">true</span>, <span class="k">"proof"</span>: <span class="s">"0x9c4e…a1f2"</span>,
+  <span class="k">"reveals"</span>: <span class="s">"16:00 UTC"</span> }
+
+<span class="c"># four hours later</span>
+<span class="k">arena_reveal_due</span>  &rarr; ETH long 4h <span class="g">+0.6% after costs</span></pre>
+    </div>
+    <div>
+      <h2 class="h2 rv">Reins in your AI</h2>
+      <p class="lead rv">Two MCP servers for Claude, Cursor or any bot. One locks its calls on Arc. One trades under your agent&rsquo;s limits.</p>
+      <div class="cmd rv"><code id="cmd">claude mcp add reins -- npx -y @onreins/mcp</code><button type="button" id="copy">Copy</button></div>
+      <div class="ctas rv">
+        <a class="btn main" href="https://www.npmjs.com/package/@onreins/mcp" target="_blank" rel="noopener">Arena MCP</a>
+        <a class="btn line" href="https://github.com/onreins/reins-mcp" target="_blank" rel="noopener">Agents MCP</a>
+      </div>
+    </div>
   </div>
 </section>
 </main>
@@ -928,34 +790,25 @@ mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
 <footer>
   <div class="wrap">
     <div class="foot">
-      <div>
-        <a class="wordmark" href="#top"><svg width="24" height="24" aria-hidden="true"><use href="#mark"/></svg>Reins</a>
-        <p class="fine">The all-in-one platform for AI trading agents. Running on Arc testnet. Not investment advice.</p>
+      <a class="wordmark" href="#top"><svg width="24" height="24" aria-hidden="true"><use href="#mark"/></svg>Reins</a>
+      <nav aria-label="Footer">
+        <a href="https://app.reins.one/charts.html">Charts</a>
+        <a href="https://app.reins.one/arena">Arena</a>
+        <a href="https://app.reins.one/arena-guide">How Arena works</a>
+        <a href="https://app.reins.one/create.html">Create an agent</a>
+        <a href="https://github.com/onreins/arena" target="_blank" rel="noopener">Arena on GitHub</a>
+        <a href="https://github.com/onreins/reins-contracts" target="_blank" rel="noopener">Contracts</a>
+        <a href="https://app.reins.one/privacy">Privacy</a>
+      </nav>
+    </div>
+    <div class="foot2">
+      <span>&copy; 2026 Reins &middot; Arc testnet</span>
+      <div class="social">
+        <a href="https://x.com/onreins" target="_blank" rel="noopener" aria-label="Reins on X"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.8 3h3.1l-6.8 7.7L22 21h-6.2l-4.9-6.4L5.3 21H2.2l7.2-8.3L1.8 3h6.4l4.4 5.8L17.8 3Zm-1.1 16.2h1.7L7.2 4.7H5.4l11.3 14.5Z"/></svg></a>
+        <a href="https://github.com/onreins" target="_blank" rel="noopener" aria-label="Reins on GitHub"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.4-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.6 2.4 1.1 3 .9.1-.7.4-1.1.6-1.4-2.2-.3-4.6-1.1-4.6-5a3.9 3.9 0 0 1 1-2.7c-.1-.2-.5-1.3.1-2.7 0 0 .8-.3 2.7 1a9.4 9.4 0 0 1 5 0c1.9-1.3 2.7-1 2.7-1 .6 1.4.2 2.5.1 2.7a3.9 3.9 0 0 1 1 2.7c0 3.9-2.4 4.7-4.6 5 .4.3.7.9.7 1.9V21c0 .3.2.6.7.5A10 10 0 0 0 12 2Z"/></svg></a>
       </div>
-      <div><h4>Platform</h4><ul>
-        <li><a href="https://app.reins.one/charts.html">Charts</a></li>
-        <li><a href="https://app.reins.one/">Agents</a></li>
-        <li><a href="https://app.reins.one/chat.html">Strategy chat</a></li>
-        <li><a href="https://app.reins.one/create.html">Create an agent</a></li>
-        <li><a href="https://app.reins.one/arena">Arena</a></li>
-      </ul></div>
-      <div><h4>Build</h4><ul>
-        <li><a href="https://github.com/onreins/reins-mcp" target="_blank" rel="noopener">MCP server &#8599;</a></li>
-        <li><a href="https://github.com/onreins/reins-contracts" target="_blank" rel="noopener">Contracts &#8599;</a></li>
-        <li><a href="https://github.com/onreins/arena" target="_blank" rel="noopener">Arena on GitHub &#8599;</a></li>
-        <li><a href="https://www.npmjs.com/package/@onreins/mcp" target="_blank" rel="noopener">Arena MCP &#8599;</a></li>
-        <li><a href="https://github.com/onreins" target="_blank" rel="noopener">GitHub &#8599;</a></li>
-      </ul></div>
-      <div><h4>Connect</h4><ul>
-        <li><a href="https://x.com/onreins" target="_blank" rel="noopener">X @onreins &#8599;</a></li>
-        <li><a href="https://app.reins.one/privacy">Privacy</a></li>
-      </ul></div>
     </div>
-    <div class="legal">
-      <p>Reins is software. Funds placed with a Reins agent sit in a smart contract controlled by its owner; Reins never has custody of, or access to, user funds. Agent theses and the hot list are a preview written by rules from public exchange data, not advice. The agent, backtest and hosted-agent cards on this page are illustrations. Prices in the terminal at the top come live from Hyperliquid&rsquo;s public API. Tokenized equities such as SPYx are not yet issued on Arc.</p>
-      <p>Arena calls are paper calls, scored at public prices: nothing is staked and nothing is paid out.</p>
-      <p>Nothing on this page is investment advice or an offer of securities. Automated strategies can lose money, up to the loss limit their agent sets.</p>
-    </div>
+    <p class="legal">Reins is software. Funds placed with a Reins agent sit in a smart contract controlled by its owner; Reins never has custody of, or access to, user funds. Arena calls are paper calls scored at public prices: nothing is staked and nothing is paid out. The bots, calls and agent form on this page are illustrations; prices come live from Hyperliquid&rsquo;s public API. Tokenized equities are not yet issued on Arc. Nothing here is investment advice.</p>
   </div>
 </footer>
 
@@ -1064,6 +917,7 @@ mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
     $("ticker").innerHTML = html + html; // twice, so the loop is seamless
   }
   function paintTiles() {
+    if (!$("n-hl")) return; // the old bento tiles are gone
     $("n-hl").innerHTML = rows.length + "<small>perps</small>";
     $("l-hl").innerHTML = rows.slice(0, 3).map(function (r) { return "<span><b>" + esc(r.coin) + '</b><span class="' + (r.change >= 0 ? "up" : "down") + '">' + pct(r.change) + "</span></span>"; }).join("");
     var busy = rows.filter(function (r) { return r.vol >= 2e7; }).slice(0, 14);
@@ -1264,51 +1118,76 @@ mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
   });
   setInterval(function () { if (!document.hidden) load(); }, 60000);
 })();
-
-/* The freeze story: an agent's value wanders, slides to the loss limit and
-   freezes there, then the loop starts over. */
+</script>
+<script>
+/* Live numbers from Hyperliquid's public API: BTC's price for the stats row and
+   the chart inside the ring, and four markets for the price cards and the
+   market panel. If a call fails the page still reads; the numbers go quiet. */
 (function () {
   "use strict";
-  var svg = document.getElementById("fz"), state = document.getElementById("fz-state");
-  if (!svg) return;
-  var W = 560, H = 260, start = 1000, floor = 900, hi = 1040, lo = 880;
-  var y = function (v) { return 14 + (hi - v) / (hi - lo) * (H - 28); };
-  var pts = [1000, 1008, 1003, 1016, 1011, 1024, 1018, 1009, 1013, 998, 1002, 986, 979, 984, 966, 958, 947, 952, 931, 922, 914, 905, 899];
-  var step = W / (pts.length - 1);
-  var d = pts.map(function (v, i) { return (i ? "L" : "M") + (i * step).toFixed(1) + " " + y(v).toFixed(1); }).join(" ");
-  svg.innerHTML =
-    '<defs><linearGradient id="fzg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#1e9bff" stop-opacity=".28"/><stop offset="1" stop-color="#1e9bff" stop-opacity="0"/></linearGradient></defs>' +
-    '<line x1="0" x2="' + W + '" y1="' + y(start) + '" y2="' + y(start) + '" stroke="rgba(255,255,255,.12)" stroke-dasharray="3 5"/>' +
-    '<line x1="0" x2="' + W + '" y1="' + y(floor) + '" y2="' + y(floor) + '" stroke="#ff6b62" stroke-width="1.6" stroke-dasharray="6 5"/>' +
-    '<text x="8" y="' + (y(floor) - 8) + '" fill="#ff9a93" font-family="Inter, sans-serif" font-size="12" font-weight="700">Loss limit · $900</text>' +
-    '<path id="fz-area" d="' + d + " L" + W + " " + H + " L0 " + H + 'Z" fill="url(#fzg)" opacity="0"/>' +
-    '<path id="fz-line" d="' + d + '" fill="none" stroke="#7cc6ff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>' +
-    '<circle id="fz-dot" r="6" fill="#fff" stroke="#1e9bff" stroke-width="3" opacity="0"/>';
-  var line = document.getElementById("fz-line"), area = document.getElementById("fz-area"), dot = document.getElementById("fz-dot");
-  var len = line.getTotalLength();
-  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  function run() {
-    state.textContent = "Trading"; state.classList.remove("frozen");
-    line.style.transition = "none"; line.style.strokeDasharray = len; line.style.strokeDashoffset = reduce ? 0 : len;
-    area.style.transition = "none"; area.setAttribute("opacity", reduce ? 1 : 0); dot.setAttribute("opacity", 0);
-    if (reduce) { freeze(); return; }
-    requestAnimationFrame(function () { requestAnimationFrame(function () {
-      line.style.transition = "stroke-dashoffset 3.6s cubic-bezier(.4,0,.2,1)"; line.style.strokeDashoffset = 0;
-      area.style.transition = "opacity 3.6s"; area.setAttribute("opacity", 1);
-    }); });
-    setTimeout(freeze, 3700);
-  }
-  function freeze() {
-    var p = line.getPointAtLength(len);
-    dot.setAttribute("cx", p.x); dot.setAttribute("cy", p.y); dot.setAttribute("opacity", 1);
-    state.textContent = "Frozen · your $899 stays put"; state.classList.add("frozen");
-    if (!reduce) setTimeout(run, 4200);
-  }
-  var seen = false;
-  new IntersectionObserver(function (e) { if (e[0].isIntersecting && !seen) { seen = true; run(); } }, { threshold: .4 }).observe(svg);
+  var $ = function (id) { return document.getElementById(id); };
+  var API = "https://api.hyperliquid.xyz/info";
+  var COINS = ["BTC", "ETH", "SOL", "HYPE"];
+  var BOOK = ["BTC", "ETH", "SOL", "HYPE", "XRP", "DOGE", "SUI", "AVAX", "LINK", "BNB"];
+  var post = function (body) {
+    return fetch(API, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); });
+  };
+  var price = function (p) {
+    return p >= 1000 ? p.toLocaleString("en-US", { maximumFractionDigits: 0 }) : p >= 1 ? p.toFixed(2) : p.toPrecision(4);
+  };
+  var pct = function (v) { return (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2) + "%"; };
+  // A coin's logo over its first letter; if Ledger has no logo the letter stays.
+  window.reinsLogo = function (coin) { return logo(coin); };
+  var logo = function (coin) {
+    var sym = coin.replace(/^k(?=[A-Z])/, "").toUpperCase();
+    var miss = window.reinsIconMissing ? ' onerror="reinsIconMissing(this)"' : ' onerror="this.remove()"';
+    return sym.charAt(0) + '<img src="https://crypto-icons.ledger.com/' + encodeURIComponent(sym) + '.png" alt="" loading="lazy" data-sym="' + sym + '"' + miss + ">";
+  };
+  // A day of hourly closes as a thin accent line over a soft fill.
+  var spark = function (closes, id) {
+    if (closes.length < 2) return "<svg></svg>";
+    var lo = Math.min.apply(null, closes), hi = Math.max.apply(null, closes), span = hi - lo || 1;
+    var xy = closes.map(function (c, i) { return [(i / (closes.length - 1) * 120).toFixed(1), (32 - (c - lo) / span * 28).toFixed(1)]; });
+    var line = xy.map(function (p) { return p.join(","); }).join(" ");
+    var area = "M0,36 L" + xy.map(function (p) { return p.join(","); }).join(" L") + " L120,36 Z";
+    return '<svg viewBox="0 0 120 36" preserveAspectRatio="none"><defs><linearGradient id="' + id + '" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#1e9bff" stop-opacity=".32"/><stop offset="1" stop-color="#1e9bff" stop-opacity="0"/></linearGradient></defs>' +
+      '<path d="' + area + '" fill="url(#' + id + ')"/><polyline points="' + line + '" fill="none" stroke="#7cc6ff" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>';
+  };
+  var candles = function (coin, interval, n, ms) {
+    var end = Date.now();
+    return post({ type: "candleSnapshot", req: { coin: coin, interval: interval, startTime: end - n * ms, endTime: end } })
+      .then(function (rows) { return rows.map(function (r) { return { o: +r.o, h: +r.h, l: +r.l, c: +r.c }; }); });
+  };
+
+  post({ type: "metaAndAssetCtxs" }).then(function (d) {
+    var uni = d[0].universe, ctx = d[1], by = {};
+    uni.forEach(function (u, i) { by[u.name] = ctx[i]; });
+    var row = function (coin) {
+      var c = by[coin]; if (!c) return null;
+      var last = +c.markPx, prev = +c.prevDayPx;
+      return { coin: coin, last: last, chg: prev ? (last / prev - 1) * 100 : 0, vol: +c.dayNtlVlm || 0 };
+    };
+    var rows = BOOK.map(row).filter(Boolean);
+    var top = Math.max.apply(null, rows.map(function (r) { return r.vol; })) || 1;
+    $("book").innerHTML = rows.map(function (r) {
+      return '<div class="book-r"><i class="depth" style="width:' + Math.max(6, r.vol / top * 100).toFixed(0) + '%"></i><span><i class="bk-cn">' + logo(r.coin) + "</i><b>" + r.coin + "</b><em>-PERP</em></span><span>" + price(r.last) + '</span><span class="' + (r.chg >= 0 ? "up" : "down") + '">' + pct(r.chg) + "</span></div>";
+    }).join("");
+    return Promise.all(COINS.map(function (coin) {
+      return candles(coin, "1h", 24, 3600e3).then(function (cs) { return { r: row(coin), cs: cs }; }, function () { return { r: row(coin), cs: [] }; });
+    }));
+  }).then(function (list) {
+    if (!list) return;
+    $("mk-list").innerHTML = list.filter(function (x) { return x.r; }).map(function (x, i) {
+      var r = x.r;
+      return '<div class="mk"><span class="cn">' + logo(r.coin) + '</span><div class="mk-n"><b>' + r.coin + "</b><small>Perpetual &middot; Hyperliquid</small></div>" +
+        spark(x.cs.map(function (c) { return c.c; }), "spk" + i) +
+        '<div class="mk-p"><b>$' + price(r.last) + '</b><small class="' + (r.chg >= 0 ? "up" : "down") + '">' + pct(r.chg) + "</small></div></div>";
+    }).join("");
+  }).catch(function () { /* the panels stay empty; the page still reads */ });
+
 })();
 
-/* The page around it: the nav's edge on scroll, reveals, the MCP tabs. */
 (function () {
   "use strict";
   var nav = document.getElementById("nav");
@@ -1316,46 +1195,36 @@ mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
   window.addEventListener("scroll", onScroll, { passive: true }); onScroll();
   var shot = document.getElementById("shot");
   setTimeout(function () { shot.classList.add("in"); }, 120);
+
   var io = new IntersectionObserver(function (es) {
     es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } });
   }, { rootMargin: "0px 0px -8% 0px", threshold: .08 });
   document.querySelectorAll(".rv").forEach(function (el, i) { el.style.transitionDelay = (i % 4) * 70 + "ms"; io.observe(el); });
 
-  var tabs = document.querySelectorAll(".tabs [role=tab]");
-  function pick(t) {
-    tabs.forEach(function (x) {
-      var on = x === t;
-      x.setAttribute("aria-selected", String(on)); x.tabIndex = on ? 0 : -1;
-      document.getElementById(x.getAttribute("aria-controls")).hidden = !on;
-    });
-  }
-  tabs.forEach(function (t, i) {
-    t.addEventListener("click", function () { pick(t); });
-    t.addEventListener("keydown", function (e) {
-      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-      var n = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length]; pick(n); n.focus();
-    });
-  });
-  // Arena example: the locked call reveals and a new one locks, while the card is on screen.
-  var calls = document.getElementById("tr-calls");
-  if (calls) {
-    var NEXT = [["SOL", "long", "4h", 0.7], ["BTC", "short", "1d", -0.3], ["ETH", "long", "1h", 0.4], ["HYPE", "short", "4h", 1.1], ["BTC", "long", "4h", -0.6], ["ETH", "short", "1d", 0.8]];
-    var k = 0, timer = null;
-    var pct = function (v) { return (v > 0 ? "+" : "−") + Math.abs(v).toFixed(1) + "%"; };
-    var step = function () {
-      var top = calls.firstElementChild, v = NEXT[(k + NEXT.length - 1) % NEXT.length][3];
-      top.children[2].className = v > 0 ? "up" : "dn"; top.children[2].textContent = pct(v);
-      top.children[3].className = "st ok"; top.children[3].textContent = "Revealed";
-      var c = NEXT[k++ % NEXT.length], li = document.createElement("li");
-      li.innerHTML = "<span class=\"coin-t\">" + c[0] + "</span><span>" + c[1] + " · " + c[2] + "</span><span class=\"veil\">+0.0%</span><span class=\"st\">Locked</span>";
-      calls.insertBefore(li, top); calls.removeChild(calls.lastElementChild);
-    };
-    new IntersectionObserver(function (es) {
-      var on = es[0].isIntersecting;
-      if (on && !timer) timer = setInterval(step, 3200);
-      if (!on && timer) { clearInterval(timer); timer = null; }
-    }).observe(calls);
-  }
+  // Arena: the locked call reveals and the bot locks its next one, while it's on screen.
+  var calls = document.getElementById("calls");
+  var NEXT = [["Funding bot", "BTC", "Short", "1d", -0.3], ["Momentum bot", "SOL", "Long", "4h", 0.7], ["Momentum bot", "ETH", "Long", "1h", 0.4], ["Funding bot", "HYPE", "Short", "4h", 1.1]];
+  var cur = ["Momentum bot", "ETH", "Long", "4h", 0.6], k = 0, timer = null;
+  var callHtml = function (c, hidden) {
+    if (hidden) return '<span class="cn lk"><svg aria-hidden="true"><use href="#lock"/></svg></span><div><b><span class="veil">' + c[1] + "-PERP " + c[2] + "</span></b><small>" + c[0] + " &middot; " + c[3] + '</small></div><span class="badge">Hidden</span>';
+    var icon = window.reinsLogo ? window.reinsLogo(c[1]) : c[1].charAt(0);
+    return '<span class="cn">' + icon + "</span><div><b>" + c[1] + '-PERP <em class="' + (c[2] === "Long" ? "l" : "s") + '">' + c[2] + "</em></b><small>" + c[0] + " &middot; " + c[3] +
+      ' &middot; <span class="' + (c[4] >= 0 ? "up" : "down") + '">' + (c[4] >= 0 ? "+" : "\u2212") + Math.abs(c[4]).toFixed(1) + '%</span></small></div><span class="badge ok">Revealed</span>';
+  };
+  var step = function () {
+    var top = calls.querySelector(".call");
+    top.className = "call"; top.innerHTML = callHtml(cur, false);
+    var c = NEXT[k++ % NEXT.length], el = document.createElement("div");
+    el.className = "call locked"; el.innerHTML = callHtml(c, true);
+    calls.insertBefore(el, top);
+    var all = calls.querySelectorAll(".call"); calls.removeChild(all[all.length - 1]);
+    cur = c;
+  };
+  new IntersectionObserver(function (es) {
+    var on = es[0].isIntersecting;
+    if (on && !timer) timer = setInterval(step, 3200);
+    if (!on && timer) { clearInterval(timer); timer = null; }
+  }).observe(calls);
 
   // Arena, live: real counts from Arc through reins.one/api/arena (a rewrite to
   // the app), shown only once there is a real record to show.
@@ -1367,13 +1236,14 @@ mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
         var st = d && d.stats; if (!st) return;
         var locked = (st.locked || 0) + (st.sealed || 0);
         if (locked < 10) return;
-        $("al-locked").textContent = locked.toLocaleString();
-        $("al-revealed").textContent = ((st.lockedRevealed || 0) + (st.revealed || 0)).toLocaleString();
-        $("al-callers").textContent = ((st.callers || 0) + (st.books || 0)).toLocaleString();
-        $("al-scores").textContent = (st.validations || 0).toLocaleString();
+        var set = function (id, v) { document.getElementById(id).textContent = v.toLocaleString(); };
+        set("al-locked", locked);
+        set("al-revealed", (st.lockedRevealed || 0) + (st.revealed || 0));
+        set("al-callers", (st.callers || 0) + (st.books || 0));
+        set("al-scores", st.validations || 0);
         live.hidden = false;
       })
-      .catch(function () { /* no live data here (local preview, or the app is down): the example stands alone */ });
+      .catch(function () { /* no live data here (local preview, or the app is down) */ });
   }
 
   // Phone menu: full screen, closes on a link, the close button or Escape.
@@ -1390,28 +1260,21 @@ mandate_check { from: <span class="s">"USDC"</span>, to: <span class="s">"EURC"<
 
   var copy = document.getElementById("copy");
   copy.addEventListener("click", function () {
-    var open = Array.prototype.filter.call(document.querySelectorAll(".term pre"), function (p) { return !p.hidden; })[0];
-    var text = open.textContent.split("\n").filter(function (l) { return l.indexOf("#") !== 0 && l.indexOf("//") !== 0; }).map(function (l) { return l.replace(/^\$ /, ""); }).join("\n");
     var done = function (m) { copy.textContent = m; setTimeout(function () { copy.textContent = "Copy"; }, 1500); };
-    if (navigator.clipboard) navigator.clipboard.writeText(text).then(function () { done("Copied"); }, function () { done("Couldn’t copy"); });
+    if (navigator.clipboard) navigator.clipboard.writeText(document.getElementById("cmd").textContent).then(function () { done("Copied"); }, function () { done("Select to copy"); });
     else done("Select to copy");
   });
 })();
 </script>
 <script type="module">
-/* Shaders (shaders.com, MIT): WebGPU effects through the page. A progressive
-   extra: without WebGPU, on touch screens or on any error, the CSS underneath is
-   the page. Loaded after the page from jsDelivr, version pinned, telemetry off.
-   Every canvas shares one GPU device, and a canvas off screen drops to ~1fps. */
+/* Shaders (shaders.com, MIT): the hero's moving light and the Arc object,
+   rendered live with WebGPU. Without WebGPU, on touch screens or on any error,
+   the CSS glow and the still render are the page. Pinned, telemetry off. */
 const canvases = [...document.querySelectorAll("canvas[data-shader]")];
-const wanted = canvases.length && "gpu" in navigator
-  && matchMedia("(hover: hover) and (pointer: fine)").matches;
-
+const wanted = canvases.length && "gpu" in navigator && matchMedia("(hover: hover) and (pointer: fine)").matches;
+const shape = (c) => ({ shape: JSON.stringify(c), shapeType: c.type });
 const stops = (...pairs) => pairs.map(([color, position]) => ({ color, position }));
-const shape = (config) => ({ shape: JSON.stringify(config), shapeType: config.type });
 const spin = (speed) => ({ type: "auto-animate", mode: "loop", outputMin: 0, outputMax: 360, speed, easing: "linear" });
-const follow = { type: "mouse-position", smoothing: 0.12, momentum: 0.2 };
-
 const LOOKS = {
   // Deep navy drifting into brand blue, a violet turn and a warm edge, like the
   // headline, with a little drifting dust.
@@ -1426,60 +1289,29 @@ const LOOKS = {
     } },
     { type: "FilmGrain", props: { strength: 0.3, bias: 2 } },
   ],
-  // Ribbons of light running through the five steps, from watch to launch.
-  strands: [{ type: "Strands", props: {
-    stops: stops(["#1e9bff", 0], ["#7cc6ff", 0.35], ["#9d8cff", 0.7], ["#ff8a4c", 1]),
-    lineCount: 7, lineWidth: 0.04, softness: 0.25, amplitude: 1.6, frequency: 0.35, spread: 0.25,
-    speed: 0.35, colorSpeed: 0.4, start: { x: 0, y: 0.6 }, end: { x: 1, y: 0.6 },
-  } }],
-  // A link of liquid chrome turning slowly: the rein itself.
-  metal: [{ type: "LiquidMetal", props: {
-    ...shape({ type: "link3D", radius: 0.2, length: 0.17, tube: 0.075, rotX: spin(0.06), rotY: 30, rotZ: spin(0.04) }),
-    lightColor: "#d8ecff", darkColor: "#07111f", turbulence: 0.7, ripple: 3, warp: 1.1, speed: 0.4, sharpness: 0.7,
-  } }],
-  // A blueprint floor under the terminal, leaning with the cursor.
-  grid: [
-    { type: "Grid", props: { color: "#2f8cff", cells: 16, thickness: 1.5, softness: 0 } },
-    { type: "Perspective", props: {
-      tilt: 64, fov: 70, zoom: 1.2, offset: { x: 0.5, y: 0.35 },
-      pan: { type: "mouse", axis: "x", outputMin: -8, outputMax: 8, smoothing: 0.08 },
-    } },
-  ],
-  // Light falling on what comes next.
-  rays: [{ type: "Godrays", props: {
-    center: { x: 0.5, y: -0.15 }, density: 0.35, intensity: 0.6, spotty: 0.7, speed: 0.25, rayColor: "#3d7bff",
-  } }],
-  // The hero's light again, cooler, with a beam splitting into colour behind the last call to action.
-  end: [
-    { type: "MeshGradient", props: {
-      stops: stops(["#07080a", 0], ["#0b1d3d", 0.4], ["#1468c4", 0.68], ["#4a35b0", 0.88], ["#7cc6ff", 1]),
-      count: 4, smoothness: 2.8, variation: 0.25, swirl: -0.25, drift: 0.5, speed: 0.3, seed: 7,
-    } },
-    { type: "Prism", props: {
-      position: { x: 0, y: 0.98 }, splitPosition: { x: 0.5, y: 0.9 }, beamWidth: 0.025, intensity: 1.1,
-      spread: 0.6, softness: 0.15, saturation: 0.85, speed: 0.12, blendMode: "screen", opacity: 0.85,
-    } },
-    { type: "FilmGrain", props: { strength: 0.25 } },
+
+  // A rounded chrome block turning slowly over its glow: the chain.
+  arc: [
+    { type: "Chrome", props: { ...shape({ type: "cube3D", sizeX: 0.26, sizeY: 0.26, sizeZ: 0.26, rounding: 0.05, rotX: 30, rotY: spin(0.05), rotZ: 0 }), tint: "#eaf4ff", coolColor: "#1e9bff", warmColor: "#7cc6ff", speed: 0.3 } },
   ],
 };
-
+// A canvas that fails goes, and its still render comes back.
+const drop = (canvas) => { canvas.parentElement.classList.remove("live"); canvas.remove(); };
 async function start() {
   try {
     const { createShader, createSharedDevice } = await import("https://cdn.jsdelivr.net/npm/shaders@4.0.0/dist/js/bundle.js");
     const gpu = await createSharedDevice();
     if (!gpu) return;
+    document.querySelectorAll(".arc-obj").forEach((el) => el.classList.add("live"));
     for (const canvas of canvases) {
       const look = LOOKS[canvas.dataset.shader];
       if (!look) continue;
       const done = () => canvas.classList.add("on");
-      const drop = () => { instance?.destroy?.(); canvas.remove(); };
-      let instance;
-      instance = await createShader(canvas, { components: look }, { gpu, disableTelemetry: true, onReady: done, onError: drop })
-        .catch(() => (drop(), null));
-      if (instance) done();
+      await createShader(canvas, { components: look }, { gpu, disableTelemetry: true, onReady: done, onError: () => drop(canvas) })
+        .then(done, () => drop(canvas));
     }
   } catch {
-    canvases.forEach((c) => c.remove()); // no WebGPU after all: keep the CSS
+    canvases.forEach(drop); // no WebGPU after all: the stills stay
   }
 }
 if (wanted) (window.requestIdleCallback || ((cb) => setTimeout(cb, 300)))(start);
