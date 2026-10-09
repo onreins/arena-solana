@@ -29,6 +29,7 @@ import { priceBook, intervalFor, resolveSymbol } from "./callbook-prices.js";
 import { maxOf, brief } from "./callbook-util.js";
 import { agentInfo, profileFor, profileFields, personProfile } from "./callbook-agents.js";
 import { evaluateCaller, callerToApi } from "./callbook-callers.js";
+import { crowdOf, crowdMetricsOut, consensusOut } from "./callbook-crowd.js";
 import { skillScore, hitOf, recordLevel } from "./callbook-skill.js";
 
 export * from "./callbook-chain.js";
@@ -596,11 +597,17 @@ export async function buildCallbook({ chain, source, asOf, meta, validator, repo
       (book.kind === "free" ? callers : books).push({ summary: stub, detail: { ...stub, calls: [] }, feed: [], ev: null });
     }
   }
+  // The crowd: Arena's consensus and each caller's edge over it, from revealed open calls only.
+  const crowd = crowdOf(callers.filter((c) => c.ev).map((c) => ({ id: c.summary.id, periods: c.ev.scored.periods })), { asOf });
+  const scoredCallers = callers.map((c) => {
+    const m = crowdMetricsOut(crowd.byCaller.get(c.summary.id)) ?? null;
+    return { ...c, summary: { ...c.summary, crowd: m }, detail: { ...c.detail, crowd: m } };
+  });
   const generated = new Date(asOf * 1000).toISOString();
-  const index = indexToApi({ meta: { ...meta, generated }, chain, books, callers });
+  const index = { ...indexToApi({ meta: { ...meta, generated }, chain, books, callers: scoredCallers }), consensus: consensusOut(crowd.consensus) };
   const details = new Map(books.map((b) => [b.summary.id, { ...meta, generated, ...b.detail }]));
-  const callerDetails = new Map(callers.map((c) => [c.summary.id, { ...meta, generated, ...c.detail }]));
-  return { index, details, callerDetails, evaluated: [...books, ...callers].map((b) => b.ev).filter(Boolean) };
+  const callerDetails = new Map(scoredCallers.map((c) => [c.summary.id, { ...meta, generated, ...c.detail }]));
+  return { index, details, callerDetails, evaluated: [...books, ...scoredCallers].map((b) => b.ev).filter(Boolean) };
 }
 
 /** agentId -> { name, description } for every linked agent, each read once; a failed read is just no card. */
