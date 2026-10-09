@@ -17,7 +17,9 @@
  * so the request is self-describing and its hash is checkable without fetching
  * anything.
  */
-import { parseAbi, keccak256, toBytes, getAddress } from "viem";
+import { parseAbi, keccak256, toBytes, toHex, getAddress, encodeAbiParameters } from "viem";
+
+import { findSalt, EXITS_SINCE } from "./callbook-exits.js";
 
 /** "No ERC-8004 agent linked" in Callbook. */
 export const NO_AGENT = 2n ** 256n - 1n;
@@ -48,6 +50,27 @@ export const VALIDATION_EVENTS = parseAbi([
 ]);
 
 const same = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+
+// ------------------------------------------------------------------ open-call preimages
+
+export const LOCKED_TAG = keccak256(toHex("callbook.locked"));
+export const SYMBOL_TAG = keccak256(toHex("callbook.locked.symbol"));
+
+/** Callbook.lockedHashOf: a call in a free book with a coin list. */
+export function lockedHash({ callbook, chainId, bookId, callId, coinIndex, side, horizon, salt }) {
+  return keccak256(encodeAbiParameters(
+    [{ type: "bytes32" }, { type: "address" }, { type: "uint256" }, { type: "uint256" }, { type: "uint64" }, { type: "uint8" }, { type: "int8" }, { type: "uint32" }, { type: "bytes32" }],
+    [LOCKED_TAG, String(callbook).toLowerCase(), BigInt(chainId), BigInt(bookId), BigInt(callId), coinIndex, side, horizon, salt],
+  ));
+}
+
+/** Callbook.symbolCallHashOf: a call in an any-coin book, bound to the account and its nonce. */
+export function symbolCallHash({ callbook, chainId, account, nonce, coin, side, horizon, salt }) {
+  return keccak256(encodeAbiParameters(
+    [{ type: "bytes32" }, { type: "address" }, { type: "uint256" }, { type: "address" }, { type: "uint64" }, { type: "bytes32" }, { type: "int8" }, { type: "uint32" }, { type: "bytes32" }],
+    [SYMBOL_TAG, String(callbook).toLowerCase(), BigInt(chainId), String(account).toLowerCase(), BigInt(nonce), keccak256(toHex(coin)), side, horizon, salt],
+  ));
+}
 
 // ------------------------------------------------------------------ canonical JSON
 
@@ -166,9 +189,16 @@ function applyCallbookLog(books, log, at) {
   const book = books.get(id);
   if (!book) return; // an event for a book opened before fromBlock
   if (log.eventName === "Locked") {
-    book.locks?.set(Number(a.callId), {
-      callId: Number(a.callId), hash: a.callHash, lockedAt: at, entryAt: Number(a.entryAt), horizon: Number(a.horizon), lockTx: log.transactionHash, reveal: null,
-    });
+    const l = { callId: Number(a.callId), hash: a.callHash, lockedAt: at, entryAt: Number(a.entryAt), horizon: Number(a.horizon), lockTx: log.transactionHash, reveal: null };
+    // An any-coin lock uses up its owner's next nonce (Callbook._lock: _nonces[owner]++), in chain
+    // order across all their any-coin books, and logs arrive in that order: count them as they come.
+    const prev = book.locks?.get(l.callId); // the same log applied again after a failed read
+    if (book.anyCoin) {
+      let n = 0;
+      if (!prev) for (const b of books.values()) if (b.anyCoin && b.owner === book.owner) n += b.locks.size;
+      l.nonce = prev ? prev.nonce : n;
+    }
+    book.locks?.set(l.callId, l);
     return;
   }
   if (log.eventName === "RevealedLocked" || log.eventName === "RevealedLockedSymbol") {
@@ -204,6 +234,71 @@ function applyLinkLog(links, log, at) {
   const agent = log.args.agent.toLowerCase(), wallet = log.args.wallet.toLowerCase();
   if (log.eventName === "AgentLinked") links.set(agent, { wallet, at, tx: log.transactionHash });
   else if (links.get(agent)?.wallet === wallet) links.delete(agent);
+}
+
+// ------------------------------------------------------------------ reveal salts
+
+/**
+ * How many reveals' salts one read looks up, oldest first (so a burst of new
+ * reveals can't push older ones back forever): a long first scan spreads them
+ * over several reads instead of tripping the RPC's rate limit. Until its salt
+ * is read a call waits (callbook-exits.js, EXITS_SINCE).
+ */
+export const SALT_BACKFILL = 200;
+/** One read spends at most this long matching salts; the rest wait for the next. */
+export const SALT_BUDGET_MS = 3_000;
+/**
+ * The nonce an any-coin lock used up. Locks read since this was added carry it
+ * (counted in chain order); an older snapshot's are counted book by book, which
+ * matches the contract while each owner has one open any-coin book at a time.
+ */
+function symbolNonce(books, book, l) {
+  if (Number.isInteger(l.nonce)) return l.nonce;
+  let n = l.callId;
+  for (const b of books.values()) if (b.anyCoin && b.owner === book.owner && b.id < book.id) n += b.locks.size;
+  return n;
+}
+
+/**
+ * Each reveal's salt (it carries the call's exits, if any: callbook-exits.js),
+ * from its transaction's input and checked against the call's hash; null where
+ * none matches, which leaves the call unscorable. At most SALT_BACKFILL per
+ * read and SALT_BUDGET_MS of matching; one the RPC doesn't answer is tried
+ * again on the next read. Its transaction exists (its Revealed event came from
+ * it), so a missing one is the RPC lagging: never a reason to score it as worst.
+ */
+async function readSalts(client, s) {
+  const todo = [];
+  for (const book of s.books.values()) {
+    if (book.kind !== "free") continue;
+    // A call locked before exits existed has none: its salt is never read.
+    for (const l of book.locks.values()) if (l.reveal && l.reveal.salt === undefined && l.lockedAt >= EXITS_SINCE) todo.push({ book, l });
+  }
+  const jobs = todo.sort((a, b) => a.l.reveal.at - b.l.reveal.at || a.book.id - b.book.id || a.l.callId - b.l.callId).slice(0, SALT_BACKFILL);
+  if (!jobs.length) return;
+  const inputs = new Map();
+  const txs = [...new Set(jobs.map((j) => j.l.reveal.tx))];
+  for (let i = 0; i < txs.length; i += 20) {
+    await Promise.all(txs.slice(i, i + 20).map(async (hash) => {
+      try {
+        inputs.set(hash, (await client.getTransaction({ hash })).input);
+      } catch {
+        // Not found or an RPC hiccup alike: the salt stays unread and is tried again next read.
+      }
+    }));
+  }
+  const started = Date.now();
+  for (const { book, l } of jobs) {
+    if (Date.now() - started > SALT_BUDGET_MS) break;
+    const r = l.reveal;
+    if (!inputs.has(r.tx)) continue;
+    const call = { callbook: s.address, chainId: s.chainId, side: r.side, horizon: l.horizon };
+    const nonce = book.anyCoin ? symbolNonce(s.books, book, l) : null;
+    const matches = book.anyCoin
+      ? (salt) => same(symbolCallHash({ ...call, account: book.owner, nonce, coin: r.symbol, salt }), l.hash)
+      : (salt) => same(lockedHash({ ...call, bookId: book.id, callId: l.callId, coinIndex: r.coinIndex, salt }), l.hash);
+    r.salt = findSalt(inputs.get(r.tx), matches);
+  }
 }
 
 /** The longest request URI kept: a book descriptor is a few hundred characters. */
@@ -254,7 +349,10 @@ export async function readCallbook({ client, address, fromBlock = 0n, toBlock, v
   s.profiles ??= new Map(); // a snapshot saved before profiles existed
   s.links ??= new Map();
   const from = s.toBlock + 1n;
-  if (from > head) return s;
+  if (from > head) {
+    await readSalts(client, s);
+    return s;
+  }
 
   const addresses = [address, ...(validationRegistry ? [validationRegistry] : [])];
   const logs = await getLogsChunked(client, {
@@ -274,6 +372,7 @@ export async function readCallbook({ client, address, fromBlock = 0n, toBlock, v
       applyValidationLog(s.validation, log, at, validator);
     }
   }
+  await readSalts(client, s);
   s.toBlock = head;
   s.blockTimes = new Map(); // only the next read's own blocks are ever needed
   return s;

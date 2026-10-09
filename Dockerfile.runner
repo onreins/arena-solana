@@ -1,0 +1,39 @@
+# The Arena runner (runner/callbook.js) as a container: seals and reveals our
+# bots' calls every round and posts their daily scores. It must run around the
+# clock; any host that keeps a container up works (Railway, Fly.io, Render, a VPS
+# with Docker). Build from the repo root:
+#
+#   docker build -f Dockerfile.runner -t arena-runner .
+#   docker run -d --restart=always --env-file .env.runner arena-runner
+#
+# Settings come from the host's environment, never from the image (.env files
+# are excluded by .dockerignore): CALLBOOK_NETWORK, CALLBOOK_AGENT_KEY,
+# CALLBOOK_VALIDATOR_KEY, CALLBOOK_SALT_SECRET, CALLBOOK_RPC, CALLBOOK_REPORT_BASE.
+# See docs/CALLBOOK-RUNBOOK.md, section 5.
+# Stage 1 compiles the contracts (build/*.json, read by scripts/artifact.js). It
+# needs the dev dependencies, because some contracts import RedStone's packages.
+FROM node:22-slim AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts
+COPY contracts ./contracts
+COPY scripts ./scripts
+RUN npm run build
+
+# Stage 2 is what runs: production dependencies and the compiled artifacts only.
+FROM node:22-slim
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts
+COPY --from=build /app/build ./build
+COPY scripts ./scripts
+COPY app ./app
+COPY callbook ./callbook
+COPY runner ./runner
+COPY evaluator ./evaluator
+COPY deployments ./deployments
+RUN chown -R node:node /app
+
+# The runner refreshes app/data/callbook-state-<network>.json, so the app folder is the node user's.
+USER node
+CMD ["node", "runner/callbook.js"]

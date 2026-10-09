@@ -130,7 +130,7 @@
 
   // ------------------------------------------------------------- the calls
   function kindOf(c) {
-    if (c.status === "pending") return ["pend", "locked, not yet revealed"];
+    if (c.status === "pending") return ["pend", /^revealed/.test(c.note || "") ? "revealed, reading its stop and target" : "locked, not yet revealed"];
     if (c.status === "withheld" || c.status === "unscorable") return ["held", (c.status === "withheld" ? "kept hidden" : "unpriced") + ", counted as its worst: " + C.pct(c.ret, 2)];
     return [c.ret > 0 ? "win" : c.ret < 0 ? "loss" : "flat", (c.coin || "") + " " + (c.side > 0 ? "up" : "down") + " " + C.pct(c.ret, 2)];
   }
@@ -147,6 +147,8 @@
     var r = c.revealTx ? "<small>revealed " + C.txLink(EXP, c.revealTx, C.shortHash(c.revealTx, 4, 4)) + "</small>" : "";
     return a || r ? a + r : '<span class="muted">—</span>';
   }
+  // Why a call with a stop or target closed.
+  var EXIT_WORD = { stop: "stopped out", target: "hit its target", time: "ran its full time" };
   function callRow(c) {
     var id = ' id="c-' + esc(c.callId) + '"';
     var when = '<td class="c-round"><b>' + esc(C.stamp(c.lockedAt).replace(" UTC", "")) + "</b><small>call #" + esc(C.int(c.callId)) + "</small></td>";
@@ -155,7 +157,9 @@
       var own = mine(c), note;
       // Locks carry their horizon in the clear, so the reveal time is known for every call.
       var due = C.isNum(c.exitAt) ? c.exitAt : C.isNum(c.horizon) && C.isNum(c.entryAt) ? c.entryAt + c.horizon : own ? own.entryAt + own.horizon : null;
-      if (due) {
+      if (/^revealed/.test(c.note || "")) {
+        note = '<span class="cb-pend"><span class="cb-dot sealed" aria-hidden="true"></span>Revealed · reading its stop and target</span>';
+      } else if (due) {
         var at = due;
         note = '<span class="cb-pend"><span class="cb-dot sealed" aria-hidden="true"></span>' + (own ? "Your call" : "Locked") + " · reveals " + esc(C.stamp(at).replace(" UTC", "")) +
           ' UTC, in <b class="mono" data-until="' + esc(at) + '">' + esc(C.span(at - C.now())) + "</b></span>";
@@ -167,15 +171,19 @@
     }
     if (c.status === "withheld" || c.status === "unscorable") {
       var w = c.worst || {};
-      var text = c.status === "withheld" ? "Kept hidden: never revealed, so it’s scored as worst" : "Revealed " + esc(c.symbol || "a coin") + ", which Hyperliquid doesn’t list, so it’s scored as worst";
+      var text = c.status === "withheld" ? "Kept hidden: never revealed, so it’s scored as worst"
+        : /salt/.test(c.note || "") ? "Revealed, but its stop and target can’t be read from the reveal, so it’s scored as worst"
+          : "Revealed " + esc(c.symbol || "a coin") + ", which Hyperliquid doesn’t list, so it’s scored as worst";
       return '<tr class="held"' + id + ">" + when + '<td class="c-note" colspan="3"><span class="cb-note held">' + U.icon(c.status === "withheld" ? "lock" : "info") + text +
         (w.coin ? " (" + esc(w.coin) + " " + (w.side > 0 ? "up" : "down") + (C.isNum(w.horizon) ? ", " + esc(hold(w.horizon)) : "") + ")" : "") + ".</span></td>" +
         '<td class="r mono c-ret">' + C.pctHtml(c.ret, 2) + "</td>" + pr + "</tr>";
     }
     return "<tr" + id + ">" + when +
       '<td class="c-call"><span class="cb-call"><b>' + esc(c.coin || c.symbol || "—") + "</b>" + C.sidePill(c.side) + "</span></td>" +
-      '<td class="c-hold mono">' + esc(hold(c.horizon)) + "</td>" +
-      '<td class="r c-px"><span class="mono">' + esc(fmtPx(c.entry)) + ' <span class="muted">→</span> ' + esc(fmtPx(c.exit)) + "</span></td>" +
+      '<td class="c-hold mono">' + esc(hold(C.isNum(c.closedAt) ? c.closedAt - c.entryAt : c.horizon)) +
+        (c.exitReason ? "<small>" + EXIT_WORD[c.exitReason] + "</small>" : "") + "</td>" +
+      '<td class="r c-px"><span class="mono">' + esc(fmtPx(c.entry)) + ' <span class="muted">→</span> ' + esc(fmtPx(c.exit)) + "</span>" +
+        (c.stop != null || c.target != null ? "<small>" + [c.stop != null ? "stop " + esc(c.stop) : "", c.target != null ? "target " + esc(c.target) : ""].filter(Boolean).join(" · ") + "</small>" : "") + "</td>" +
       '<td class="r mono c-ret">' + C.pctHtml(c.ret, 2) + '<small>' + (c.ret >= 0 ? "won" : "lost") + (C.isNum(c.move) ? " · coin " + C.pct(c.move, 2) : "") + "</small></td>" + pr + "</tr>";
   }
   function rows(n) {

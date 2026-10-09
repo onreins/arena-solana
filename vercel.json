@@ -7,7 +7,7 @@
   "cleanUrls": true,
   "functions": {
     "api/index.js": {
-      "includeFiles": "{build/Mandate.json,build/Callbook.json,build/MandateFactory.json,deployments/testnet.json,deployments/mandate-testnet.json,deployments/callbook-testnet.json,app/data/prices.json,app/data/index-snapshot.json}",
+      "includeFiles": "{build/Mandate.json,build/Callbook.json,build/MandateFactory.json,deployments/testnet.json,deployments/mandate-testnet.json,deployments/callbook-testnet.json,deployments/callbook-mainnet.json,deployments/callbook-testnet-books.json,deployments/callbook-mainnet-books.json,app/data/prices.json,app/data/index-snapshot.json,app/data/callbook-state-testnet.json,app/data/callbook-state-mainnet.json}",
       "maxDuration": 60
     }
   },
@@ -26,6 +26,17 @@
     }
   ],
   "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Content-Security-Policy", "value": "frame-ancestors 'none'" },
+        { "key": "Permissions-Policy", "value": "geolocation=()" },
+        { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" }
+      ]
+    },
     {
       "source": "/(.*\\.css)",
       "headers": [

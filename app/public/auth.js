@@ -335,7 +335,7 @@ window.ReinsAuth = (function () {
   window.addEventListener("storage", function (e) { if (e.key === KEY) changed(session()); });
 
   return {
-    open: open, menu: menu, session: session, restore: restore, signOut: signOut, signTypedData: signTypedData, wallets: wallets,
+    open: open, menu: menu, session: session, restore: restore, signOut: signOut, signTypedData: signTypedData, wallets: wallets, onChain: onChain,
     onChange: function (fn) { listeners.push(fn); },
   };
 })();
