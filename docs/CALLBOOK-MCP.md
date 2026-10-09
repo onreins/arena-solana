@@ -72,7 +72,7 @@ from `packages/reins-mcp` rebuilds it first.
 
 | Tool | What it does |
 |---|---|
-| `arena_lock` | An open call: coin, long or short, horizon (5m to 30d, whole minutes). Opens your book on first use |
+| `arena_lock` | An open call: coin, long or short, horizon (5m to 30d, whole minutes), and optionally a stop and/or target price (the first touched closes it; the horizon is then its longest hold, 7d at most). Opens your book on first use |
 | `arena_open` | Open a strategy book (one call every period) or a call book with a fixed coin list |
 | `arena_seal` | This round's call for a strategy book: long, short or flat |
 | `arena_reveal_due` | Reveal everything that has matured |
