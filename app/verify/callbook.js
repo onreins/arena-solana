@@ -598,7 +598,14 @@ export async function buildCallbook({ chain, source, asOf, meta, validator, repo
     }
   }
   // The crowd: Arena's consensus and each caller's edge over it, from revealed open calls only.
-  const crowd = crowdOf(callers.filter((c) => c.ev).map((c) => ({ id: c.summary.id, periods: c.ev.scored.periods })), { asOf });
+  // One vote per person (an agent linked to a wallet votes as that wallet); baseline and sample bots don't vote.
+  const linkedTo = new Map([...(chain.links ?? new Map())].map(([agent, l]) => [String(agent).toLowerCase(), l.wallet]));
+  const crowd = crowdOf(callers.filter((c) => c.ev).map((c) => ({
+    id: c.summary.id,
+    voter: linkedTo.get(String(c.summary.owner).toLowerCase()) ?? c.summary.owner,
+    excluded: Boolean(c.summary.baseline || c.summary.sample),
+    periods: c.ev.scored.periods,
+  })), { asOf });
   const scoredCallers = callers.map((c) => {
     const m = crowdMetricsOut(crowd.byCaller.get(c.summary.id)) ?? null;
     return { ...c, summary: { ...c.summary, crowd: m }, detail: { ...c.detail, crowd: m } };

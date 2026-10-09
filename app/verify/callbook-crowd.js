@@ -1,54 +1,63 @@
 /**
- * The crowd: Arena's consensus, and each caller's edge over it (the rules
- * are here; docs/CALLBOOK.md can point to this file). Numerai's meta model and meta-model contribution,
- * without the money: nobody stakes, nothing is paid.
+ * The crowd: Arena's consensus, and each caller's edge over it. Numerai's
+ * meta model and meta-model contribution, without the money: nobody stakes,
+ * nothing is paid. The rules are here; docs/CALLBOOK.md can point to this file.
  *
- *   - Only revealed calls count, and only once revealed (revealedAt <= asOf).
- *     A locked call is hidden until its reveal and never feeds the crowd.
- *   - Calls are grouped by coin and UTC day of entry. In a group each caller
- *     has one view, the average side of their calls (+1 long, -1 short), so a
- *     caller who locks often weighs the same as one who locks once.
- *   - The consensus on a coin and day is the sign of the callers' average view;
- *     it has a record when at least MIN_CROWD callers called: the consensus
- *     side applied to every call's own window, after costs, averaged per
- *     caller.
+ *   - Only revealed calls count, once revealed (revealedAt <= asOf). A locked
+ *     call stays hidden until its reveal and never feeds the crowd.
+ *   - Who votes: each person once (a `voter`: an owner, or the wallet an agent
+ *     is linked to), so one person's many books are one view. Baseline and
+ *     sample bots don't vote, and nor does a caller with any withheld or
+ *     unscorable call: a record that hides calls doesn't get to shape the
+ *     crowd. Their own calls are still measured against it.
+ *   - Causal: a call is measured only against views locked before it
+ *     (lockedAt strictly earlier), on the same coin and UTC day. A call locked
+ *     later can never change an earlier call's edge, so the crowd can't be
+ *     poisoned with hindsight. A voter's view is the average side of their
+ *     calls so far (+1 long, -1 short).
  *   - A call's edge over the crowd: its net return minus what the crowd's side
- *     (everyone else's views on that coin and day, leaving the caller out)
- *     earned over the same window, after the same costs; 0 for the crowd's
- *     side when everyone else was split. A call with nobody else on its coin
- *     and day has no crowd: it isn't counted, rather than counted as 0.
- *     Going with the crowd scores about 0; being right where it was wrong
- *     scores high; being wrong where it was right scores low.
+ *     (everyone else's earlier views, the caller's own left out) earned after
+ *     the same costs, on the coin's move over the call's horizon (its whole
+ *     horizon even if a stop or target closed it early, so risk management
+ *     counts as edge); 0 for a split crowd. No one else before it: no crowd,
+ *     and the call isn't counted rather than counted as 0. Going with the
+ *     crowd scores about 0; right where it was wrong, high; wrong where it was
+ *     right, low.
+ *   - The consensus record: whenever at least `minCrowd` voters had a view
+ *     before a call, the crowd's side applied to that call's window, after
+ *     costs; averaged per caller per day, then per day.
+ *   - Lean: per coin over the last `recentDays`, the share of voters leaning
+ *     long; the lean is the majority side.
  *
- * Everything comes from revealed calls (chain data) and their priced moves
- * (public prices), so anyone can rebuild it. Inputs are sorted first, so the
- * same calls give the same crowd in any order.
+ * Built in one pass over each coin and day (no per-call rescans), so a rebuild
+ * stays fast with thousands of calls per caller. Deterministic: calls are
+ * ordered by (lockedAt, caller, callId) first.
  *
- * Limits: the groups are calendar days, so a caller who locks late in a day
- * after another's short call was revealed can see part of that day's crowd;
- * windows inside a day differ, which the per-call windows handle for returns
- * but not for timing. Few callers mean a noisy crowd: read `withCrowd`.
+ * Limits: keys are free, so a few sybil keys control the crowd on a coin with
+ * few callers (nothing is at stake, and every number shows how many callers
+ * it rests on). Only revealed calls count, so the lean and record lag by each
+ * call's horizon and leave out calls not revealed yet.
  */
 import { netOf } from "./callbook-callers.js";
 
 const DAY = 86_400;
 
 export const CROWD_RULES = Object.freeze({
-  bucketSec: DAY, // calls are grouped by coin and UTC day of entry
-  recentDays: 7, // the "lean now" window
-  minCrowd: 2, // callers needed on a coin and day for the consensus to have a record
-  minOthers: 1, // other callers needed on a coin and day for a call's edge to count
+  bucketSec: DAY, // a call is measured against the same coin's calls on its UTC day
+  recentDays: 7, // the "lean" window
+  minCrowd: 3, // voters needed before a call for the consensus to count it, and on a coin for the lean to show
+  minOthers: 1, // other voters needed before a call for its edge to count
 });
 
-const sum = (xs) => xs.reduce((a, b) => a + b, 0);
-const mean = (xs) => (xs.length ? sum(xs) / xs.length : null);
+const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 const signOf = (x) => (x > 1e-12 ? 1 : x < -1e-12 ? -1 : 0);
+const byText = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 
-/** One-sample t statistic against zero; 0 with under two values or no spread. */
+/** One-sample t statistic against zero; null with under two values, 0 with no spread. */
 function tStat(xs) {
-  if (xs.length < 2) return 0;
+  if (xs.length < 2) return null;
   const m = mean(xs);
-  const sd = Math.sqrt(sum(xs.map((x) => (x - m) ** 2)) / (xs.length - 1));
+  const sd = Math.sqrt(xs.reduce((a, x) => a + (x - m) ** 2, 0) / (xs.length - 1));
   return sd > 1e-12 ? m / (sd / Math.sqrt(xs.length)) : 0;
 }
 
@@ -59,104 +68,141 @@ function usable(c, asOf) {
     && c.revealedAt != null && c.revealedAt <= asOf;
 }
 
-/** caller id -> average side of their calls in a list. */
-function viewsOf(calls) {
-  const by = new Map();
-  for (const c of calls) by.set(c.callerId, [...(by.get(c.callerId) ?? []), c.side]);
-  return new Map([...by].map(([id, sides]) => [id, mean(sides)]));
-}
-
-/** The consensus side applied to each call's own window, after costs, averaged per caller. */
-function consensusReturn(calls, side) {
-  const by = new Map();
-  for (const c of calls) by.set(c.callerId, [...(by.get(c.callerId) ?? []), netOf(side, c.move).net]);
-  return mean([...by.values()].map(mean));
+/** Running views: voter -> { sum, n }, with the total of views and the number of voters. */
+function viewBook() {
+  const per = new Map();
+  let total = 0;
+  return {
+    voters: () => per.size,
+    viewOf: (voter) => { const v = per.get(voter); return v ? v.sum / v.n : undefined; },
+    // The average of everyone's views except `voter`'s, and how many that is.
+    without(voter) {
+      const own = per.get(voter);
+      const k = per.size - (own ? 1 : 0);
+      return { k, mean: k ? (total - (own ? own.sum / own.n : 0)) / k : 0 };
+    },
+    add(voter, side) {
+      const v = per.get(voter) ?? { sum: 0, n: 0 };
+      if (v.n) total -= v.sum / v.n;
+      v.sum += side; v.n += 1;
+      total += v.sum / v.n;
+      per.set(voter, v);
+    },
+  };
 }
 
 /**
- * callers: [{ id, periods }] with periods as scoreCaller returns them.
- * Returns { consensus: { rules, coins }, byCaller: Map(id -> metrics) }.
+ * callers: [{ id, voter?, excluded?, periods }]: periods as scoreCaller returns
+ * them; `voter` the person behind the book (default: its id); `excluded` for
+ * baseline and sample bots. Returns { consensus: { rules, coins }, byCaller }.
  */
 export function crowdOf(callers, { asOf, rules = CROWD_RULES }) {
-  const calls = [...callers]
-    .sort((a, b) => (String(a.id) < String(b.id) ? -1 : String(a.id) > String(b.id) ? 1 : 0))
-    .flatMap(({ id, periods }) => periods.filter((c) => usable(c, asOf)).map((c) => ({ ...c, callerId: String(id) })))
-    .sort((a, b) => a.entryAt - b.entryAt || (a.callerId < b.callerId ? -1 : a.callerId > b.callerId ? 1 : 0) || a.callId - b.callId);
-
-  // Coin and day -> its calls.
-  const groups = new Map();
-  for (const c of calls) {
-    const key = `${c.coin}|${Math.floor(c.entryAt / rules.bucketSec)}`;
-    groups.set(key, [...(groups.get(key) ?? []), c]);
-  }
-
-  // Each call's edge over everyone else on its coin and day.
-  const edges = new Map(callers.map(({ id }) => [String(id), []]));
-  const agree = new Map(callers.map(({ id }) => [String(id), 0]));
-  for (const group of groups.values()) {
-    const views = viewsOf(group);
-    for (const c of group) {
-      const others = [...views].filter(([id]) => id !== c.callerId).map(([, v]) => v);
-      if (others.length < rules.minOthers) continue;
-      const side = signOf(mean(others));
-      const crowdRet = side ? netOf(side, c.move).net : 0;
-      edges.get(c.callerId).push(c.ret - crowdRet);
-      if (side && c.side === side) agree.set(c.callerId, agree.get(c.callerId) + 1);
+  const coins = new Map(); // coin -> Map(day -> calls)
+  const stats = new Map(); // caller id -> running metrics
+  for (const caller of callers) {
+    const id = String(caller.id);
+    const withheld = caller.periods.filter((c) => c.status === "withheld" || c.status === "unscorable").length;
+    const votes = !caller.excluded && withheld === 0;
+    const voter = String(caller.voter ?? id).toLowerCase();
+    const s = { revealed: 0, withheld, votes, edges: [], clear: 0, agree: 0 };
+    stats.set(id, s);
+    for (const c of caller.periods) {
+      if (!usable(c, asOf)) continue;
+      s.revealed += 1;
+      const day = Math.floor(c.entryAt / rules.bucketSec);
+      const call = {
+        id, voter, votes, coin: c.coin, side: c.side, day, entryAt: c.entryAt, callId: c.callId, ret: c.ret,
+        lockedAt: Number.isFinite(c.lockedAt) ? c.lockedAt : c.entryAt,
+        // The crowd's side is valued over the call's whole horizon, even if a stop or target closed it early.
+        move: Number.isFinite(c.horizonMove) ? c.horizonMove : c.move,
+      };
+      if (!coins.has(c.coin)) coins.set(c.coin, new Map());
+      const days = coins.get(c.coin);
+      if (!days.has(day)) days.set(day, []);
+      days.get(day).push(call);
     }
   }
 
-  const byCaller = new Map(callers.map(({ id }) => {
-    const key = String(id);
-    const own = calls.filter((c) => c.callerId === key).length;
-    const e = edges.get(key);
-    return [key, {
-      revealed: own,
-      withCrowd: e.length,
-      coverage: own ? e.length / own : null,
-      agreement: e.length ? agree.get(key) / e.length : null,
-      edge: mean(e),
-      edgeT: tStat(e),
-    }];
-  }));
-
-  // Per coin: the lean over the recent window, and the consensus's own record.
   const since = asOf - rules.recentDays * DAY;
-  const coins = [...new Set(calls.map((c) => c.coin))].map((coin) => {
-    const onCoin = calls.filter((c) => c.coin === coin);
-    const recentCalls = onCoin.filter((c) => c.entryAt >= since);
-    const recentViews = [...viewsOf(recentCalls).values()];
-    const lean = signOf(mean(recentViews) ?? 0);
-    const days = [...groups.entries()].filter(([k]) => k.startsWith(`${coin}|`)).map(([, g]) => g);
-    const scored = days
-      .map((g) => ({ g, side: signOf(mean([...viewsOf(g).values()])) }))
-      .filter(({ g, side }) => side !== 0 && viewsOf(g).size >= rules.minCrowd)
-      .map(({ g, side }) => consensusReturn(g, side));
-    return {
+  const order = (a, b) => a.lockedAt - b.lockedAt || byText(a.id, b.id) || a.callId - b.callId;
+  const coinsOut = [];
+  for (const [coin, days] of coins) {
+    const allVoters = new Set();
+    const recent = viewBook();
+    const recordDays = [];
+    for (const day of [...days.keys()].sort((a, b) => a - b)) {
+      const group = days.get(day).sort(order);
+      const book = viewBook();
+      const dayRecord = new Map(); // caller id -> consensus returns on their windows
+      for (let i = 0; i < group.length;) {
+        // Calls locked in the same second see the same crowd: score the batch, then add it.
+        let j = i;
+        while (j < group.length && group[j].lockedAt === group[i].lockedAt) j++;
+        const batch = group.slice(i, j);
+        for (const c of batch) {
+          const others = book.without(c.voter);
+          if (others.k >= rules.minOthers) {
+            const side = signOf(others.mean);
+            const s = stats.get(c.id);
+            s.edges.push(c.ret - (side ? netOf(side, c.move).net : 0));
+            if (side) { s.clear += 1; if (c.side === side) s.agree += 1; }
+          }
+          const everyone = book.without(null);
+          const consensus = signOf(everyone.mean);
+          if (everyone.k >= rules.minCrowd && consensus) {
+            if (!dayRecord.has(c.id)) dayRecord.set(c.id, []);
+            dayRecord.get(c.id).push(netOf(consensus, c.move).net);
+          }
+        }
+        for (const c of batch) {
+          if (!c.votes) continue;
+          book.add(c.voter, c.side);
+          allVoters.add(c.voter);
+          if (c.entryAt >= since) recent.add(c.voter, c.side);
+        }
+        i = j;
+      }
+      if (dayRecord.size) recordDays.push(mean([...dayRecord.values()].map(mean)));
+    }
+    const voterViews = [...allVoters].map((v) => recent.viewOf(v)).filter((v) => v !== undefined);
+    const leaning = voterViews.filter((v) => v !== 0);
+    const longShare = leaning.length ? leaning.filter((v) => v > 0).length / leaning.length : null;
+    coinsOut.push({
       coin,
-      callers: new Set(onCoin.map((c) => c.callerId)).size,
+      callers: allVoters.size,
       recent: {
-        callers: recentViews.length,
-        calls: recentCalls.length,
-        longShare: recentViews.length ? recentViews.filter((v) => v > 0).length / recentViews.length : null,
-        lean: recentViews.length ? (lean > 0 ? "long" : lean < 0 ? "short" : "split") : null,
+        callers: voterViews.length,
+        longShare,
+        lean: longShare == null ? null : longShare > 0.5 ? "long" : longShare < 0.5 ? "short" : "split",
       },
       record: {
-        days: scored.length,
-        hitRate: scored.length ? scored.filter((r) => r > 0).length / scored.length : null,
-        meanReturn: mean(scored),
+        days: recordDays.length,
+        hitRate: recordDays.length ? recordDays.filter((r) => r > 0).length / recordDays.length : null,
+        meanReturn: mean(recordDays),
       },
-    };
-  }).sort((a, b) => b.recent.callers - a.recent.callers || b.callers - a.callers || (a.coin < b.coin ? -1 : a.coin > b.coin ? 1 : 0));
+    });
+  }
+  coinsOut.sort((a, b) => b.recent.callers - a.recent.callers || b.callers - a.callers || byText(a.coin, b.coin));
 
-  return { consensus: { rules: { ...rules }, coins }, byCaller };
+  const byCaller = new Map([...stats].map(([id, s]) => [id, {
+    revealed: s.revealed,
+    withheld: s.withheld,
+    inCrowd: s.votes,
+    withCrowd: s.edges.length,
+    coverage: s.revealed ? s.edges.length / s.revealed : null,
+    agreement: s.clear ? s.agree / s.clear : null,
+    edge: mean(s.edges),
+    edgeT: tStat(s.edges),
+  }]));
+  return { consensus: { rules: { ...rules }, coins: coinsOut }, byCaller };
 }
 
 const round = (x, dp) => (x == null || !Number.isFinite(x) ? null : Math.round(x * 10 ** dp) / 10 ** dp);
 
 /** A caller's crowd metrics as the API shows them. */
 export const crowdMetricsOut = (m) => m && ({
-  revealed: m.revealed, withCrowd: m.withCrowd, coverage: round(m.coverage, 3), agreement: round(m.agreement, 3),
-  edge: round(m.edge, 5), edgeT: round(m.edgeT, 2),
+  revealed: m.revealed, withheld: m.withheld, inCrowd: m.inCrowd, withCrowd: m.withCrowd,
+  coverage: round(m.coverage, 3), agreement: round(m.agreement, 3), edge: round(m.edge, 5), edgeT: round(m.edgeT, 2),
 });
 
 /** The consensus as the API shows it. */
