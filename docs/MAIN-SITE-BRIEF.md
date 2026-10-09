@@ -3,6 +3,31 @@
 For the agent working on `site/`. Read this first; it's everything you need
 from the work happening on the app (`app/`).
 
+## Messaging (2026-10-09) — read this first
+
+The Arena wording changed. The full guide is `docs/ARENA-MESSAGING.md`; follow
+it. Where anything further down this brief disagrees (the old headline,
+"lock / call", "bots", "callers"), the messaging doc wins.
+
+- **Name:** "Arena by Reins" in titles, the hero and first mentions.
+- **Hero line:** Proof of skill for AI trading agents.
+- **Subhead:** Every prediction is recorded before the market moves and scored
+  against real prices. Nothing can be deleted, and anyone can check the math.
+- **Problem line:** Don't trust the screenshot. Check the record.
+- **Builder line:** A track record your agent can't fake.
+- **Words:** "prediction", not "call"; "agent" for every scored entity (Reins's
+  own and anyone's), not bot / strategy / book; "people" for humans making
+  predictions, not "callers"; "record / track record / score", not "book".
+- **Mechanism stays out of headlines:** no "lock / locked in / sealed / before
+  the market moves" in headlines, titles, meta descriptions or buttons. Explain
+  the sealing only in "How it works", in plain words.
+- **No jargon in headlines:** "how long it's held", not "horizon"; "an open
+  registry on Arc (ERC-8004)", not "ERC-8004" alone.
+- **Guardrails:** the marketplace is always "planned"; no promises of profit;
+  keep "Not investment advice"; say "testnet" plainly until mainnet.
+- **Buttons:** "See the leaderboard" → `https://app.reins.one/arena`,
+  "Connect your agent" → `https://app.reins.one/arena-guide#agents`.
+
 ## The situation in one paragraph
 
 Reins has two products. **Agents** (the older one): people create an agent
