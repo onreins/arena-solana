@@ -55,6 +55,13 @@ const VIEWS = parseAbi([
   "function linkNonces(address agent) view returns (uint256)",
 ]);
 
+/**
+ * The board and each record: browsers keep them 30s, and Vercel's CDN (which
+ * only reads s-maxage) serves them for 30s and a minute more while it fetches
+ * the next, so a crowd of visitors costs one rebuild, not one each.
+ */
+const CACHE_INDEX = "public, max-age=30, s-maxage=30, stale-while-revalidate=60";
+
 export function mountCallbook(app, { env: rawEnv = process.env, source, now = () => Math.floor(Date.now() / 1000) } = {}) {
   const env = arenaEnv(rawEnv); // ARENA_X settings are read as CALLBOOK_X
   const log = (m) => console.error("[callbook]", m);
@@ -172,7 +179,7 @@ export function mountCallbook(app, { env: rawEnv = process.env, source, now = ()
   app.get("/api/callbook", async (_req, res) => {
     if (!net) return setupError ? off(res) : res.redirect(302, "/data/callbook.json");
     try {
-      res.set("cache-control", "public, max-age=30").json((await current()).index);
+      res.set("cache-control", CACHE_INDEX).json((await current()).index);
     } catch (err) {
       fail(res, err);
     }
@@ -184,7 +191,7 @@ export function mountCallbook(app, { env: rawEnv = process.env, source, now = ()
     try {
       const found = pick(await current()).get(String(Number(req.params.id)));
       if (!found) return res.status(404).json({ error: `no such ${kind}` });
-      res.set("cache-control", "public, max-age=30").json(found);
+      res.set("cache-control", CACHE_INDEX).json(found);
     } catch (err) {
       fail(res, err);
     }
@@ -238,6 +245,62 @@ export function mountCallbook(app, { env: rawEnv = process.env, source, now = ()
     });
     return relayer;
   };
+  // ---------------------------------------------------------------- health
+  /**
+   * GET /api/callbook/health -> { ok, problems: [sentences], network, relayer, validator, chain }:
+   * what an outside check (.github/workflows/health.yml) watches. Problems: Arena or the relayer
+   * off, the relayer's or validator's wallet under its minimum (ARENA_RELAYER_MIN_USDC, default 1;
+   * ARENA_VALIDATOR_MIN_USDC, default 0.5), no validator set, or the chain unreachable.
+   * Answered from memory for 30s; never starts a full chain read.
+   */
+  let health = null, healthing = null;
+  const usdc = (wei) => Number(wei) / 1e18;
+  // Public chain facts only (addresses and balances anyone can read), so the CDN may keep it 30s too.
+  app.get("/api/callbook/health", async (_req, res) => {
+    if (!health || Date.now() - health.at >= 30_000) {
+      healthing ??= checkHealth().then((body) => { health = { at: Date.now(), body }; }).finally(() => { healthing = null; });
+      await healthing;
+    }
+    res.set("cache-control", "public, max-age=30, s-maxage=30").json(health.body);
+  });
+  /** One health check at a time: concurrent requests share it. */
+  async function checkHealth() {
+    const problems = [];
+    const body = { ok: false, problems, network: net?.name ?? null, contract: net?.address ?? null };
+    if (!net) problems.push(setupError ?? "Arena isn't configured on this server");
+    else {
+      try {
+        client ??= clientFor(net);
+        const head = await client.getBlockNumber();
+        // Reads follow visits, so a lag is information, not a fault.
+        body.chain = { head: String(head), readTo: chainState ? String(chainState.toBlock) : null, lagBlocks: chainState ? Number(head - chainState.toBlock) : null };
+        const minRelay = Number(env.CALLBOOK_RELAYER_MIN_USDC ?? 1);
+        if (relayOff) {
+          body.relayer = { on: false };
+          problems.push(relayOff);
+        } else {
+          const address = privateKeyToAccount(env.CALLBOOK_RELAYER_KEY).address;
+          const balance = usdc(await client.getBalance({ address }));
+          body.relayer = { on: true, address, balanceUsdc: Math.round(balance * 1e4) / 1e4, minUsdc: minRelay };
+          if (balance < minRelay) problems.push(`the relayer ${address} has ${balance.toFixed(4)} USDC, under ${minRelay}: fund it or gasless locks stop`);
+        }
+        const minValidator = Number(env.CALLBOOK_VALIDATOR_MIN_USDC ?? 0.5);
+        if (!net.validator) {
+          body.validator = null;
+          problems.push(net.validationOff ?? "no validator is set, so no published score is shown");
+        } else {
+          const balance = usdc(await client.getBalance({ address: net.validator }));
+          body.validator = { address: net.validator, balanceUsdc: Math.round(balance * 1e4) / 1e4, minUsdc: minValidator };
+          if (balance < minValidator) problems.push(`the validator ${net.validator} has ${balance.toFixed(4)} USDC, under ${minValidator}: fund it or daily scores stop`);
+        }
+      } catch (err) {
+        problems.push(`the chain couldn't be read: ${brief(err)}`);
+      }
+    }
+    body.ok = problems.length === 0;
+    return body;
+  }
+
   // Route name -> relayer function. link-check sends nothing: it checks a link request's agent half.
   const RELAY = { lock: "lock", seal: "seal", reveal: "reveal", profile: "profile", link: "link", unlink: "unlink", "link-check": "linkCheck" };
   for (const [action, fn] of Object.entries(RELAY)) {

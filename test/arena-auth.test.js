@@ -62,6 +62,14 @@ test("the config shares only public values, and names Arc's chain for the networ
   try { assert.equal((await (await fetch(m.base + "/api/auth/config")).json()).blockchain, "ARC"); } finally { m.close(); }
 });
 
+test("settings pasted with a stray tab or space still work", async () => {
+  const s = await serve({ ...ON, CIRCLE_APP_ID: "\tapp-123 ", GOOGLE_CLIENT_ID: ` ${ON.GOOGLE_CLIENT_ID}\n`, ARENA_NETWORK: " testnet\t" });
+  try {
+    const c = await (await fetch(s.base + "/api/auth/config")).json();
+    assert.deepEqual(c, { google: true, circleAppId: "app-123", googleClientId: ON.GOOGLE_CLIENT_ID, blockchain: "ARC-TESTNET" });
+  } finally { s.close(); }
+});
+
 test("device tokens: the id is checked first, then passed to Circle with the API key", async () => {
   const s = await serve(ON, { "POST /v1/w3s/users/social/token": [201, { data: { deviceToken: "dt", deviceEncryptionKey: "dek" } }] });
   try {

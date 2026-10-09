@@ -5,7 +5,8 @@
 # 10k blocks at a time through Arc's rate-limited public RPC. After a few days
 # the gap runs past the function's 60-second limit, and the agents' charts and
 # totals stop loading. This job re-saves the snapshot twice a day and commits
-# it, which redeploys the app with a gap of hours, not days.
+# it, which redeploys the app with a gap of hours, not days. Arena's state
+# (app/data/callbook-state-<network>.json) gets the same treatment.
 #
 # It only reads the chain, so it needs no secrets. Its commits touch only the
 # snapshot file: pull before pushing a branch onto master and they merge
@@ -39,15 +40,25 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run build
       - run: npm run snapshot:index
-      - name: Commit the snapshot if it moved
+      # Arena's books, calls and reveals: the same gap, for /api/callbook (scripts/snapshot-arena.js).
+      # Its network and validator come from repository variables, matching the app's Vercel settings.
+      - name: Snapshot Arena
+        run: npm run snapshot:arena
+        continue-on-error: true
+        env:
+          ARENA_NETWORK: ${{ vars.ARENA_NETWORK || 'testnet' }}
+          ARENA_VALIDATOR: ${{ vars.ARENA_VALIDATOR }}
+          ARENA_FROM_BLOCK: ${{ vars.ARENA_FROM_BLOCK }}
+      - name: Commit the snapshots if they moved
         run: |
-          if git diff --quiet -- app/data/index-snapshot.json; then
+          git add app/data/index-snapshot.json
+          for f in app/data/callbook-state-*.json; do if [ -f "$f" ]; then git add "$f"; fi; done
+          if git diff --cached --quiet; then
             echo "Nothing new to save."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/data/index-snapshot.json
-          git commit -m "chore(app): refresh the index snapshot"
+          git commit -m "chore(app): refresh the index snapshots"
           git pull --rebase
           git push
