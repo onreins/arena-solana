@@ -10,6 +10,7 @@
   agentTabs();
   // The banner's copy button, then the icons and medallions.
   if ($("gd-copy")) $("gd-copy").innerHTML = C.copyButton($("mcp-cmd").textContent, "Copy the setup command");
+  if ($("gd-prompt-copy")) $("gd-prompt-copy").innerHTML = C.copyButton($("gd-prompt").textContent, "Copy the prompt");
   C.medals();
 
   // The agent setup: a command for Claude Code, a config block for every other

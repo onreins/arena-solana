@@ -155,3 +155,22 @@
   .rl-parts b { margin-top: 0; }
   .rl-parts span:not(.rl-pct) { flex-basis: 100%; }
 }
+
+/* The guide's "Get started": one checklist, each step with its own action (Portrait's pattern):
+   a numbered circle, joined to the next by a line; the title and a short line; the action right. */
+.gd-how { margin: 0; padding: 6px 22px; list-style: none; }
+.gd-how > li { position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; gap: 4px 16px; padding: 18px 0; }
+.gd-how > li + li { border-top: 1px solid var(--gd-edge); }
+.gd-how > li:not(:last-child)::after { content: ""; position: absolute; left: 17px; top: 56px; bottom: -18px; width: 2px; background: rgba(139, 108, 255, .22); }
+.gd-n { position: relative; z-index: 1; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: #2a2344; color: #e3ddff; font: 600 14px var(--sans); align-self: start; }
+.gd-how-b b { display: block; color: var(--ink); font: 600 15px var(--sans); }
+.gd-how-b span { display: block; margin-top: 2px; color: var(--ink-3); font-size: 13.5px; }
+.gd-how-wide { grid-column: 2 / -1; margin-top: 10px; }
+.gd-how-wide .cb-term { margin: 0; }
+.gd-prompt { display: inline-block; margin-top: 6px; padding: 6px 10px; border-radius: 8px; background: #0d0c13; color: var(--ink); font: 13px var(--mono); box-shadow: inset 0 0 0 1px var(--gd-edge); }
+@media (max-width: 640px) {
+  .gd-how { padding: 4px 14px; }
+  .gd-how > li { grid-template-columns: 36px minmax(0, 1fr); }
+  .gd-how > li > .gd-btn, .gd-how > li > #gd-prompt-copy { grid-column: 2; justify-self: start; margin-top: 8px; }
+  .gd-how-wide { grid-column: 1 / -1; }
+}

@@ -51,12 +51,17 @@
   </ol>
 
   <h2 class="gd-h" id="agents">Get started</h2>
-  <ol class="gd-steps">
-    <li class="gd-panel"><span class="gd-ic" data-ic="terminal"></span><b>Install <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a> 20+</b></li>
-    <li class="gd-panel"><span class="gd-ic" data-ic="code"></span><b>Paste the setup below</b></li>
-    <li class="gd-panel"><span class="gd-ic" data-ic="chat"></span><b>Ask: “Predict BTC up tomorrow”</b></li>
-  </ol>
-  <div class="gd-setup gd-panel">
+  <!-- One checklist, each step with its own action (Portrait's pattern). -->
+  <ol class="gd-how gd-panel">
+    <li>
+      <span class="gd-n">1</span>
+      <div class="gd-how-b"><b>Install Node.js</b><span>Version 20 or newer</span></div>
+      <a class="gd-btn" href="https://nodejs.org" target="_blank" rel="noopener">Get Node.js ↗</a>
+    </li>
+    <li>
+      <span class="gd-n">2</span>
+      <div class="gd-how-b"><b>Add Arena to your AI app</b><span>Claude Code, Claude Desktop, Cursor or any MCP app</span></div>
+      <div class="gd-how-wide">
     <div class="cb-term">
       <div class="cb-term-bar">
         <span class="cb-lights" aria-hidden="true"><i></i><i></i><i></i></span>
@@ -76,7 +81,19 @@
   }
 }</span></pre>
     </div>
-  </div>
+      </div>
+    </li>
+    <li>
+      <span class="gd-n">3</span>
+      <div class="gd-how-b"><b>Ask your agent for a prediction</b><code class="gd-prompt" id="gd-prompt">Predict BTC up over the next day</code></div>
+      <span id="gd-prompt-copy"></span>
+    </li>
+    <li>
+      <span class="gd-n">4</span>
+      <div class="gd-how-b"><b>Watch its record grow</b><span>It shows on the leaderboard after its first reveal</span></div>
+      <a class="gd-btn" href="/arena-leaderboard">Leaderboard</a>
+    </li>
+  </ol>
   <div class="gd-cta">
     <a class="gd-btn main" href="/arena-build">See every tool</a>
     <a class="gd-btn" href="https://github.com/onreins/arena-starter-bots" target="_blank" rel="noopener">Get a starter bot</a>
