@@ -441,6 +441,68 @@ window.Callbook = (function () {
     return '<span class="cb-skill ' + esc(s.level) + '" tabindex="0" data-tip="' + esc(skillTip(s)) + '">' + body + '<span class="cb-skill-l">' + esc(own(LEVELS, s.level)) + "</span></span>";
   }
 
+  // The Arena tab bar, with motion (styles in callbook.css): the current tab's pill, which a
+  // view transition slides from the last page's tab to this one; a softer pill that glides
+  // after the pointer; and, on a phone, where the bar scrolls, the current tab brought into view.
+  // It runs as soon as this script does, so the pill is there for the transition's first frame.
+  (function views() {
+    var bar = document.getElementById("views");
+    var here = bar && bar.querySelector('[aria-current="page"]');
+    if (!here) return;
+    var pill = document.createElement("span"), hover = document.createElement("span");
+    pill.className = "cb-pill";
+    hover.className = "cb-hover";
+    pill.setAttribute("aria-hidden", "true");
+    hover.setAttribute("aria-hidden", "true");
+    bar.insertBefore(hover, bar.firstChild);
+    bar.insertBefore(pill, bar.firstChild);
+    var place = function (el, a) { el.style.width = a.offsetWidth + "px"; el.style.transform = "translateX(" + a.offsetLeft + "px)"; };
+    // Put the pill on the current tab at once (no slide), and keep that tab in view.
+    var settle = function () {
+      pill.style.transition = "none";
+      place(pill, here);
+      void pill.offsetWidth;
+      pill.style.transition = "";
+      if (bar.scrollWidth > bar.clientWidth) bar.scrollLeft = here.offsetLeft - (bar.clientWidth - here.offsetWidth) / 2;
+    };
+    settle();
+    bar.classList.add("moving");
+    // The fonts and the final layout can still change the tabs' widths.
+    window.addEventListener("load", settle);
+    window.addEventListener("resize", settle);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(settle);
+
+    var links = bar.querySelectorAll("a");
+    Array.prototype.forEach.call(links, function (a) {
+      // The pointer pill appears where the pointer comes in, then glides from tab to tab.
+      a.addEventListener("pointerenter", function () {
+        if (!hover.classList.contains("on")) {
+          hover.classList.add("jump");
+          place(hover, a);
+          void hover.offsetWidth;
+          hover.classList.remove("jump");
+        } else {
+          place(hover, a);
+        }
+        hover.classList.add("on");
+      });
+    });
+    bar.addEventListener("pointerleave", function () { hover.classList.remove("on"); });
+
+    // Where pages can't morph into each other (no cross-page view transitions), the pill
+    // slides to the clicked tab first and then the page changes. Not with reduced motion.
+    var calm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if ("onpagereveal" in window || calm) return;
+    Array.prototype.forEach.call(links, function (a) {
+      a.addEventListener("click", function (e) {
+        if (a === here || e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        e.preventDefault();
+        place(pill, a);
+        setTimeout(function () { location.href = a.href; }, 240);
+      });
+    });
+  })();
+
   return {
     skillHtml: skillHtml, skillTip: skillTip, skillPanel: skillPanel, countUp: countUp, glow: glow, levelLine: levelLine, RECORD: RECORD, skillRank: skillRank, LEVELS: LEVELS,
     own: own, nameOf: nameOf, movedTag: movedTag, profileHref: profileHref, moreFrom: moreFrom, scoreParts: scoreParts, identicon: identicon, ADDR_RE: ADDR_RE, YOUNG_DAYS: YOUNG_DAYS, challengeLine: challengeLine, isHttp: isHttp, RULES: RULES, scoreOf: scoreOf, scoreWhy: scoreWhy, periodAt: periodAt, eodOf: eodOf, where: where, costsText: costsText, loadIndex: loadIndex, loadBook: loadBook, loadCaller: loadCaller, params: params, wantMock: wantMock, ID_RE: ID_RE,

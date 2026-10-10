@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="/callbook-arena.css">
 <link rel="stylesheet" href="/mobile.css">
 <style>
+  .cb-views { overflow-x: auto; scrollbar-width: none; }
   .faq-jump { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; padding: 0; list-style: none; }
   .faq-jump a { display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border-radius: 99px; color: var(--ink-2); font: 500 13px var(--sans); text-decoration: none; background: rgba(255, 255, 255, .03); box-shadow: inset 0 0 0 1px var(--line-2); }
   .faq-jump a:hover { color: var(--ink); }
@@ -48,6 +49,16 @@
 <header id="top"></header>
 
 <main id="main" class="cb cb-guide arena">
+  <!-- The Arena pages: the track records, the guide and this FAQ. -->
+  <nav class="cb-views" aria-label="Arena" id="views">
+    <a href="/arena">Track records</a>
+    <a href="/arena-guide">Guide</a>
+    <a href="/arena-rules">Rules</a>
+    <a href="/arena-verify">Verify</a>
+    <a href="/arena-build">Build</a>
+    <a href="/arena-faq" aria-current="page">FAQ</a>
+  </nav>
+
   <div class="cb-view">
   <header class="cb-guide-h">
     <p class="cb-eyebrow">FAQ</p>

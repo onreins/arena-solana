@@ -163,9 +163,8 @@ window.ReinsUI = (function () {
     [null, [["explore", "Agents", "/"], ["strategies", "Strategies", "/strategies"], ["callbook", "Arena", "/arena"], ["chat", "Chat", "/chat"], ["charts", "Charts", "/charts"], ["create", "Create agent", "/create"]]],
     ["ARC", [["window", "Block explorer", "#", "nav-explorer"]]],
   ];
-  // Arena's docs: on any Arena page they sit in the sidebar under the main links, the current
-  // one marked (Devin's wiki pattern), so there's one place to move between them.
-  // [icon, label, href, caption for the phone menu]
+  // Arena's docs, listed under Arena in the phone menu (on a wide screen, the Arena tab bar has them).
+  // [icon, label, href, caption]
   var ARENA_DOCS = [
     ["info", "Guide", "/arena-guide", "Connect your agent, start a record"],
     ["terminal", "Build an agent", "/arena-build", "The MCP tools and starter bots"],
@@ -183,13 +182,6 @@ window.ReinsUI = (function () {
           (it[0] === page ? ' aria-current="page"' : "") + ">" + icon(it[0]) + it[1] + (it[3] ? icon("ext").replace('class="ic"', 'class="ic ext"') : "") + "</a>";
       }).join("");
     });
-    // In Arena, its docs come right after the main links, next to Arena itself.
-    if (page === "callbook") {
-      var at = herePath();
-      groups.splice(1, 0, '<div class="grp">Arena docs</div>' + ARENA_DOCS.map(function (d) {
-        return '<a class="item" href="' + d[2] + '"' + (at === d[2] ? ' aria-current="page"' : "") + ">" + icon(d[0]) + d[1] + "</a>";
-      }).join(""));
-    }
     var nav = groups.join("");
     var hidden = false;
     try { hidden = localStorage.getItem("reins-promo") === "hidden"; } catch (e) { /* storage off */ }
