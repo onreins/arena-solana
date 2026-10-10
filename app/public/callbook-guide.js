@@ -79,7 +79,7 @@
     D.books = (D.books || []).filter(function (b) { return b && b.metrics; });
     D.callers = (D.callers || []).filter(function (c) { return c && c.metrics; });
     var b = D.books[0];
-    if (b && b.periodSec) $("how-p").textContent = "Reins’s agents: one prediction every " + C.hours(b.periodSec) + ", each held " + C.hours(b.horizonSec || b.periodSec);
+    if (b && b.periodSec && $("how-p")) $("how-p").textContent = "Reins’s agents: one prediction every " + C.hours(b.periodSec) + ", each held " + C.hours(b.horizonSec || b.periodSec);
     $("foot-gen").textContent = "Paper predictions, scored at Hyperliquid prices. Not investment advice." + (D.generated ? " Updated " + C.stamp(Date.parse(D.generated) / 1000) + "." : "");
     $("foot-net").textContent = D.network || "Arc";
     verify(D);
