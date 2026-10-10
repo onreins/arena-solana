@@ -8,7 +8,9 @@
 (function () {
   "use strict";
   var U = window.ReinsUI, C = window.Callbook, esc = U.esc;
-  var $ = function (id) { return document.getElementById(id); };
+  // The leaderboard page (/arena-leaderboard) has only some of these sections: a missing one
+  // gets a detached stand-in, so filling it does nothing instead of stopping the page.
+  var $ = function (id) { return document.getElementById(id) || document.createElement("div"); };
   U.topbar("callbook");
 
   // The guide is its own page now: old links to its sections go there.

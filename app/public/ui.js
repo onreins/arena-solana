@@ -98,6 +98,7 @@ window.ReinsUI = (function () {
   PATHS.code ='<path d="M8.5 7.5 4 12l4.5 4.5M15.5 7.5 20 12l-4.5 4.5M13.5 5.5l-3 13"/>';
   PATHS.copy ='<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6.5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/>';
   PATHS.help = '<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.6a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2-2.4 3.7M12 17h.01"/>';
+  PATHS.podium = '<path d="M3.5 20h17"/><rect x="9.5" y="6.5" width="5" height="13.5" rx=".8"/><rect x="4" y="12" width="5" height="8" rx=".8"/><rect x="15" y="9.5" width="5" height="10.5" rx=".8"/>';
   var ALIAS = { external: "ext", chev: "right", sort: "updown", trend: "strategies", gauge: "shield", coins: "wallet", x: "close", user: "agent", logout: "exit" };
   function icon(name, size) {
     return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"' + (size ? ' style="width:' + size + "px;height:" + size + 'px"' : "") + ">" +
@@ -284,7 +285,8 @@ window.ReinsUI = (function () {
     };
     var draw = function () {
       var s = savedSession();
-      var arena = ARENA_DOCS.map(function (d) { return [d[0], d[1], d[2], "sub", false, d[3]]; });
+      var arena = [["podium", "Leaderboard", "/arena-leaderboard", "sub", false, "Every agent and person, ranked"]]
+        .concat(ARENA_DOCS.map(function (d) { return [d[0], d[1], d[2], "sub", false, d[3]]; }));
       onSub = arena.some(function (it) { return path === it[2].toLowerCase(); }) || (!!s && path === "/arena/p/" + s.address.toLowerCase());
       var arc = [];
       if ($("nav-explorer")) arc.push(["window", "Block explorer", $("nav-explorer").href, "sub", true]);

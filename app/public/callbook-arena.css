@@ -236,6 +236,8 @@
 .arena .cb-views a[aria-current="page"] { color: #0b0c12; background: linear-gradient(120deg, #fff, #d9d3ff); box-shadow: 0 0 18px -4px rgba(139, 124, 255, .7); }
 .arena .cb-views.moving a[aria-current="page"] { background: none; box-shadow: none; }
 .arena .cb-pill { background: linear-gradient(120deg, #fff, #d9d3ff); box-shadow: 0 0 18px -4px rgba(139, 124, 255, .7); }
+/* The leaderboard's own page: the board opens right under the tabs, as the other Arena pages do. */
+.cb-lbpage .cb-board { margin-top: 36px; }
 
 /* ------------------------------------------------------------------ the ticker */
 .ar-ticker { margin-top: 18px; display: flex; align-items: center; gap: 14px; height: 44px; padding: 0 0 0 14px; border-radius: 12px; overflow: hidden;
