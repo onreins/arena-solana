@@ -97,6 +97,7 @@ window.ReinsUI = (function () {
   PATHS.drop = '<path d="M12 3.5s5.5 6.1 5.5 10.2a5.5 5.5 0 0 1-11 0C6.5 9.6 12 3.5 12 3.5Z"/>';
   PATHS.code ='<path d="M8.5 7.5 4 12l4.5 4.5M15.5 7.5 20 12l-4.5 4.5M13.5 5.5l-3 13"/>';
   PATHS.copy ='<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6.5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/>';
+  PATHS.help = '<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.6a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2-2.4 3.7M12 17h.01"/>';
   var ALIAS = { external: "ext", chev: "right", sort: "updown", trend: "strategies", gauge: "shield", coins: "wallet", x: "close", user: "agent", logout: "exit" };
   function icon(name, size) {
     return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"' + (size ? ' style="width:' + size + "px;height:" + size + 'px"' : "") + ">" +
@@ -162,15 +163,34 @@ window.ReinsUI = (function () {
     [null, [["explore", "Agents", "/"], ["strategies", "Strategies", "/strategies"], ["callbook", "Arena", "/arena"], ["chat", "Chat", "/chat"], ["charts", "Charts", "/charts"], ["create", "Create agent", "/create"]]],
     ["ARC", [["window", "Block explorer", "#", "nav-explorer"]]],
   ];
+  // Arena's docs: on any Arena page they sit in the sidebar under the main links, the current
+  // one marked (Devin's wiki pattern), so there's one place to move between them.
+  // [icon, label, href, caption for the phone menu]
+  var ARENA_DOCS = [
+    ["info", "Guide", "/arena-guide", "Connect your agent, start a record"],
+    ["terminal", "Build an agent", "/arena-build", "The MCP tools and starter bots"],
+    ["strategies", "Scoring rules", "/arena-rules", "How every score is built"],
+    ["shield", "Verify", "/arena-verify", "Check a prediction yourself"],
+    ["help", "FAQ", "/arena-faq", "Common questions"],
+  ];
+  var herePath = function () { return location.pathname.toLowerCase().replace(/\.html$/, "").replace(/\/$/, "") || "/"; };
   // On a phone the sidebar is hidden, so the main pages move to a bar along the bottom.
   var TABS = [["explore", "Agents", "/"], ["strategies", "Strategies", "/strategies"], ["callbook", "Arena", "/arena"], ["charts", "Charts", "/charts"], ["chat", "Chat", "/chat"], ["create", "Create", "/create"]];
   function topbar(page) {
-    var nav = NAV.map(function (g) {
+    var groups = NAV.map(function (g) {
       return (g[0] ? '<div class="grp">' + g[0] + "</div>" : "") + g[1].map(function (it) {
         return '<a class="item" href="' + it[2] + '"' + (it[3] ? ' id="' + it[3] + '" target="_blank" rel="noopener"' : "") +
           (it[0] === page ? ' aria-current="page"' : "") + ">" + icon(it[0]) + it[1] + (it[3] ? icon("ext").replace('class="ic"', 'class="ic ext"') : "") + "</a>";
       }).join("");
-    }).join("");
+    });
+    // In Arena, its docs come right after the main links, next to Arena itself.
+    if (page === "callbook") {
+      var at = herePath();
+      groups.splice(1, 0, '<div class="grp">Arena docs</div>' + ARENA_DOCS.map(function (d) {
+        return '<a class="item" href="' + d[2] + '"' + (at === d[2] ? ' aria-current="page"' : "") + ">" + icon(d[0]) + d[1] + "</a>";
+      }).join(""));
+    }
+    var nav = groups.join("");
     var hidden = false;
     try { hidden = localStorage.getItem("reins-promo") === "hidden"; } catch (e) { /* storage off */ }
     var rings = '<svg class="rings" viewBox="0 0 220 220" aria-hidden="true">' + [30, 55, 80, 105].map(function (r) {
@@ -238,7 +258,7 @@ window.ReinsUI = (function () {
     menu.setAttribute("aria-label", "Menu");
     menu.hidden = true;
     // A sub-page (the guide, your profile) is marked current over its section.
-    var path = location.pathname.toLowerCase(), onSub = false;
+    var path = herePath(), onSub = false;
     var current = function (it) { return it[3] === "sub" ? path === it[2].toLowerCase() : !onSub && it[0] === page; };
     // The main pages as tiles, each with its own colour and a few words on what's there.
     var TILE = {
@@ -272,7 +292,7 @@ window.ReinsUI = (function () {
     };
     var draw = function () {
       var s = savedSession();
-      var arena = [["info", "How Arena works", "/arena-guide", "sub", false, "Build a record anyone can check"]];
+      var arena = ARENA_DOCS.map(function (d) { return [d[0], d[1], d[2], "sub", false, d[3]]; });
       onSub = arena.some(function (it) { return path === it[2].toLowerCase(); }) || (!!s && path === "/arena/p/" + s.address.toLowerCase());
       var arc = [];
       if ($("nav-explorer")) arc.push(["window", "Block explorer", $("nav-explorer").href, "sub", true]);
@@ -288,7 +308,7 @@ window.ReinsUI = (function () {
         ]) +
         group("Arc", arc) +
         '<div class="m-foot"><span class="net' + ($("net") && $("net").classList.contains("off") ? " off" : "") + '"><i></i>' +
-        esc(($("net-text") || {}).textContent || "Arc") + "</span><span>Reins · beta</span></div>";
+        esc(($("net-text") || {}).textContent || "Arc") + '</span><span class="m-legal"><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></span></div>';
       // Each block rises in, one after another.
       Array.prototype.forEach.call(menu.children, function (el, i) { el.style.setProperty("--i", i); });
     };

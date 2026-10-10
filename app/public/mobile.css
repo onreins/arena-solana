@@ -115,6 +115,7 @@
   /* Foot: the network and the name */
   .mnav .m-foot { display: flex; justify-content: space-between; align-items: center; margin: 22px 4px 0; color: var(--ink-4); font-size: 12px; }
   .mnav .m-foot .net { font-size: 12px; }
+  .mnav .m-legal a { color: var(--ink-3); padding: 8px 2px; }
 
   body.mnav-on { overflow: hidden; }
   /* Charts keeps its own, slimmer top bar. */
