@@ -258,10 +258,13 @@ window.ReinsUI = (function () {
       explore: ["blue", "Live on Arc"], strategies: ["violet", "Backtested ideas"], callbook: ["green", "Track records"],
       chat: ["amber", "Describe a strategy"], charts: ["orange", "Live markets"], create: ["pink", "Fund it, set limits"],
     };
+    // Each tile carries a small 3D object (app/art-src/menu-icons.html), as Vivid's pocket tiles do.
+    var ART = { explore: "agents", strategies: "strategies", callbook: "arena", chat: "chat", charts: "charts", create: "create" };
     var tile = function (it) {
       var t = TILE[it[0]] || ["blue", ""];
+      var art = ART[it[0]] ? '<span class="t-art" aria-hidden="true"><img src="/art/menu/' + ART[it[0]] + '.png" alt="" width="96" height="96" loading="lazy"></span>' : '<span class="t-ic">' + icon(it[0]) + "</span>";
       return '<a class="tile t-' + t[0] + '" href="' + it[2] + '"' + (current(it) ? ' aria-current="page"' : "") + ">" +
-        '<span class="t-ic">' + icon(it[0]) + "</span><b>" + it[1] + "</b><small>" + t[1] + "</small></a>";
+        art + "<b>" + it[1] + "</b><small>" + t[1] + "</small></a>";
     };
     // Rows: [icon, label, href, "sub", external?, caption?]
     var row = function (it) {

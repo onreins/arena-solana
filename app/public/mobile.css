@@ -79,6 +79,11 @@
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tint) 26%, transparent);
   }
   .mnav .tile .t-ic .ic { width: 18px; height: 18px; }
+  /* The tile's 3D object (ui.js ART), larger and loose in the corner, as on Vivid's tiles. */
+  .mnav .tile { min-height: 118px; }
+  .mnav .tile .t-art { position: absolute; top: 4px; left: 6px; width: 62px; height: 62px; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .35)); }
+  .mnav .tile .t-art img { display: block; width: 100%; height: 100%; }
+  .mnav .tile:active .t-art { transform: scale(.94); }
   .mnav .tile b { color: #fff; font: 600 15px var(--sans); }
   .mnav .tile small { color: var(--ink-3); font-size: 12px; }
   .mnav .tile:active { transform: scale(.97); }
@@ -90,19 +95,15 @@
     content: ""; position: absolute; top: 14px; right: 14px; width: 7px; height: 7px; border-radius: 50%;
     background: var(--tint); box-shadow: 0 0 0 4px color-mix(in srgb, var(--tint) 20%, transparent);
   }
-  .mnav .t-blue { --tint: var(--blue); }
-  .mnav .t-violet { --tint: var(--violet); }
-  .mnav .t-green { --tint: var(--green); }
-  .mnav .t-amber { --tint: var(--amber); }
-  .mnav .t-orange { --tint: var(--orange); }
-  .mnav .t-pink { --tint: #e879b9; }
+  /* One violet tint for every tile, to match the 3D objects. */
+  .mnav .t-blue, .mnav .t-violet, .mnav .t-green, .mnav .t-amber, .mnav .t-orange, .mnav .t-pink { --tint: #8b6cff; }
 
   /* Grouped cards of rows */
   .mnav .grp { margin: 22px 4px 8px; color: var(--ink-4); font: 600 11px var(--sans); letter-spacing: .08em; text-transform: uppercase; }
   .mnav .card { padding: 4px; border-radius: 16px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line-2); }
   .mnav a.row { position: relative; display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 10px; border-radius: 12px; }
   .mnav a.row + a.row::before { content: ""; position: absolute; top: 0; left: 54px; right: 10px; border-top: 1px solid var(--line); }
-  .mnav a.row .r-ic { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 10px; background: var(--chip-2); color: var(--ink-2); }
+  .mnav a.row .r-ic { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 10px; background: rgba(139, 108, 255, .14); color: #d9d3ff; box-shadow: inset 0 0 0 1px rgba(139, 108, 255, .22); }
   .mnav a.row .r-ic .ic { width: 17px; height: 17px; }
   .mnav a.row .r-txt { display: grid; gap: 2px; flex: 1; min-width: 0; }
   .mnav a.row .r-txt b { color: var(--ink); font: 500 15px var(--sans); }
@@ -110,7 +111,7 @@
   .mnav a.row .r-go { width: 15px; height: 15px; color: var(--ink-4); }
   .mnav a.row:active { background: var(--chip); }
   .mnav a.row[aria-current="page"] { background: var(--chip); }
-  .mnav a.row[aria-current="page"] .r-ic { background: color-mix(in srgb, var(--blue) 18%, transparent); color: var(--blue); }
+  .mnav a.row[aria-current="page"] .r-ic { background: #8b6cff; color: #fff; box-shadow: none; }
 
   /* Foot: the network and the name */
   .mnav .m-foot { display: flex; justify-content: space-between; align-items: center; margin: 22px 4px 0; color: var(--ink-4); font-size: 12px; }
