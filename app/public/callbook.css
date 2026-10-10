@@ -868,3 +868,11 @@ p.cb-agents-more a { color: var(--ink-2); text-decoration: underline; text-decor
 /* Steps (their nodes and the "4h · the market moves" label) sit above the progress line. */
 .cb-how.anim .cb-steps > li:not(.cb-prog) { position: relative; z-index: 1; }
 .cb-steps .cb-prog { z-index: 0; }
+
+/* The docs pages' second row of tabs, under the Arena tabs: plain text, the current one underlined. */
+.cb-subviews { display: flex; gap: 22px; margin: 14px 0 0; padding: 0 6px; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); }
+.cb-subviews::-webkit-scrollbar { display: none; }
+.cb-subviews a { position: relative; padding: 10px 0 12px; color: var(--ink-3); font: 500 14px var(--sans); white-space: nowrap; text-decoration: none; }
+.cb-subviews a:hover { color: var(--ink); }
+.cb-subviews a[aria-current="page"] { color: var(--ink); }
+.cb-subviews a[aria-current="page"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; border-radius: 2px; background: #8b6cff; }

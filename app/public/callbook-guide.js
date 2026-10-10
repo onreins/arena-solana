@@ -8,25 +8,9 @@
   U.topbar("callbook");
   C.tooltips();
   agentTabs();
-  // The icons in the points and step cards, the banner's copy button, and the medallions.
-  Array.prototype.forEach.call(document.querySelectorAll("[data-ic]"), function (el) { el.innerHTML = U.icon(el.getAttribute("data-ic")); });
+  // The banner's copy button, then the icons and medallions.
   if ($("gd-copy")) $("gd-copy").innerHTML = C.copyButton($("mcp-cmd").textContent, "Copy the setup command");
-  Array.prototype.forEach.call(document.querySelectorAll("[data-medal]"), function (el) { el.innerHTML = medal() + U.icon(el.getAttribute("data-medal")); });
-
-  // An engraved medallion, as on Kraken's bonus tiers: two rings with fine ticks between them,
-  // a soft disc in the middle for the icon. Drawn in currentColor.
-  function medal() {
-    var ticks = "";
-    for (var i = 0; i < 72; i++) {
-      var a = i * 5 * Math.PI / 180, long = i % 6 === 0, r1 = long ? 37 : 38.5, r2 = 42;
-      ticks += '<line x1="' + (r1 * Math.cos(a)).toFixed(2) + '" y1="' + (r1 * Math.sin(a)).toFixed(2) + '" x2="' + (r2 * Math.cos(a)).toFixed(2) + '" y2="' + (r2 * Math.sin(a)).toFixed(2) + '"' + (long ? ' stroke-opacity=".7"' : "") + "/>";
-    }
-    return '<svg class="rings" viewBox="-50 -50 100 100" aria-hidden="true" fill="none" stroke="currentColor">' +
-      '<circle r="47" stroke-opacity=".28" stroke-width="1"/><circle r="44.5" stroke-opacity=".5" stroke-width=".8"/>' +
-      '<g stroke-opacity=".35" stroke-width=".7">' + ticks + "</g>" +
-      '<circle r="34" stroke-opacity=".55" stroke-width=".9"/>' +
-      '<circle r="26" fill="currentColor" fill-opacity=".09" stroke-opacity=".3" stroke-width=".7"/></svg>';
-  }
+  C.medals();
 
   // The agent setup: a command for Claude Code, a config block for every other
   // app. The copy button copies whichever is showing.

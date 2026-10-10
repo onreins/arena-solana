@@ -503,7 +503,27 @@ window.Callbook = (function () {
     });
   })();
 
+  // An engraved medallion, as on Kraken's bonus tiers: two rings with fine ticks between them and a
+  // soft disc for the icon, in currentColor. medals() fills every [data-medal="icon"] on the page.
+  function medal() {
+    var ticks = "";
+    for (var i = 0; i < 72; i++) {
+      var a = i * 5 * Math.PI / 180, long = i % 6 === 0, r1 = long ? 37 : 38.5, r2 = 42;
+      ticks += '<line x1="' + (r1 * Math.cos(a)).toFixed(2) + '" y1="' + (r1 * Math.sin(a)).toFixed(2) + '" x2="' + (r2 * Math.cos(a)).toFixed(2) + '" y2="' + (r2 * Math.sin(a)).toFixed(2) + '"' + (long ? ' stroke-opacity=".7"' : "") + "/>";
+    }
+    return '<svg class="rings" viewBox="-50 -50 100 100" aria-hidden="true" fill="none" stroke="currentColor">' +
+      '<circle r="47" stroke-opacity=".28" stroke-width="1"/><circle r="44.5" stroke-opacity=".5" stroke-width=".8"/>' +
+      '<g stroke-opacity=".35" stroke-width=".7">' + ticks + "</g>" +
+      '<circle r="34" stroke-opacity=".55" stroke-width=".9"/>' +
+      '<circle r="26" fill="currentColor" fill-opacity=".09" stroke-opacity=".3" stroke-width=".7"/></svg>';
+  }
+  function medals() {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-medal]"), function (el) { el.innerHTML = medal() + U.icon(el.getAttribute("data-medal")); });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-ic]"), function (el) { el.innerHTML = U.icon(el.getAttribute("data-ic")); });
+  }
+
   return {
+    medal: medal, medals: medals,
     skillHtml: skillHtml, skillTip: skillTip, skillPanel: skillPanel, countUp: countUp, glow: glow, levelLine: levelLine, RECORD: RECORD, skillRank: skillRank, LEVELS: LEVELS,
     own: own, nameOf: nameOf, movedTag: movedTag, profileHref: profileHref, moreFrom: moreFrom, scoreParts: scoreParts, identicon: identicon, ADDR_RE: ADDR_RE, YOUNG_DAYS: YOUNG_DAYS, challengeLine: challengeLine, isHttp: isHttp, RULES: RULES, scoreOf: scoreOf, scoreWhy: scoreWhy, periodAt: periodAt, eodOf: eodOf, where: where, costsText: costsText, loadIndex: loadIndex, loadBook: loadBook, loadCaller: loadCaller, params: params, wantMock: wantMock, ID_RE: ID_RE,
     pct: pct, pctHtml: pctHtml, dd: dd, num: num, int: int, isNum: isNum, shortHash: shortHash, txLink: txLink,

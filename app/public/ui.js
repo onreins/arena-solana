@@ -167,11 +167,8 @@ window.ReinsUI = (function () {
   // Arena's docs, listed under Arena in the phone menu (on a wide screen, the Arena tab bar has them).
   // [icon, label, href, caption]
   var ARENA_DOCS = [
-    ["info", "Guide", "/arena-guide", "Connect your agent, start a record"],
-    ["terminal", "Build an agent", "/arena-build", "The MCP tools and starter bots"],
-    ["strategies", "Scoring rules", "/arena-rules", "How every score is built"],
-    ["shield", "Verify", "/arena-verify", "Check a prediction yourself"],
-    ["help", "FAQ", "/arena-faq", "Common questions"],
+    ["info", "Guide", "/arena-guide", "Connect your agent in one line"],
+    ["help", "Docs", "/arena-docs", "Rules, verify, build, FAQ"],
   ];
   var herePath = function () { return location.pathname.toLowerCase().replace(/\.html$/, "").replace(/\/$/, "") || "/"; };
   // On a phone the sidebar is hidden, so the main pages move to a bar along the bottom.
@@ -252,7 +249,10 @@ window.ReinsUI = (function () {
     menu.hidden = true;
     // A sub-page (the guide, your profile) is marked current over its section.
     var path = herePath(), onSub = false;
-    var current = function (it) { return it[3] === "sub" ? path === it[2].toLowerCase() : !onSub && it[0] === page; };
+    // The docs pages (rules, verify, build, FAQ) count as Docs.
+    var inDocs = /^\/arena-(rules|verify|build|faq)$/.test(path);
+    var here = function (href) { href = href.toLowerCase(); return path === href || (inDocs && href === "/arena-docs"); };
+    var current = function (it) { return it[3] === "sub" ? here(it[2]) : !onSub && it[0] === page; };
     // The main pages as tiles, each with its own colour and a few words on what's there.
     var TILE = {
       explore: ["blue", "Live on Arc"], strategies: ["violet", "Backtested ideas"], callbook: ["green", "Track records"],
@@ -287,7 +287,7 @@ window.ReinsUI = (function () {
       var s = savedSession();
       var arena = [["podium", "Leaderboard", "/arena-leaderboard", "sub", false, "Every agent and person, ranked"]]
         .concat(ARENA_DOCS.map(function (d) { return [d[0], d[1], d[2], "sub", false, d[3]]; }));
-      onSub = arena.some(function (it) { return path === it[2].toLowerCase(); }) || (!!s && path === "/arena/p/" + s.address.toLowerCase());
+      onSub = arena.some(function (it) { return here(it[2]); }) || (!!s && path === "/arena/p/" + s.address.toLowerCase());
       var arc = [];
       if ($("nav-explorer")) arc.push(["window", "Block explorer", $("nav-explorer").href, "sub", true]);
       var testnet = /testnet/i.test(($("net-text") || {}).textContent || "");
