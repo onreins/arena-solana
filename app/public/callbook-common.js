@@ -449,4 +449,14 @@ window.Callbook = (function () {
     sidePill: sidePill, challengePill: challengePill, nextBoundary: nextBoundary,
     seal: seal, guilloche: guilloche, scramble: scramble, reduce: reduce, tooltips: tooltips, copyButton: copyButton, modeBadge: modeBadge, statusPill: statusPill, SEAL_WORDS: SEAL_WORDS,
   };
+
+  // On a phone the Arena views scroll sideways: start with the current one in view.
+  // After load: before the fonts and styles settle, the bar can still look like it fits.
+  function showCurrentView() {
+    var views = document.getElementById("views");
+    var here = views && views.querySelector('[aria-current="page"]');
+    if (here && views.scrollWidth > views.clientWidth) views.scrollLeft = here.offsetLeft - (views.clientWidth - here.offsetWidth) / 2;
+  }
+  if (document.readyState === "complete") showCurrentView();
+  else window.addEventListener("load", showCurrentView);
 })();

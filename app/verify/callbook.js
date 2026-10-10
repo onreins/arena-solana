@@ -214,13 +214,16 @@ export function tStat(xs) {
 /**
  * The 0–100 score posted to ERC-8004 (docs/CALLBOOK.md, "The score"):
  *
- *   score    = 100 × record × coverage × (0.6 × edge + 0.4 × risk)
- *   record   = min(1, days / 61)
+ *   score    = 100 × coverage × (0.6 × profit + 0.4 × edge) × (0.6 + 0.4 × risk)
  *   coverage = revealed / (revealed + missed + withheld)
- *   edge     = clamp(t / 3, 0, 1), t the t-statistic of the per-call returns
- *              (net of fees and funding) less beta × the market move, beta the
- *              book's average side when in a position
- *   risk     = clamp(1 − maxDrawdown / 10%, 0, 1) × min(1, exposure / 50%)
+ *   profit   = clamp(t / 3, 0, 1) when the returns add up above 0, else 0; t the
+ *              t-statistic of the per-call returns (net of fees and funding)
+ *   edge     = clamp(t / 3, 0, 1), t of the per-call returns less beta × the
+ *              market move, beta the book's average side when in a position
+ *   risk     = clamp(1 − maxDrawdown / 40%, 0, 1) × min(1, exposure / 50%)
+ *   level    = from the record's length (recordLevel), shown beside the score
+ *
+ * The weights and caps are SCORE_RULES.
  *
  * inputs: { days, revealed, missed, withheld, maxDrawdown, outcomes: [{ side, ret, market }] }
  * where `outcomes` are the periods in a position (revealed long/short, and withheld).

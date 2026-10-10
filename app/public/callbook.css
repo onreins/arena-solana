@@ -524,6 +524,10 @@ main.cb { --ink-4: #8a8888; }
 .cb-views a[aria-current="page"] { background: var(--chip-2); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-2); }
 .cb-views a:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 .cb-guide .cb-views { margin-top: 8px; }
+/* Six views: on a narrow screen the bar scrolls sideways instead of pushing the page wide. */
+.cb-views { overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
+.cb-views::-webkit-scrollbar { display: none; }
+@media (max-width: 560px) { .cb-views a { padding: 0 12px; } }
 .cb-view > :first-child { margin-top: 28px; }
 .cb-view [id] { scroll-margin-top: 72px; }
 .cb-guide-h { max-width: 720px; }

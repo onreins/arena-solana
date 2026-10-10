@@ -180,6 +180,7 @@ window.ReinsUI = (function () {
     $("side").innerHTML =
       '<div class="side-head"><a class="brand" href="/">' + MARK + 'Reins <span class="tag">BETA</span></a></div>' +
       '<nav aria-label="Main">' + nav + "</nav>" +
+      '<p class="side-legal"><a href="/terms">Terms</a><span aria-hidden="true">·</span><a href="/privacy">Privacy</a></p>' +
       (hidden ? "" : '<div class="promo" id="promo">' + rings + '<span class="badge"><img src="/tokens/arc.svg" alt=""></span>' +
         '<button class="x" id="promo-x" type="button" aria-label="Hide">' + icon("minus") + "</button><b>Tokenized stocks</b><span>Coming to Arc</span></div>");
     $("top").className = "top";
