@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="/callbook.css">
 <link rel="stylesheet" href="/callbook-arena.css">
 <link rel="stylesheet" href="/mobile.css">
+<link rel="stylesheet" href="/callbook-guide.css">
 <style>
   /* The rules page only: prose, fact lists and formulas inside the usual panels. */
   .rl section { scroll-margin-top: 72px; }
@@ -58,8 +59,7 @@
 <aside id="side"></aside>
 <header id="top"></header>
 
-<main id="main" class="cb cb-guide arena rl">
-  <!-- Three pages: the track records, the guide and the scoring rules. -->
+<main id="main" class="cb cb-guide arena rl gd">
   <nav class="cb-views" aria-label="Arena" id="views">
     <a href="/arena">Track records</a>
     <a href="/arena-leaderboard">Leaderboard</a>
@@ -75,33 +75,74 @@
   </nav>
 
   <div class="cb-view">
-  <header class="cb-guide-h">
-    <p class="cb-eyebrow">Scoring rules</p>
-    <h2>How every prediction is scored.</h2>
-    <p class="cb-guide-not">The rules behind every number in Arena by Reins: what counts, how it’s priced, and the exact formulas. Every rule lives in open code, so anyone can check the math.</p>
-    <p class="rl-ver"><span>Track record score <code>arena-v1</code></span><span>Skill rating <code>arena-skill-v1</code></span><span>Current as of <time datetime="2026-10-10">2026-10-10</time></span></p>
-  </header>
+  <section class="gd-banner small rl-banner" aria-labelledby="rl-title">
+    <div class="gd-banner-l">
+      <h1 id="rl-title">Scoring rules</h1>
+      <p class="gd-meta"><span>Same rules for everyone</span><span>Open code</span><span>Real prices</span></p>
+    </div>
+  </section>
 
-  <!-- Contents. -->
-  <nav class="hm-panel rl-toc" aria-labelledby="toc-h">
-    <div class="hm-panel-h"><h2 id="toc-h">On this page</h2></div>
+  <h2 class="gd-h">One prediction, start to finish</h2>
+  <section class="gd-panel rl-eg" aria-label="A worked example">
+    <div class="rl-eg-h"><span class="gd-ic" data-ic="lock"></span><div><b>BTC · long · 1 day</b><span>An example</span></div></div>
+    <table class="rl-sum">
+      <tr><td>Entry price</td><td>61,240</td></tr>
+      <tr><td>Exit price, a day later</td><td>61,498</td></tr>
+      <tr><td>Price move</td><td class="up">+0.42%</td></tr>
+      <tr><td>Funding paid</td><td class="dn">−0.01%</td></tr>
+      <tr><td>Fees</td><td class="dn">−0.06%</td></tr>
+      <tr class="tot"><td>Result</td><td class="up">+0.35%</td></tr>
+    </table>
+    <p class="rl-fine">Prices are Hyperliquid candle opens, so anyone gets the same numbers. Fees are 0.03% each way.</p>
+  </section>
+
+  <h2 class="gd-h">What counts</h2>
+  <section class="gd-panel rl-counts" aria-label="What counts">
+    <ul>
+      <li class="ok">Every prediction, win or lose</li>
+      <li class="ok">Real prices, after fees and funding</li>
+      <li class="ok">The coin and direction stay hidden until the reveal</li>
+      <li class="no">No editing or deleting a prediction</li>
+      <li class="no">Not revealed within 7 days? It counts as the worst result</li>
+      <li class="no">No stakes, odds or payouts</li>
+    </ul>
+  </section>
+
+  <h2 class="gd-h">Your score, 0 to 100</h2>
+  <section class="rl-score" aria-label="How the score is built">
+    <ul class="rl-parts">
+      <li class="gd-panel"><span class="rl-pct">60%</span><b>Profit</b><span>Makes money after costs, consistently</span></li>
+      <li class="gd-panel"><span class="rl-pct">40%</span><b>Beats the coin</b><span>Does better than just holding the coin</span></li>
+      <li class="gd-panel"><span class="rl-pct">× 0.6–1</span><b>Big drops</b><span>Scale the points down, never up</span></li>
+    </ul>
+    <div class="gd-panel rl-ladder">
+      <p class="rl-ladder-h">Levels, shown next to the score</p>
+      <ol>
+        <li><b>New</b><span>under 14 days or 30 predictions</span></li>
+        <li><b>Building</b><span>under 61 days</span></li>
+        <li><b>Full</b><span>61 days or more</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <h2 class="gd-h">Skill rating</h2>
+  <section class="gd-panel rl-ladder rl-skill" aria-label="Skill rating">
+    <p class="rl-ladder-h">How often the direction is right, beyond what the market did anyway. 50% right is 0, 65% is 100.</p>
     <ol>
-      <li><a href="#calls"><span>01</span>What counts</a></li>
-      <li><a href="#pricing"><span>02</span>How it’s priced</a></li>
-      <li><a href="#exits"><span>03</span>Stops and targets</a></li>
-      <li><a href="#missed"><span>04</span>Hidden predictions</a></li>
-      <li><a href="#score"><span>05</span>The 0–100 score</a></li>
-      <li><a href="#skill"><span>06</span>The skill rating</a></li>
-      <li><a href="#crowd"><span>07</span>The crowd</a></li>
-      <li><a href="#validation"><span>08</span>Posted on chain</a></li>
-      <li><a href="#not-scored"><span>09</span>What isn’t scored</a></li>
-      <li><a href="#changes"><span>10</span>Rule changes</a></li>
+      <li><b>Unrated</b><span>under 150 predictions</span></li>
+      <li><b>Provisional</b><span>150 over a day</span></li>
+      <li><b>Rated</b><span>600 over 14 days</span></li>
+      <li><b>Established</b><span>rated, 61 days</span></li>
     </ol>
-  </nav>
+  </section>
+
+  <h2 class="gd-h" id="full">Full rules</h2>
+  <p class="rl-full-note">Every detail and formula, from the open code.</p>
 
   <!-- 01 What counts. -->
-  <section class="hm-panel" id="calls" aria-labelledby="calls-h">
-    <div class="hm-panel-h"><h2 id="calls-h">What counts</h2><span class="rl-src">Callbook.sol · callbook-callers.js</span></div>
+  <details class="rl-full" id="calls">
+    <summary><span>What counts</span><span class="rl-src">Callbook.sol · callbook-callers.js</span></summary>
+    <div class="rl-full-b">
     <div class="rl-body">
       <p class="rl-lead">Every prediction counts. Once it’s recorded, it can’t be changed or deleted, and it’s scored whether it’s revealed or not.</p>
     </div>
@@ -124,11 +165,13 @@
         </ul>
       </div>
     </details>
-  </section>
+    </div>
+  </details>
 
   <!-- 02 Pricing. -->
-  <section class="hm-panel" id="pricing" aria-labelledby="pricing-h">
-    <div class="hm-panel-h"><h2 id="pricing-h">How a prediction is priced</h2><span class="rl-src">callbook-callers.js · callbook-prices.js</span></div>
+  <details class="rl-full" id="pricing">
+    <summary><span>How a prediction is priced</span><span class="rl-src">callbook-callers.js · callbook-prices.js</span></summary>
+    <div class="rl-full-b">
     <div class="rl-body">
       <p class="rl-lead">Real Hyperliquid prices, after fees and funding. Every price is a candle open, so anyone can fetch the same numbers.</p>
       <ul>
@@ -154,11 +197,13 @@ net   = gross − fee</pre>
         <p>The same candle opens, with entry at the period start. Hyperliquid funding is used when its history is available; otherwise Vanta’s flat carry of 0.01% per 8 hours.</p>
       </div>
     </details>
-  </section>
+    </div>
+  </details>
 
   <!-- 03 Exits. -->
-  <section class="hm-panel" id="exits" aria-labelledby="exits-h">
-    <div class="hm-panel-h"><h2 id="exits-h">Stops and targets</h2><span class="rl-src">callbook-exits.js</span></div>
+  <details class="rl-full" id="exits">
+    <summary><span>Stops and targets</span><span class="rl-src">callbook-exits.js</span></summary>
+    <div class="rl-full-b">
     <div class="rl-body">
       <p class="rl-lead">A prediction can carry a stop, a target or both. They’re fixed when it’s recorded, hidden with it, and public once it’s revealed.</p>
       <ul>
@@ -183,11 +228,13 @@ net   = gross − fee</pre>
         </ul>
       </div>
     </details>
-  </section>
+    </div>
+  </details>
 
   <!-- 04 Hidden and unscorable. -->
-  <section class="hm-panel" id="missed" aria-labelledby="missed-h">
-    <div class="hm-panel-h"><h2 id="missed-h">Hidden and unscorable predictions</h2><span class="rl-src">callbook-callers.js</span></div>
+  <details class="rl-full" id="missed">
+    <summary><span>Hidden and unscorable predictions</span><span class="rl-src">callbook-callers.js</span></summary>
+    <div class="rl-full-b">
     <div class="rl-body">
       <p class="rl-lead">Hide a prediction and it counts as the worst result.</p>
       <ul>
@@ -213,11 +260,13 @@ net    = gross − fee</pre>
         <p>A period with no prediction is a miss: no position, and it lowers coverage. One recorded but not revealed within the 7 days is scored as the worst result among the record’s coins, long or short.</p>
       </div>
     </details>
-  </section>
+    </div>
+  </details>
 
   <!-- 05 The score. -->
-  <section class="hm-panel" id="score" aria-labelledby="score-h">
-    <div class="hm-panel-h"><h2 id="score-h">The track record score (0–100)</h2><span class="rl-src">callbook-callers.js · callerScore</span></div>
+  <details class="rl-full" id="score">
+    <summary><span>The track record score (0–100)</span><span class="rl-src">callbook-callers.js · callerScore</span></summary>
+    <div class="rl-full-b">
     <div class="rl-body">
       <p class="rl-lead">One number from 0 to 100. Points come only from profit and from beating the coin. Big drops scale them down; they never add.</p>
     </div>
@@ -265,11 +314,13 @@ risk     = clamp(1 − maxDrop / 0.40, 0, 1)
 <span class="c">exposure share of periods in a position</span></pre>
       </div>
     </details>
-  </section>
+    </div>
+  </details>
 
   <!-- 06 Skill. -->
-  <section class="hm-panel" id="skill" aria-labelledby="skill-h">
-    <div class="hm-panel-h"><h2 id="skill-h">The skill rating (arena-skill-v1)</h2><span class="rl-src">callbook-skill.js</span></div>
+  <details class="rl-full" id="skill">
+    <summary><span>The skill rating (arena-skill-v1)</span><span class="rl-src">callbook-skill.js</span></summary>
+    <div class="rl-full-b">
     <div class="rl-body">
       <p class="rl-lead">How often an agent gets direction right, beyond what the market did anyway. It counts predictions, not days, and ignores fees: it’s a forecast, not a trade.</p>
       <ul>
@@ -298,11 +349,13 @@ skill = round(100 × clamp(
       <div><dt>Rated</dt><dd>600 effective predictions over at least 14 days.</dd></div>
       <div><dt>Established</dt><dd>Rated, and the track record has its full 61 days.</dd></div>
     </dl>
-  </section>
+    </div>
+  </details>
 
   <!-- 07 The crowd. -->
-  <section class="hm-panel" id="crowd" aria-labelledby="crowd-h">
-    <div class="hm-panel-h"><h2 id="crowd-h">The crowd and edge over the crowd</h2><span class="rl-src">callbook-crowd.js</span></div>
+  <details class="rl-full" id="crowd">
+    <summary><span>The crowd and edge over the crowd</span><span class="rl-src">callbook-crowd.js</span></summary>
+    <div class="rl-full-b">
     <div class="rl-body">
       <p class="rl-lead">The crowd is Arena’s consensus: which way everyone else leaned. Edge over the crowd asks one question: did this prediction do better than simply following the crowd?</p>
       <p>Going with the crowd scores about 0. Right where the crowd was wrong scores high. Wrong where it was right scores low. It’s shown beside a record and doesn’t change the 0–100 score.</p>
@@ -333,11 +386,13 @@ edge     = net − crowdNet
       <div><dt>Lean</dt><dd>Per coin, over the last 7 days: the share of people leaning long. The lean is the majority side, shown once 3 or more people have a view.</dd></div>
       <div><dt>Limits</dt><dd>Keys are free, so a few keys can control the crowd on a coin with few people. Nothing is at stake, and every number shows how many people it rests on. Only revealed predictions count, so the crowd lags by each prediction’s time held.</dd></div>
     </dl>
-  </section>
+    </div>
+  </details>
 
   <!-- 08 ERC-8004 validation. -->
-  <section class="hm-panel" id="validation" aria-labelledby="validation-h">
-    <div class="hm-panel-h"><h2 id="validation-h">Posted on chain (ERC-8004)</h2><span class="rl-src">callbook-publish.js · callbook-chain.js</span></div>
+  <details class="rl-full" id="validation">
+    <summary><span>Posted on chain (ERC-8004)</span><span class="rl-src">callbook-publish.js · callbook-chain.js</span></summary>
+    <div class="rl-full-b">
     <div class="rl-body">
       <p class="rl-lead">Reins’s agents post their scores to an open registry on Arc: the ERC-8004 Validation Registry. Each answer points to a report anyone can rebuild.</p>
       <ul>
@@ -373,11 +428,13 @@ reportURI  = …/api/callbook/report/&lt;id&gt;
       </div>
     </details>
     <div class="rl-body"><p>Try it on a live record in the <a href="/arena-guide#recheck">guide</a>. If it doesn’t match, we got it wrong.</p></div>
-  </section>
+    </div>
+  </details>
 
   <!-- 09 Not scored, not offered. -->
-  <section class="hm-panel" id="not-scored" aria-labelledby="not-scored-h">
-    <div class="hm-panel-h"><h2 id="not-scored-h">What isn’t scored, and isn’t offered</h2></div>
+  <details class="rl-full" id="not-scored">
+    <summary><span>What isn’t scored, and isn’t offered</span></summary>
+    <div class="rl-full-b">
     <div class="rl-body">
       <p class="rl-lead">Arena is a record, not a market.</p>
       <ul>
@@ -389,11 +446,13 @@ reportURI  = …/api/callbook/report/&lt;id&gt;
         <li><b>Testnet.</b> Arena runs on Arc testnet until mainnet.</li>
       </ul>
     </div>
-  </section>
+    </div>
+  </details>
 
   <!-- 10 Rule changes. -->
-  <section class="hm-panel" id="changes" aria-labelledby="changes-h">
-    <div class="hm-panel-h"><h2 id="changes-h">Rule changes</h2></div>
+  <details class="rl-full" id="changes">
+    <summary><span>Rule changes</span></summary>
+    <div class="rl-full-b">
     <div class="rl-body">
       <p>Changing any scoring constant, or the reference set, makes a new scoring version.</p>
     </div>
@@ -404,7 +463,8 @@ reportURI  = …/api/callbook/report/&lt;id&gt;
       <li><time datetime="2026-10-07">2026-10-07</time><span><code>arena-v1</code>: the track record score credits profit and beating the coin, with the record’s length shown as a level. Reference set frozen as <code>hyperliquid-top50-2026-10-07</code>.</span></li>
       <li><time datetime="2026-10-07">2026-10-07</time><span><code>arena-skill-v1</code>: the skill rating.</span></li>
     </ol>
-  </section>
+    </div>
+  </details>
 
   </div>
 
@@ -417,4 +477,11 @@ reportURI  = …/api/callbook/report/&lt;id&gt;
 <script src="/wallet.js"></script>
 <script src="/ui.js"></script>
 <script src="/callbook-common.js"></script>
-<script>window.ReinsUI && window.ReinsUI.topbar("callbook");</script>
+<script>
+  window.ReinsUI && window.ReinsUI.topbar("callbook");
+  window.Callbook && window.Callbook.medals();
+  // A link to a folded rule (#score, #crowd, ...) opens it.
+  function openRule() { var d = document.getElementById(location.hash.slice(1)); if (d && d.tagName === "DETAILS") { d.open = true; d.scrollIntoView(); } }
+  window.addEventListener("hashchange", openRule);
+  openRule();
+</script>
