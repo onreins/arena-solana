@@ -253,57 +253,33 @@ window.ReinsUI = (function () {
     var inDocs = /^\/arena-(rules|verify|build|faq)$/.test(path);
     var here = function (href) { href = href.toLowerCase(); return path === href || (inDocs && href === "/arena-docs"); };
     var current = function (it) { return it[3] === "sub" ? here(it[2]) : !onSub && it[0] === page; };
-    // The main pages as tiles, each with its own colour and a few words on what's there.
-    var TILE = {
-      explore: ["blue", "Live on Arc"], strategies: ["violet", "Backtested ideas"], callbook: ["green", "Track records"],
-      chat: ["amber", "Describe a strategy"], charts: ["orange", "Live markets"], create: ["pink", "Fund it, set limits"],
+    // Aave's phone menu: a plain list of words, no icons. The current page has a violet bar at its
+    // left; dividers between the main pages, Arena's pages and the links out; two outlined
+    // buttons at the foot. Items: [icon, label, href, "sub", external?]
+    var item = function (it, value) {
+      return '<a class="m-it" href="' + it[2] + '"' + (current(it) ? ' aria-current="page"' : "") + (it[4] ? ' target="_blank" rel="noopener"' : "") + ">" +
+        "<span>" + it[1] + "</span>" + (value ? '<span class="m-val">' + value + "</span>" : it[4] ? icon("ext").replace('class="ic"', 'class="ic m-go"') : "") + "</a>";
     };
-    // Each tile carries a small 3D object (app/art-src/menu-icons.html), as Vivid's pocket tiles do.
-    var ART = { explore: "agents", strategies: "strategies", callbook: "arena", chat: "chat", charts: "charts", create: "create" };
-    var tile = function (it) {
-      var t = TILE[it[0]] || ["blue", ""];
-      var art = ART[it[0]] ? '<span class="t-art" aria-hidden="true"><img src="/art/menu/' + ART[it[0]] + '.png" alt="" width="96" height="96" loading="lazy"></span>' : '<span class="t-ic">' + icon(it[0]) + "</span>";
-      return '<a class="tile t-' + t[0] + '" href="' + it[2] + '"' + (current(it) ? ' aria-current="page"' : "") + ">" +
-        art + "<b>" + it[1] + "</b><small>" + t[1] + "</small></a>";
-    };
-    // Rows: [icon, label, href, "sub", external?, caption?]
-    var row = function (it) {
-      return '<a class="row" href="' + it[2] + '"' + (current(it) ? ' aria-current="page"' : "") + (it[4] ? ' target="_blank" rel="noopener"' : "") + ">" +
-        '<span class="r-ic">' + icon(it[0]) + '</span><span class="r-txt"><b>' + it[1] + "</b>" + (it[5] ? "<small>" + it[5] + "</small>" : "") + "</span>" +
-        icon(it[4] ? "ext" : "right").replace('class="ic"', 'class="ic r-go"') + "</a>";
-    };
-    var group = function (title, rows) {
-      return rows.length ? '<div class="grp">' + title + '</div><div class="card">' + rows.map(row).join("") + "</div>" : "";
-    };
-    // Who's here: your profile when signed in, the way in when not.
-    var account = function (s) {
-      if (!s) {
-        return '<div class="acct out"><div class="a-txt"><b>Sign in to Reins</b><small>A browser wallet or Google. Then see your record and link your agent.</small></div>' +
-          '<button type="button" class="btn-white" data-act="signin">Sign in</button></div>';
-      }
-      var href = "/arena/p/" + s.address.toLowerCase();
-      return '<a class="acct" href="' + href + '"' + (path === href ? ' aria-current="page"' : "") + ">" + identicon(s.address, 40) +
-        '<span class="a-txt"><b>Your account</b><small><span class="mono">' + esc(short(s.address)) + "</span>" + (s.label ? " · " + esc(s.label) : "") + "</small></span>" +
-        '<span class="a-go">Profile' + icon("right") + "</span></a>";
-    };
+    var list = function (items, cls) { return items.length ? '<div class="m-list' + (cls ? " " + cls : "") + '">' + items.join("") + "</div>" : ""; };
     var draw = function () {
       var s = savedSession();
-      var arena = [["podium", "Leaderboard", "/arena-leaderboard", "sub", false, "Every agent and person, ranked"]]
-        .concat(ARENA_DOCS.map(function (d) { return [d[0], d[1], d[2], "sub", false, d[3]]; }));
-      onSub = arena.some(function (it) { return here(it[2]); }) || (!!s && path === "/arena/p/" + s.address.toLowerCase());
-      var arc = [];
-      if ($("nav-explorer")) arc.push(["window", "Block explorer", $("nav-explorer").href, "sub", true]);
+      var arena = [["podium", "Leaderboard", "/arena-leaderboard", "sub"]]
+        .concat(ARENA_DOCS.map(function (d) { return [d[0], d[1], d[2], "sub"]; }));
+      var profile = s ? "/arena/p/" + s.address.toLowerCase() : null;
+      onSub = arena.some(function (it) { return here(it[2]); }) || (!!s && path === profile);
+      var links = [];
+      if ($("nav-explorer")) links.push(["window", "Block explorer", $("nav-explorer").href, "sub", true]);
       var testnet = /testnet/i.test(($("net-text") || {}).textContent || "");
-      if (testnet) arc.push(["drop", "Testnet USDC faucet", "https://faucet.circle.com", "sub", true]);
+      if (testnet) links.push(["drop", "Testnet USDC faucet", "https://faucet.circle.com", "sub", true]);
       menu.innerHTML =
-        account(s) +
-        '<div class="tiles">' + NAV[0][1].map(tile).join("") + "</div>" +
-        group("Arena", arena) +
-        group("Build", [
-          ["terminal", "Arena for your agent", "https://www.npmjs.com/package/@onreins/mcp", "sub", true, "MCP for Claude, Cursor and others"],
-          ["code", "Source code", "https://github.com/onreins/arena", "sub", true, "Open source on GitHub"],
-        ]) +
-        group("Arc", arc) +
+        list(NAV[0][1].map(function (it) { return item(it); })) +
+        list(arena.map(function (it) { return item(it); }), "m-sec") +
+        (s ? list([item(["agent", "Your account", profile, "sub"], '<span class="mono">' + esc(short(s.address)) + "</span>")], "m-sec") : "") +
+        list(links.map(function (it) { return item(it); }), "m-sec") +
+        '<div class="m-btns">' +
+          '<a class="m-btn" href="https://www.npmjs.com/package/@onreins/mcp" target="_blank" rel="noopener">' + icon("terminal") + "Arena for your agent</a>" +
+          '<a class="m-btn" href="https://github.com/onreins/arena" target="_blank" rel="noopener">' + icon("code") + "Source code</a>" +
+        "</div>" +
         '<div class="m-foot"><span class="net' + ($("net") && $("net").classList.contains("off") ? " off" : "") + '"><i></i>' +
         esc(($("net-text") || {}).textContent || "Arc") + '</span><span class="m-legal"><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a></span></div>';
       // Each block rises in, one after another.

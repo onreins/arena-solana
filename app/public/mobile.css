@@ -79,11 +79,19 @@
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tint) 26%, transparent);
   }
   .mnav .tile .t-ic .ic { width: 18px; height: 18px; }
-  /* The tile's 3D object (ui.js ART), larger and loose in the corner, as on Vivid's tiles. */
-  .mnav .tile { min-height: 118px; }
-  .mnav .tile .t-art { position: absolute; top: 4px; left: 6px; width: 62px; height: 62px; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .35)); }
-  .mnav .tile .t-art img { display: block; width: 100%; height: 100%; }
-  .mnav .tile:active .t-art { transform: scale(.94); }
+  /* The menu, after Aave's phone menu (ui.js phoneMenu): a plain list of words, no icons; the
+     current page marked by a violet bar at its left; dividers between groups; outlined buttons. */
+  .mnav .m-list { display: grid; padding: 2px 0; }
+  .mnav .m-sec { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .mnav .m-it { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 0 6px 0 16px; border-radius: 10px; color: var(--ink); font: 500 17px var(--sans); text-decoration: none; }
+  .mnav .m-it:active { background: var(--chip); }
+  .mnav .m-it[aria-current="page"]::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 3px; background: #8b6cff; }
+  .mnav .m-val { color: var(--ink-3); font-size: 15px; }
+  .mnav .m-go { width: 18px; height: 18px; color: var(--ink-3); }
+  .mnav .m-btns { display: grid; gap: 10px; margin-top: 20px; }
+  .mnav .m-btn { display: flex; align-items: center; justify-content: center; gap: 8px; height: 46px; border-radius: 12px; color: var(--ink); font: 500 15px var(--sans); text-decoration: none; box-shadow: inset 0 0 0 1px var(--line-2); }
+  .mnav .m-btn:active { background: var(--chip); }
+  .mnav .m-btn .ic { width: 17px; height: 17px; color: var(--ink-2); }
   .mnav .tile b { color: #fff; font: 600 15px var(--sans); }
   .mnav .tile small { color: var(--ink-3); font-size: 12px; }
   .mnav .tile:active { transform: scale(.97); }
@@ -95,8 +103,12 @@
     content: ""; position: absolute; top: 14px; right: 14px; width: 7px; height: 7px; border-radius: 50%;
     background: var(--tint); box-shadow: 0 0 0 4px color-mix(in srgb, var(--tint) 20%, transparent);
   }
-  /* One violet tint for every tile, to match the 3D objects. */
-  .mnav .t-blue, .mnav .t-violet, .mnav .t-green, .mnav .t-amber, .mnav .t-orange, .mnav .t-pink { --tint: #8b6cff; }
+  .mnav .t-blue { --tint: var(--blue); }
+  .mnav .t-violet { --tint: var(--violet); }
+  .mnav .t-green { --tint: var(--green); }
+  .mnav .t-amber { --tint: var(--amber); }
+  .mnav .t-orange { --tint: var(--orange); }
+  .mnav .t-pink { --tint: #e879b9; }
 
   /* Grouped cards of rows */
   .mnav .grp { margin: 22px 4px 8px; color: var(--ink-4); font: 600 11px var(--sans); letter-spacing: .08em; text-transform: uppercase; }
