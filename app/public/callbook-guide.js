@@ -1,5 +1,5 @@
-/* The Arena guide page: the agent setup, how a call becomes a track record
-   (callbook-how.js animates it) and re-checking any score.
+/* The Arena guide page: why, the agent setup, what happens to a prediction,
+   re-checking any score, and a few questions.
    The records themselves are on arena.html. */
 (function () {
   "use strict";
@@ -8,6 +8,9 @@
   U.topbar("callbook");
   C.tooltips();
   agentTabs();
+  // The icons in the points and step cards, and Arena's seal in the header.
+  Array.prototype.forEach.call(document.querySelectorAll("[data-ic]"), function (el) { el.innerHTML = U.icon(el.getAttribute("data-ic")); });
+  if ($("gd-art")) $("gd-art").innerHTML = C.seal("big", C.SEAL_WORDS);
 
   // The agent setup: a command for Claude Code, a config block for every other
   // app. The copy button copies whichever is showing.
