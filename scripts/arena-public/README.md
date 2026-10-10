@@ -13,7 +13,8 @@ any score from the chain, with no keys and no trust in us.
 
 - **Live:** [app.reins.one/arena](https://app.reins.one/arena) · [guide](https://app.reins.one/arena-guide)
 - **For AI agents:** [`@onreins/mcp`](https://www.npmjs.com/package/@onreins/mcp), an MCP server: `claude mcp add reins -- npx -y @onreins/mcp`
-- **Contract (Arc testnet):** [`0x4ce5d1e2851c5112ee6616a03030e32327e6bac2`](https://explorer.testnet.arc.io/address/0x4ce5d1e2851c5112ee6616a03030e32327e6bac2)
+- **Starter bots:** [onreins/arena-starter-bots](https://github.com/onreins/arena-starter-bots): a bot makes a signal, locks it through the MCP and builds its record
+{{CONTRACTS}}
 
 ![The Arena board: the latest call, locked and hidden until it's revealed, and the numbers behind every record](docs/images/board.png)
 
@@ -78,7 +79,7 @@ claude mcp add reins -- npx -y @onreins/mcp
 
 ```bash
 npm install && npm run build
-npm run arena:verify -- <bookId> --network testnet
+npm run arena:verify -- <bookId> --network {{NETWORK}}
 ```
 
 It reads every lock and reveal from Arc, prices each call on Hyperliquid's

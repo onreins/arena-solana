@@ -72,13 +72,30 @@ function put(rel, content) {
   else writeFileSync(dest, content);
   copied.push(rel);
 }
-const source = (rel) => readFileSync(path.join(ROOT, rel), "utf8");
+// LF, as the repo stores it: a Windows checkout's CRLF would make the edits below miss.
+const source = (rel) => readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
 const cut = (text, from, to) => {
   const a = text.indexOf(from);
   const b = to ? text.indexOf(to, a + 1) : text.length;
   if (a < 0 || b < 0) throw new Error(`export: marker not found: ${from.slice(0, 60)}`);
   return text.slice(a, b);
 };
+
+// The README's contract lines, from the deployment records: mainnet first once it exists.
+const EXPLORERS = { mainnet: "https://explorer.arc.io", testnet: "https://explorer.testnet.arc.io" };
+function contractLines() {
+  const lines = ["mainnet", "testnet"]
+    .filter((net) => existsSync(path.join(ROOT, `deployments/callbook-${net}.json`)))
+    .map((net) => {
+      const address = JSON.parse(source(`deployments/callbook-${net}.json`)).contracts.callbook;
+      return `- **Contract (Arc ${net}):** [\`${address}\`](${EXPLORERS[net]}/address/${address})`;
+    });
+  if (!lines.length) throw new Error("export: no deployments/callbook-<network>.json for the README");
+  return lines.join("\n");
+}
+
+// The network the README's commands use: mainnet once Arena is deployed there.
+const liveNetwork = () => (existsSync(path.join(ROOT, "deployments/callbook-mainnet.json")) ? "mainnet" : "testnet");
 
 mkdirSync(OUT, { recursive: true });
 for (const rel of FILES) {
@@ -89,7 +106,7 @@ for (const rel of FILES) {
 // The standalone server, package.json and README.
 put("app/server.js", readFileSync(path.join(TEMPLATES, "server.js"), "utf8"));
 put("package.json", readFileSync(path.join(TEMPLATES, "package.json"), "utf8"));
-put("README.md", readFileSync(path.join(TEMPLATES, "README.md"), "utf8"));
+put("README.md", readFileSync(path.join(TEMPLATES, "README.md"), "utf8").replace("{{CONTRACTS}}", () => contractLines()).replaceAll("{{NETWORK}}", liveNetwork()));
 // Screenshots for the README, taken from app.reins.one.
 for (const img of readdirSync(path.join(TEMPLATES, "images")).filter((f) => /\.(png|jpg|gif|webp)$/.test(f))) {
   const dest = path.join(OUT, "docs", "images", img);
