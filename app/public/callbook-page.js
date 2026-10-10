@@ -475,6 +475,33 @@
     $("rec-go").href = href;
   }
 
+  // While no real record is far enough along to show off (low scores here are mostly young
+  // records), the hero card shows an example of a full record, labelled as one everywhere it
+  // could be mistaken for live: the kicker, the byline, a badge and the link. A real record
+  // takes its place as soon as one scores SHOWCASE_MIN.
+  var SHOWCASE_MIN = 50;
+  var EXAMPLE = {
+    name: "Momentum, an example", by: "An illustration of a full record, not a live agent",
+    score: 82, level: "Full record", calls: 412, ret: 0.184,
+    curve: [1, 1.012, 1.004, 1.031, 1.026, 1.052, 1.047, 1.071, 1.09, 1.083, 1.112, 1.128, 1.121, 1.149, 1.166, 1.184],
+  };
+  function heroExample() {
+    $("rec").classList.add("is-example");
+    $("rec-k").textContent = "Example record";
+    $("rec-n").textContent = EXAMPLE.name;
+    $("rec-by").textContent = EXAMPLE.by;
+    C.countUp($("rec-score"), EXAMPLE.score);
+    $("rec-bar").style.width = EXAMPLE.score + "%";
+    $("rec-level").innerHTML = esc(EXAMPLE.level) + ' <span class="ar-eg">Example</span>';
+    $("rec-calls").textContent = C.int(EXAMPLE.calls);
+    $("rec-hidden").innerHTML = "0<small>none kept back</small>";
+    $("rec-ret").innerHTML = C.pctHtml(EXAMPLE.ret);
+    $("rec-last").textContent = "Illustration";
+    $("rec-curve").innerHTML = curve({ curve: EXAMPLE.curve.map(function (v, i) { return { t: i, v: v }; }) });
+    $("rec-go").innerHTML = 'See the live records <span aria-hidden="true">→</span>';
+    $("rec-go").href = "/arena-leaderboard";
+  }
+
   // --------------------------------------------------------- live proof
   function proof() {
     var s = D.stats || {}, W = C.where(D);
@@ -529,7 +556,8 @@
     $("foot-gen").textContent = "Paper predictions, scored at Hyperliquid prices. Not investment advice." + (D.generated ? " Updated " + C.stamp(Date.parse(D.generated) / 1000) + "." : "");
     $("foot-net").textContent = D.network || "Arc";
     var top = heroPick();
-    heroRecord(top);
+    if (top && (C.scoreOf(top.x) || 0) >= SHOWCASE_MIN) heroRecord(top);
+    else heroExample();
     proof();
     check(top);
     setBoard(new URLSearchParams(location.search).get("board") || "books", false);
