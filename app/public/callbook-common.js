@@ -563,7 +563,7 @@ window.Callbook = (function () {
   // The top bar names Arena's network on Arena pages (the agents app's own config says testnet).
   loadIndex().then(function (d) {
     if (!d || !U.fixNet) return;
-    U.fixNet(d.archive ? "Arc testnet · history" : d.network || "Arc", d.explorer);
+    U.fixNet(d.archive ? "Arc testnet · history" : "Arc", d.explorer);
   }).catch(function () { /* the label stays as the app's */ });
   // The Mainnet / Testnet switch on the leaderboard (a .cb-netsw group of two links).
   document.querySelectorAll(".cb-netsw a").forEach(function (a) {
