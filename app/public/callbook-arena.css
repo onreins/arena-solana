@@ -509,3 +509,15 @@
 @media (min-width: 1765px) {
   main.arena { padding-inline: calc((100vw - var(--side) - 1440px) / 2); }
 }
+
+/* Live mainnet or the frozen testnet month: a two-way switch on the leaderboard, and a note on archive pages. */
+.cb-netsw { display: inline-flex; margin-top: 14px; padding: 3px; border: 1px solid rgba(255, 255, 255, .08); border-radius: 9px; background: rgba(255, 255, 255, .03); }
+.cb-netsw a { padding: 6px 12px; border-radius: 6px; color: #8d93a6; font: 500 13px/1 var(--sans); white-space: nowrap; transition: color 140ms ease, background-color 140ms ease; }
+.cb-netsw a:hover { color: #f2f3f7; }
+.cb-netsw a[aria-current="page"] { background: rgba(255, 255, 255, .08); color: #f2f3f7; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1); }
+.cb-netsw a:focus-visible { outline: 2px solid #8b7cff; outline-offset: 2px; }
+.cb-netnote { margin: 14px 0 0; padding: 10px 14px; border: 1px solid rgba(139, 124, 255, .3); border-radius: 10px; background: rgba(139, 124, 255, .07); color: #b4b8c6; font: 400 13.5px/1.5 var(--sans); }
+.cb-netnote b { color: #f2f3f7; font-weight: 600; }
+.cb-netnote a { color: #c4bcff; white-space: nowrap; }
+.cb-netnote a:hover { text-decoration: underline; }
+@media (prefers-reduced-motion: reduce) { .cb-netsw a { transition: none; } }

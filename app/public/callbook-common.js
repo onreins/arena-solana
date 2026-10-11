@@ -9,6 +9,9 @@ window.Callbook = (function () {
   var ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
   var params = new URLSearchParams(location.search);
   var wantMock = params.get("mock") === "1";
+  // ?net=testnet: Arena's frozen testnet month (scripts/export-testnet-archive.js) instead of the live API.
+  var wantTestnet = params.get("net") === "testnet";
+  var ARCHIVE = "/data/arena-testnet";
 
   async function json(url) {
     var res = await fetch(url, { headers: { accept: "application/json" } });
@@ -21,17 +24,23 @@ window.Callbook = (function () {
   function loadIndex() { return (indexOnce = indexOnce || loadIndexNow()); }
   async function loadIndexNow() {
     if (wantMock) return rebase(await json("/data/callbook-mock.json"));
+    if (wantTestnet) return loadArchive();
     try { return await json("/api/callbook"); } catch (e) { /* no API here */ }
     try { return await json("/data/callbook.json"); } catch (e) { /* no export yet */ }
     return rebase(await json("/data/callbook-mock.json"));
   }
+  // The testnet month, read once; null when the page has no archive (a local run without the export).
+  var archiveOnce = null;
+  function loadArchive() { return (archiveOnce = archiveOnce || json(ARCHIVE + ".json")); }
   async function loadCaller(id) {
     if (!ID_RE.test(id || "")) throw new Error("That isn’t a record id.");
+    if (wantTestnet) return json(ARCHIVE + "-caller-" + encodeURIComponent(id) + ".json");
     try { return rebase(await json("/api/callbook/caller/" + encodeURIComponent(id))); } catch (e) { /* no API here */ }
     return rebase(await json("/data/callbook-caller-" + encodeURIComponent(id) + ".json"));
   }
   async function loadBook(id) {
     if (!ID_RE.test(id || "")) throw new Error("That isn’t an agent id.");
+    if (wantTestnet) return json(ARCHIVE + "-book-" + encodeURIComponent(id) + ".json");
     var file = "/data/callbook-book-" + encodeURIComponent(id) + ".json";
     if (wantMock || id.indexOf("mock-") === 0) return rebase(await json(file));
     try { return await json("/api/callbook/book/" + encodeURIComponent(id)); } catch (e) { /* no API here */ }
@@ -357,6 +366,8 @@ window.Callbook = (function () {
   // What to call where the books live. Only live data is "on Arc".
   function where(d) {
     var mode = d && d.mode;
+    if (d && d.archive) return { status: "Testnet history", chain: "On Arc testnet", live: false,
+      tip: d.note || "Arena on Arc testnet, frozen when it moved to mainnet. Scored with the same rules." };
     if (mode === "live") return { status: "Live on Arc", chain: "On Arc", live: true,
       tip: "Predictions are recorded and revealed on Arc, and scores are published to an open registry on Arc (ERC-8004)." };
     if (mode === "replay") return { status: "Replay over real prices", chain: "On chain", live: false,
@@ -522,7 +533,41 @@ window.Callbook = (function () {
     Array.prototype.forEach.call(document.querySelectorAll("[data-ic]"), function (el) { el.innerHTML = U.icon(el.getAttribute("data-ic")); });
   }
 
+  // ------------------------------------------------------ testnet history
+  // On ?net=testnet: a note at the top saying what this is, and links to other records stay in the archive.
+  var ARCHIVE_PAGES = /^\/(arena-leaderboard|arena-bot|arena-caller|arena-profile|arena\/p\/)/;
+  function archiveLinks() {
+    var main = document.getElementById("main");
+    if (main && !document.getElementById("net-note")) {
+      var note = document.createElement("p");
+      note.className = "cb-netnote";
+      note.id = "net-note";
+      note.innerHTML = "<b>Testnet history.</b> Arena on Arc testnet, 8–10 Oct 2026, frozen when it moved to mainnet. " +
+        '<a href="' + esc(location.pathname) + '">See live mainnet <span aria-hidden="true">→</span></a>';
+      var views = document.getElementById("views");
+      main.insertBefore(note, views ? views.nextSibling : main.firstChild);
+    }
+    document.addEventListener("click", function (e) {
+      var a = e.target.closest && e.target.closest("a[href]");
+      if (!a || a.target === "_blank" || a.origin !== location.origin || !ARCHIVE_PAGES.test(a.pathname) || a.closest("#net-note")) return;
+      var u = new URL(a.href);
+      if (u.searchParams.get("net")) return;
+      u.searchParams.set("net", "testnet");
+      a.href = u.pathname + u.search + u.hash;
+    }, true);
+  }
+  if (wantTestnet) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", archiveLinks);
+    else archiveLinks();
+  }
+  // The Mainnet / Testnet switch on the leaderboard (a .cb-netsw group of two links).
+  document.querySelectorAll(".cb-netsw a").forEach(function (a) {
+    var isTestnet = /[?&]net=testnet\b/.test(a.getAttribute("href") || "");
+    if (isTestnet === wantTestnet) a.setAttribute("aria-current", "page");
+  });
+
   return {
+    wantTestnet: wantTestnet, loadArchive: loadArchive,
     medal: medal, medals: medals,
     skillHtml: skillHtml, skillTip: skillTip, skillPanel: skillPanel, countUp: countUp, glow: glow, levelLine: levelLine, RECORD: RECORD, skillRank: skillRank, LEVELS: LEVELS,
     own: own, nameOf: nameOf, movedTag: movedTag, profileHref: profileHref, moreFrom: moreFrom, scoreParts: scoreParts, identicon: identicon, ADDR_RE: ADDR_RE, YOUNG_DAYS: YOUNG_DAYS, challengeLine: challengeLine, isHttp: isHttp, RULES: RULES, scoreOf: scoreOf, scoreWhy: scoreWhy, periodAt: periodAt, eodOf: eodOf, where: where, costsText: costsText, loadIndex: loadIndex, loadBook: loadBook, loadCaller: loadCaller, params: params, wantMock: wantMock, ID_RE: ID_RE,
