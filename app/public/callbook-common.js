@@ -387,23 +387,23 @@ window.Callbook = (function () {
   // Under two weeks of record, ratios like Sharpe are shown but greyed.
   var YOUNG_DAYS = 14;
 
-  /** A number that counts up from 0 the first time it scrolls into view (at once with reduced motion). */
+  /**
+   * A number that counts up briefly when it arrives on screen. Off screen (or with reduced motion) it is
+   * simply written: a figure waiting at 0 for a scroll read as missing data.
+   */
+  var COUNT_MS = 600;
   function countUp(el, to, fmt) {
     fmt = fmt || int;
     if (!el || !isNum(to)) return;
-    if (reduce || !window.IntersectionObserver || !window.requestAnimationFrame) { el.textContent = fmt(to); return; }
-    el.textContent = fmt(0);
-    var io = new IntersectionObserver(function (es) {
-      if (!es.some(function (e) { return e.isIntersecting; })) return;
-      io.disconnect();
-      var t0 = performance.now(), dur = 900;
-      (function step(t) {
-        var k = Math.min(1, (t - t0) / dur);
-        el.textContent = fmt(to * (1 - Math.pow(1 - k, 3)));
-        if (k < 1) requestAnimationFrame(step);
-      })(t0);
-    });
-    io.observe(el);
+    var r = el.getBoundingClientRect();
+    var onScreen = r.bottom > 0 && r.top < (window.innerHeight || 0) && r.width > 0;
+    if (reduce || !onScreen || !window.requestAnimationFrame) { el.textContent = fmt(to); return; }
+    var t0 = performance.now();
+    (function step(t) {
+      var k = Math.min(1, Math.max(0, (t - t0) / COUNT_MS));
+      el.textContent = fmt(to * (1 - Math.pow(1 - k, 3)));
+      if (k < 1) requestAnimationFrame(step);
+    })(t0);
   }
   /** A faint light that follows the pointer across a card (.ar-glow in callbook-arena.css). */
   function glow(el) {

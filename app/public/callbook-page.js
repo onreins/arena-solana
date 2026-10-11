@@ -555,6 +555,8 @@
   }
 
   // ------------------------------------------------------------- the page
+  // The testnet month (a small static file) is fetched alongside the records, so the totals don't wait for it after.
+  if (C.loadArchive && !C.wantTestnet) C.loadArchive().catch(function () {});
   C.loadIndex().then(function (d) {
     D = d;
     D.books = (D.books || []).filter(function (b) { return b && b.metrics; });
