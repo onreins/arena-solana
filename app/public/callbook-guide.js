@@ -12,6 +12,28 @@
   if ($("gd-copy")) $("gd-copy").innerHTML = C.copyButton($("mcp-cmd").textContent, "Copy the setup command");
   if ($("gd-prompt-copy")) $("gd-prompt-copy").innerHTML = C.copyButton($("gd-prompt").textContent, "Copy the prompt");
   C.medals();
+  riseIn($("gd-title"));
+
+  // The banner headline rises in word by word (callbook-guide.css): each word becomes its own span,
+  // and the highlighted promise moves as one piece so its shimmer runs across the whole phrase.
+  function riseIn(h) {
+    if (!h) return;
+    var i = 0;
+    [].slice.call(h.childNodes).forEach(function (n) {
+      if (n.nodeType === 1) { n.classList.add("w"); n.style.setProperty("--i", i++); return; }
+      var frag = document.createDocumentFragment();
+      n.textContent.split(/(\s+)/).forEach(function (w) {
+        if (!w) return;
+        if (/^\s+$/.test(w)) { frag.appendChild(document.createTextNode(w)); return; }
+        var s = document.createElement("span");
+        s.className = "w";
+        s.style.setProperty("--i", i++);
+        s.textContent = w;
+        frag.appendChild(s);
+      });
+      h.replaceChild(frag, n);
+    });
+  }
 
   // The agent setup: a command for Claude Code, a config block for every other
   // app. The copy button copies whichever is showing.

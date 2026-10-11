@@ -341,7 +341,7 @@
       f("Ranking metric", esc(B.metric)) +
       f("Predictions scored", C.int(B.scored())) +
       f("Updated", t1 ? esc(C.stamp(t1)) : "—");
-    $("board-lede").innerHTML = B.lede + ' <a href="/arena-guide#how">How scoring works →</a>';
+    $("board-lede").innerHTML = B.lede + ' <a href="/arena-rules">How scoring works →</a>';
     $("pending").hidden = ranked;
     $("pending-p").textContent = "Ranks appear once the board has " + RANK_MIN + " " + B.noun[1] + " and " + RANK_DAYS + " days of record. Until then, " + B.noun[1] + " are listed by record length.";
     $("fn-a").textContent = (ranked ? "Ranked by " + B.metric.replace(/, 0–100$/, "").toLowerCase() : "Listed by record length until ranks appear") + " · " + B.foot + " · ";
