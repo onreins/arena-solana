@@ -263,7 +263,7 @@ window.ReinsUI = (function () {
     var list = function (items, cls) { return items.length ? '<div class="m-list' + (cls ? " " + cls : "") + '">' + items.join("") + "</div>" : ""; };
     var draw = function () {
       var s = savedSession();
-      var arena = [["podium", "Leaderboard", "/arena-leaderboard", "sub"]]
+      var arena = [["podium", "Leaderboard", "/arena-leaderboard", "sub"], ["agent", "Marketplace", "/arena-marketplace", "sub"]]
         .concat(ARENA_DOCS.map(function (d) { return [d[0], d[1], d[2], "sub"]; }));
       var profile = s ? "/arena/p/" + s.address.toLowerCase() : null;
       onSub = arena.some(function (it) { return here(it[2]); }) || (!!s && path === profile);
