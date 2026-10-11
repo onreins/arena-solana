@@ -40,6 +40,7 @@ import { mountOnramp } from "./onramp.js";
 import { buildActivity } from "./activity.js";
 import { mountCallbook } from "./callbook-routes.js";
 import { mountAuth } from "./arena-auth-routes.js";
+import { mountWaitlist } from "./arena-waitlist-routes.js";
 
 const ERC20 = parseAbi(["function balanceOf(address) view returns (uint256)"]);
 
@@ -197,6 +198,8 @@ export function createApp({ deployment, rpcUrl, strategy, onramp, callbook, publ
   mountCallbook(app, callbook);
   // Google sign-in through Circle wallets (off until CIRCLE_API_KEY, CIRCLE_APP_ID and GOOGLE_CLIENT_ID are set).
   mountAuth(app);
+  // The Arena marketplace waitlist (signed-in joins; public counts).
+  mountWaitlist(app);
 
   // A wallet's USDC, so the page can show it and see a card purchase land.
   app.get("/api/usdc/:address", async (req, res) => {
