@@ -234,6 +234,7 @@ window.ReinsUI = (function () {
       return A.restore();
     }).then(function (s) { if (s) listeners.forEach(function (fn) { fn(s.address); }); }).catch(function () { /* sign-in unavailable */ });
     W.config().then(function (c) {
+      if (netFixed) return;
       $("nav-explorer").href = c.explorer;
       setNet(true, "Arc " + c.network);
     }).catch(function () { setNet(false, "Offline"); });
@@ -320,6 +321,14 @@ window.ReinsUI = (function () {
   function setNet(ok, text) {
     $("net").classList.toggle("off", !ok);
     if (text) $("net-text").textContent = text;
+  }
+  // A page about another network (Arena runs on mainnet while the agents app is on testnet)
+  // names its own: the app's config then leaves the label and the explorer link alone.
+  var netFixed = false;
+  function fixNet(text, explorer) {
+    netFixed = true;
+    if ($("net")) setNet(true, text);
+    if (explorer && $("nav-explorer")) $("nav-explorer").href = explorer;
   }
   // The sign-in module (auth.js) and its styles load once, on every page.
   var authLoad = null;
@@ -658,7 +667,7 @@ window.ReinsUI = (function () {
   return {
     FLAT: FLAT, esc: esc, short: short, money: money, compact: compact, bigMoneyHtml: bigMoneyHtml, dirOf: dirOf,
     pct: pct, pctHtml: pctHtml, stateOf: stateOf, riskOf: riskOf, icon: icon, identicon: identicon, avatar: avatar, coins: coins, coinCount: coinCount, ring: ring, RANGES: RANGES,
-    topbar: topbar, phoneMenu: phoneMenu, TABS: TABS, MARK: MARK, setNet: setNet, connect: connect, onAccount: onAccount,
+    topbar: topbar, phoneMenu: phoneMenu, TABS: TABS, MARK: MARK, setNet: setNet, fixNet: fixNet, connect: connect, onAccount: onAccount,
     change: change, periodReturns: periodReturns, combine: combine, areaSvg: areaSvg, Chart: Chart, getJson: getJson,
     curvePoints: curvePoints, pseudoAddress: pseudoAddress, strategyRisk: strategyRisk, spark: spark, indexOf: indexOf, windowed: windowed,
   };
