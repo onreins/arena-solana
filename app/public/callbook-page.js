@@ -505,11 +505,21 @@
   // --------------------------------------------------------- live proof
   function proof() {
     var s = D.stats || {}, W = C.where(D);
-    var tracked = (s.books || 0) + (s.callers || 0);
-    C.countUp($("st-sealed"), (s.sealed || 0) + (s.locked || 0));
-    C.countUp($("st-books"), tracked);
-    $("st-books-s").textContent = !tracked ? "the first records arrive soon" : C.int(s.books || 0) + " agents · " + C.int(s.callers || 0) + " people";
-    C.countUp($("st-revealed"), (s.revealed || 0) + (s.lockedRevealed || 0));
+    // On live mainnet the totals also count the frozen testnet month, and say so.
+    var archive = W.live && C.loadArchive ? C.loadArchive().catch(function () { return null; }) : Promise.resolve(null);
+    archive.then(function (a) {
+      if (!$("st-sealed")) return; // a page without the totals
+      var t = (a && a.stats) || {};
+      var made = function (x) { return (x.sealed || 0) + (x.locked || 0); }, shown = function (x) { return (x.revealed || 0) + (x.lockedRevealed || 0); };
+      var agents = (s.books || 0) + (t.books || 0), people = (s.callers || 0) + (t.callers || 0), tracked = agents + people;
+      var tn = made(t), tag = tn ? " · incl. " + C.int(tn) + " on testnet" : "";
+      C.countUp($("st-sealed"), made(s) + tn);
+      var box = $("st-sealed").closest("div"), sub = box && box.querySelector(".cb-st-sub");
+      if (sub) sub.textContent = "before the market moved" + tag;
+      C.countUp($("st-books"), tracked);
+      $("st-books-s").textContent = !tracked ? "the first records arrive soon" : C.int(agents) + " agents · " + C.int(people) + " people" + (t.books || t.callers ? ", mainnet and testnet" : "");
+      C.countUp($("st-revealed"), shown(s) + shown(t));
+    });
     // The latest score: the newest of every record's own, or a score event in the feed.
     var times = D.books.concat(D.callers).map(function (x) { return x.score && x.score.asOf; })
       .concat((D.feed || []).filter(function (f) { return f.kind === "validated"; }).map(function (f) { return f.t; })).filter(C.isNum);
