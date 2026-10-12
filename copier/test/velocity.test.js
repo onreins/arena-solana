@@ -49,3 +49,10 @@ test("devnet lists SOL, BTC and ETH, the coins the copier can copy there", () =>
   assert.deepEqual(DevnetPerpMarkets.map((m) => m.baseAssetSymbol), ["SOL", "BTC", "ETH"]);
   assert.ok(OrderType && OrderTriggerCondition && PositionDirection && MarketType);
 });
+
+test("the entry never fills more than 1% past the oracle", () => {
+  const long = velocityOrderParams(ordersFor({ side: 1, base: 1n, salt: `0x${"ab".repeat(32)}` }), { marketIndex: 0, userOrderId: 1, maxTs: 1, oraclePrice: 100_000_000n })[0];
+  assert.equal(long.price.toString(), "101000000");
+  const short = velocityOrderParams(ordersFor({ side: -1, base: 1n, salt: `0x${"ab".repeat(32)}` }), { marketIndex: 0, userOrderId: 1, maxTs: 1, oraclePrice: 100_000_000n })[0];
+  assert.equal(short.price.toString(), "99000000");
+});

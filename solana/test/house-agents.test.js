@@ -42,3 +42,15 @@ test("the coin flip agent calls BTC with the Arc coin flip; picks stay inside th
   const again = await decideCall(flip, { coins: ["BTC", "ETH", "SOL"], view: null, now: T + 100, secret: "x".repeat(32) });
   assert.equal(again.side, call.side, "fixed within a period");
 });
+
+test("after a restart, a period already locked on chain isn't locked again", async () => {
+  const agents = [fakeAgent("hot", ({ coins }) => ({ coinIndex: coins.indexOf("BTC"), side: 1, why: "BTC hot" }))];
+  const client = fakeClient();
+  client.readBook = async () => ({ lockCount: 1 });
+  client.readCalls = async () => [{ lockedAt: T - 30 }]; // locked earlier in this same period, by the previous process
+  await tick({ agents, clients: { hot: client }, source, coins: ["BTC"], secret: "s".repeat(32), now: T, locked: new Map(), log: () => {} });
+  assert.equal(client.locks.length, 0);
+  client.readCalls = async () => [{ lockedAt: T - PERIOD }]; // the last lock was the previous period
+  await tick({ agents, clients: { hot: client }, source, coins: ["BTC"], secret: "s".repeat(32), now: T, locked: new Map(), log: () => {} });
+  assert.equal(client.locks.length, 1);
+});

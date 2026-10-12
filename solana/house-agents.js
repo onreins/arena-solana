@@ -49,6 +49,14 @@ export async function decideCall(agent, { coins, view, now, secret }) {
   return { coin: list[pick.coinIndex], side: pick.side, why: pick.why, p };
 }
 
+/** When this key last locked a call, from its book on chain (null without one). */
+export async function lastLockAt(client) {
+  const book = await client.readBook?.();
+  if (!book?.lockCount) return null;
+  const [call] = await client.readCalls([book.lockCount - 1]);
+  return call?.lockedAt ?? null;
+}
+
 /** One pass: reveal what's due, then lock this period's call if not yet locked. */
 export async function tick({ agents, clients, source, coins, secret, now = Math.floor(Date.now() / 1000), locked, log = console.log }) {
   for (const agent of agents) {
@@ -61,6 +69,12 @@ export async function tick({ agents, clients, source, coins, secret, now = Math.
     }
     const p = periodOf(now);
     if (locked.get(agent.key) === p) continue;
+    // The chain, not memory, says whether this period is locked: a restart must not lock it twice.
+    const last = await lastLockAt(client);
+    if (last != null && periodOf(last) === p) {
+      locked.set(agent.key, p);
+      continue;
+    }
     const want = agent.key === "flip" ? ["BTC"] : coins;
     const interval = intervalFor(PERIOD, PERIOD);
     const data = await source.load(want, now - 2 * DAY, now, interval);

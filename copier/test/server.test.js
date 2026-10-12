@@ -62,3 +62,17 @@ test("secret files readable by others are refused", () => {
   chmodSync(p, 0o600);
   assert.equal(readSecretFile(p), "secret");
 });
+
+test("a slow copy is accepted with 202 inside the SDK's timeout, and carries on", async () => {
+  let finished = false;
+  const copier = { handlePreimage: () => new Promise((r) => setTimeout(() => { finished = true; r({ results: [] }); }, 300)) };
+  const server = createServer(preimageHandler({ copier, boxKey: keys.privateKey, log: () => {}, replyWithinMs: 50 }));
+  await new Promise((r) => server.listen(0, r));
+  try {
+    const res = await post(`http://127.0.0.1:${server.address().port}`, { owner: "O", callId: 4, box: seal(preimage, keys.publicKey) });
+    assert.equal(res.status, 202);
+    assert.equal(finished, false);
+    await new Promise((r) => setTimeout(r, 400));
+    assert.equal(finished, true);
+  } finally { server.close(); }
+});

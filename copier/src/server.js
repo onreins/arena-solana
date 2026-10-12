@@ -36,7 +36,10 @@ export function readSecretFile(path) {
 }
 
 /** The HTTP handler, given a copier and the box key. Exported for tests. */
-export function preimageHandler({ copier, boxKey, now = () => Date.now(), log = console.log }) {
+/** The agent's SDK waits 5 s for the copier: answer well inside that. */
+export const REPLY_WITHIN_MS = 2_500;
+
+export function preimageHandler({ copier, boxKey, now = () => Date.now(), log = console.log, replyWithinMs = REPLY_WITHIN_MS }) {
   const hits = new Map();
   return async (req, res) => {
     const reply = (status, body) => {
@@ -70,13 +73,18 @@ export function preimageHandler({ copier, boxKey, now = () => Date.now(), log = 
     if (String(preimage.owner) !== String(body.owner) || Number(preimage.callId) !== Number(body.callId)) {
       return reply(400, { error: "the envelope and the preimage disagree" });
     }
-    try {
-      const out = await copier.handlePreimage(preimage, { receivedAt });
-      log(`lock ${body.signature ?? "?"}: ${out.results.length} follower(s): ${out.results.map((r) => r.status).join(", ") || out.skipped || "none"}`);
-      return reply(200, out);
-    } catch (err) {
-      return reply(err.status ?? 500, { error: err.reason ?? "copier error" });
-    }
+    // Answer within REPLY_WITHIN_MS: a refusal (checked first, against the chain) or the result if
+    // copying is that quick, else 202 while it carries on (waiting for fills can take a minute).
+    const job = copier.handlePreimage(preimage, { receivedAt }).then(
+      (out) => {
+        log(`lock ${body.signature ?? "?"}: ${out.results.length} follower(s): ${out.results.map((r) => r.status).join(", ") || out.skipped || "none"}`);
+        return { status: 200, body: out };
+      },
+      (err) => ({ status: err.status ?? 500, body: { error: err.reason ?? "copier error" } }),
+    );
+    const early = await Promise.race([job, new Promise((r) => setTimeout(() => r(null), replyWithinMs))]);
+    if (early) return reply(early.status, early.body);
+    return reply(202, { accepted: true, call: { owner: preimage.owner, callId: preimage.callId } });
   };
 }
 

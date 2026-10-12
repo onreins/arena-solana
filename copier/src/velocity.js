@@ -18,16 +18,28 @@ import sdk from "@velocity-exchange/sdk";
 import { ComputeBudgetProgram, PublicKey, Transaction } from "@solana/web3.js";
 import bs58 from "bs58";
 
+import { sendAndConfirmByPolling } from "../../solana/arena.js";
+
 const {
   VelocityClient, Wallet, BN, DevnetPerpMarkets, PerpMarkets, PositionDirection, OrderTriggerCondition, MarketType,
-  getMarketOrderParams, getTriggerMarketOrderParams, BulkAccountLoader,
+  getMarketOrderParams, getTriggerMarketOrderParams, BulkAccountLoader, isVariant,
 } = sdk;
 
 const big = (bn) => BigInt(bn.toString());
 const bn = (x) => new BN(x.toString());
 
-/** The exchange's order params for the copier's orders (copier/src/orders.js). Pure. */
-export function velocityOrderParams(orders, { marketIndex, userOrderId, maxTs, builder = null }) {
+/** How far past the oracle price a copied entry may fill: 1%. */
+export const ENTRY_SLIPPAGE_BPS = 100n;
+
+/**
+ * The exchange's order params for the copier's orders (copier/src/orders.js). Pure.
+ * The entry is a market order filled through Velocity's auction by its keepers,
+ * with a limit `slippageBps` past `oraclePrice` so it never fills at a bad price.
+ * (An immediate fill against the AMM needs a fresh oracle in the same
+ * transaction, a paid Pyth Lazer update: on devnet it fails with "oracle not
+ * valid for immediate fills".)
+ */
+export function velocityOrderParams(orders, { marketIndex, userOrderId, maxTs, builder = null, oraclePrice = null, slippageBps = ENTRY_SLIPPAGE_BPS }) {
   return orders.map((o, i) => {
     const common = {
       marketIndex,
@@ -39,7 +51,12 @@ export function velocityOrderParams(orders, { marketIndex, userOrderId, maxTs, b
       userOrderId: ((userOrderId - 1 + i) % 255) + 1,
       ...(builder ? { builderIdx: builder.idx, builderFeeTenthBps: builder.feeTenthBps } : {}),
     };
-    if (o.kind === "entry") return getMarketOrderParams({ ...common, maxTs: bn(maxTs) });
+    if (o.kind === "entry") {
+      const limit = oraclePrice == null ? {} : {
+        price: bn((BigInt(oraclePrice) * (10_000n + (o.direction === "long" ? 1n : -1n) * BigInt(slippageBps))) / 10_000n),
+      };
+      return getMarketOrderParams({ ...common, maxTs: bn(maxTs), ...limit });
+    }
     return getTriggerMarketOrderParams({
       ...common,
       triggerPrice: bn(o.triggerPrice),
@@ -74,6 +91,7 @@ export async function createVelocityExchange({ connection, keypair, env = "devne
   await client.subscribe();
   const locked = mutex();
   const added = new Set();
+  const watching = new Map(); // signature -> the entry to watch after it lands
   const dayStart = new Map(); // follow -> { day, pnl }: the copy subaccount's all-time PnL at 00:00 UTC (first seen)
 
   const authorityOf = (f) => new PublicKey(f.follower.toString());
@@ -126,16 +144,18 @@ export async function createVelocityExchange({ connection, keypair, env = "devne
 
     async sign(f, market, orders, { userOrderId, maxTs }) {
       await ensureUser(f);
-      const params = velocityOrderParams(orders, { marketIndex: market.marketIndex, userOrderId, maxTs, builder });
-      const ix = await locked(async () => {
+      const params = velocityOrderParams(orders, { marketIndex: market.marketIndex, userOrderId, maxTs, builder, oraclePrice: market.price });
+      const ixs = await locked(async () => {
         await client.switchActiveUser(sub(f), authorityOf(f));
-        return client.getPlaceOrdersIx(params, sub(f));
+        return [await client.getPlaceOrdersIx(params, sub(f))];
       });
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
       const tx = new Transaction({ feePayer: keypair.publicKey, blockhash, lastValidBlockHeight })
-        .add(ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }), ix);
+        .add(ComputeBudgetProgram.setComputeUnitLimit({ units: computeUnits }), ...ixs);
       tx.sign(keypair);
-      return { signature: bs58.encode(tx.signature), raw: tx.serialize().toString("base64"), lastValidBlockHeight };
+      const signature = bs58.encode(tx.signature);
+      watching.set(signature, { f, entryId: params[0].userOrderId, bracketIds: params.slice(1).map((p) => p.userOrderId), maxTs });
+      return { signature, raw: tx.serialize().toString("base64"), lastValidBlockHeight };
     },
 
     async send(raw) {
@@ -149,14 +169,49 @@ export async function createVelocityExchange({ connection, keypair, env = "devne
       return height > lastValidBlockHeight ? "expired" : "pending";
     },
 
-    /** Wait for it to land, re-broadcasting the same bytes, until it confirms or can no longer land. */
+    /**
+     * Wait for it to land, re-broadcasting the same bytes, until it confirms or
+     * can no longer land. Then watch the entry until its maxTs: "confirmed" once
+     * it fills; if it expires with nothing filled, its take-profit and stop-loss
+     * are cancelled (they'd otherwise wait for a later position) and the result
+     * is "unfilled"; a partial fill keeps them ("partial": reduce-only, they can
+     * never exceed the position).
+     */
     async confirm(signature, lastValidBlockHeight, raw = null) {
+      let s;
       for (;;) {
-        const s = await this.status(signature, lastValidBlockHeight);
-        if (s !== "pending") return s;
+        s = await this.status(signature, lastValidBlockHeight);
+        if (s !== "pending") break;
         if (raw) await this.send(raw).catch(() => {});
         await new Promise((r) => setTimeout(r, 400));
       }
+      const w = watching.get(signature);
+      watching.delete(signature);
+      if (s !== "confirmed" || !w) return s;
+      return this.watchEntry(w);
+    },
+
+    async watchEntry({ f, entryId, bracketIds, maxTs }) {
+      const user = client.getUser(sub(f), authorityOf(f));
+      const orderOf = () => user.getUserAccount()?.orders.find((o) => o.userOrderId === entryId && !isVariant(o.status, "init"));
+      let o;
+      while (now() / 1000 < maxTs + 15) {
+        await user.fetchAccounts().catch(() => {});
+        o = orderOf();
+        if (o && !isVariant(o.status, "open")) break;
+        await new Promise((r) => setTimeout(r, pollMs));
+      }
+      const filled = o ? big(o.baseAssetAmountFilled) : 0n;
+      if (o && filled > 0n && filled === big(o.baseAssetAmount)) return "confirmed";
+      if (filled > 0n) return "partial";
+      if (bracketIds.length) {
+        const ixs = await locked(async () => {
+          await client.switchActiveUser(sub(f), authorityOf(f));
+          return Promise.all(bracketIds.map((id) => client.getCancelOrderByUserIdIx(id, sub(f))));
+        });
+        await sendAndConfirmByPolling(connection, new Transaction().add(...ixs), [keypair]).catch(() => {});
+      }
+      return "unfilled";
     },
 
     client,
