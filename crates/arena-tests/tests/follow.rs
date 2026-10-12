@@ -108,7 +108,7 @@ fn follow_of(plan: &Pubkey, follower: &Pubkey) -> Pubkey {
 }
 
 fn settings() -> Settings {
-    Settings { size_mode: SIZE_FIXED, size_value: 100 * USDC, max_trade: 250 * USDC, max_open: 3, daily_loss_cap: 50 * USDC }
+    Settings { size_mode: SIZE_FIXED, size_value: 100 * USDC, max_trade: 250 * USDC, max_open: 3, daily_loss_cap: 50 * USDC, sub_account_id: 1 }
 }
 
 /// A world: Reins (admin + treasury), one agent with a plan, one follower holding USDC.
@@ -236,6 +236,16 @@ fn the_subscription_split_is_exact() {
     assert_eq!(balance(&w.svm, &w.treasury) + balance(&w.svm, &w.payout), total, "nothing lost to rounding");
     assert_eq!(balance(&w.svm, &w.follower_token), 1_000 * USDC - total);
 
+    // fixtures for solana/test/follow-codec.test.js: real bytes from the program
+    let dir = format!("{}/../../target/fixtures", env!("CARGO_MANIFEST_DIR"));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(format!("{dir}/follow-account.bin"), &w.svm.get_account(&w.follow).unwrap().data).unwrap();
+    std::fs::write(format!("{dir}/follow-keys.json"), format!(
+        "{{\"plan\":\"{}\",\"follower\":\"{}\",\"paidUntil\":{},\"totalPaid\":{}}}",
+        w.plan, w.follower.pubkey(), T0 + 3 * MONTH, total,
+    )).unwrap();
+    std::fs::write(format!("{dir}/subscribe-data.bin"), follow::instruction::Subscribe { months: 3, settings: settings() }.data()).unwrap();
+
     let f: Follow = load(&w.svm, &w.follow);
     assert_eq!(f.paid_until, T0 + 3 * MONTH);
     assert_eq!(f.total_paid, total);
@@ -287,6 +297,7 @@ fn subscriptions_refuse_bad_input() {
         Settings { max_open: 11, ..settings() },
         Settings { max_trade: 0, ..settings() },
         Settings { daily_loss_cap: 0, ..settings() },
+        Settings { sub_account_id: 0, ..settings() },
     ];
     for s in bad {
         let ix = subscribe_ix(&w, 1, s);

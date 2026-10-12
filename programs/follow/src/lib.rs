@@ -246,6 +246,10 @@ pub struct Settings {
     pub max_open: u8,
     /// Copying pauses for the day once the day's loss reaches this.
     pub daily_loss_cap: u64,
+    /// The follower's dedicated copy subaccount on the exchange, which the
+    /// copier is delegate of. Never 0, the main account, so copied trades
+    /// and their PnL stay apart from the follower's own.
+    pub sub_account_id: u16,
 }
 
 impl Settings {
@@ -258,6 +262,7 @@ impl Settings {
         require!(size_ok, FollowError::BadSettings);
         require!(self.max_trade > 0 && self.daily_loss_cap > 0, FollowError::BadSettings);
         require!((1..=MAX_OPEN_COPIED).contains(&self.max_open), FollowError::BadSettings);
+        require!(self.sub_account_id != 0, FollowError::BadSettings);
         Ok(())
     }
 }
@@ -481,7 +486,7 @@ pub enum FollowError {
     BadMonths,
     #[msg("This plan isn't taking subscriptions")]
     PlanClosed,
-    #[msg("Size and limits must be set, and at most 10 copied positions open")]
+    #[msg("Size, limits and a copy subaccount (not 0) must be set, with at most 10 copied positions open")]
     BadSettings,
     #[msg("That token account isn't the follower's")]
     NotFollowersAccount,

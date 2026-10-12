@@ -1,0 +1,15 @@
+{
+  "name": "@onreins/copier",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reins copier: places a followed agent's verified Arena calls on followers' own Velocity accounts, through a delegate that can trade but never withdraw",
+  "type": "module",
+  "license": "Apache-2.0",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test --test-concurrency=1 \"test/*.test.js\""
+  },
+  "dependencies": {
+    "@velocity-exchange/sdk": "0.26.0"
+  }
+}
