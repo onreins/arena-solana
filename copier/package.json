@@ -7,7 +7,8 @@
   "license": "Apache-2.0",
   "scripts": {
     "start": "node src/server.js",
-    "test": "node --test --test-concurrency=1 \"test/*.test.js\""
+    "test": "node --test --test-concurrency=1 \"test/*.test.js\"",
+    "keys": "node src/keys.js"
   },
   "dependencies": {
     "@velocity-exchange/sdk": "0.26.0"

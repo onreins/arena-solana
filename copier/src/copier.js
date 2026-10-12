@@ -15,7 +15,7 @@
  *   account(follow)                  -> { netValue, openCopied, dayPnl }
  *   sign(follow, market, orders, o)  -> { signature, raw, lastValidBlockHeight }
  *   send(raw)                        -> void (re-sending the same bytes is safe)
- *   confirm(signature, lastValidBlockHeight) -> "confirmed" | "failed" | "expired"
+  *   confirm(signature, lastValidBlockHeight, raw) -> "confirmed" | "failed" | "expired"
  *   status(signature, lastValidBlockHeight)  -> "confirmed" | "failed" | "pending" | "expired"
  */
 import { createHash } from "node:crypto";
@@ -99,7 +99,7 @@ export function createCopier({
       journal.update(key, { status: "signed", signature: signed.signature, raw: signed.raw, lastValidBlockHeight: signed.lastValidBlockHeight, orders: orders.map((o) => o.kind), base: String(size.base) });
       await exchange.send(signed.raw);
       journal.update(key, { status: "sent" });
-      const outcome = await exchange.confirm(signed.signature, signed.lastValidBlockHeight);
+      const outcome = await exchange.confirm(signed.signature, signed.lastValidBlockHeight, signed.raw);
       const doneAt = now();
       const latency = { fromLockMs: doneAt - call.lockedAt * 1000, fromReceiptMs: doneAt - receivedAt };
       journal.update(key, { status: outcome, ...latency });
