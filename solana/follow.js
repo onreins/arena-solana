@@ -8,6 +8,9 @@ import { PublicKey, SystemProgram, TransactionInstruction } from "@solana/web3.j
 
 export const FOLLOW_PROGRAM_ID = new PublicKey("A5Zpb539Yazb3kypH7tvZBVWuGCdCwXU6sdVU8RkgJHC");
 export const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+export const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+/** Circle's devnet USDC. */
+export const DEVNET_USDC = new PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
 
 export const MONTH = 30 * 86_400;
 export const MAX_MONTHS = 12;
@@ -51,11 +54,47 @@ export function encodeSettings({ sizeMode, sizeValue, maxTrade, maxOpen, dailyLo
 }
 const readSettings = (r) => ({ sizeMode: r.u8(), sizeValue: r.u64(), maxTrade: r.u64(), maxOpen: r.u8(), dailyLossCap: r.u64(), subAccountId: r.u16() });
 
+// ------------------------------------------------------------------ token accounts
+
+/** The associated token account of `owner` for `mint`. */
+export const associatedTokenAddress = (owner, mint) =>
+  PublicKey.findProgramAddressSync([pk(owner).toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), pk(mint).toBuffer()], ASSOCIATED_TOKEN_PROGRAM_ID)[0];
+
+/** Create it if missing (CreateIdempotent): safe to include every time. */
+export function createAssociatedTokenAccountIx({ payer, owner, mint }) {
+  return new TransactionInstruction({
+    programId: ASSOCIATED_TOKEN_PROGRAM_ID,
+    keys: [
+      { pubkey: pk(payer), isSigner: true, isWritable: true }, { pubkey: associatedTokenAddress(owner, mint), isSigner: false, isWritable: true },
+      { pubkey: pk(owner), isSigner: false, isWritable: false }, { pubkey: pk(mint), isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false }, { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    data: Buffer.from([1]),
+  });
+}
+
+/** SPL Token Approve: let `delegate` (a Follow account) take up to `amount` from `account` for performance fees. */
+export function approveIx({ account, delegate, owner, amount }) {
+  const data = Buffer.alloc(9);
+  data.writeUInt8(4, 0);
+  data.writeBigUInt64LE(BigInt(amount), 1);
+  return new TransactionInstruction({
+    programId: TOKEN_PROGRAM_ID,
+    keys: [{ pubkey: pk(account), isSigner: false, isWritable: true }, { pubkey: pk(delegate), isSigner: false, isWritable: false }, { pubkey: pk(owner), isSigner: true, isWritable: false }],
+    data,
+  });
+}
+
 // ------------------------------------------------------------------ instructions
 
 const ix = (name, keys, data, programId) => new TransactionInstruction({ programId, keys, data: Buffer.concat([disc("global", name), data]) });
 const signer = (k, w = false) => ({ pubkey: pk(k), isSigner: true, isWritable: w });
 const acct = (k, w = false) => ({ pubkey: pk(k), isSigner: false, isWritable: w });
+
+export function initConfigIx({ admin, mint, treasury, reinsBps, perfReinsBps, programId = FOLLOW_PROGRAM_ID }) {
+  return ix("init_config", [signer(admin, true), acct(mint), acct(treasury), acct(configAddress(admin, programId), true), acct(SystemProgram.programId)],
+    Buffer.concat([u16(reinsBps), u16(perfReinsBps)]), programId);
+}
 
 export function setPlanIx({ agent, payer = agent, config, payout, price, perfFeeBps, open = true, programId = FOLLOW_PROGRAM_ID }) {
   return ix("set_plan", [signer(agent), signer(payer, true), acct(config), acct(payout), acct(planAddress(config, agent, programId), true), acct(SystemProgram.programId)],

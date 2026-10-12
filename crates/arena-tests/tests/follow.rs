@@ -245,6 +245,9 @@ fn the_subscription_split_is_exact() {
         w.plan, w.follower.pubkey(), T0 + 3 * MONTH, total,
     )).unwrap();
     std::fs::write(format!("{dir}/subscribe-data.bin"), follow::instruction::Subscribe { months: 3, settings: settings() }.data()).unwrap();
+    std::fs::write(format!("{dir}/init-config-data.bin"), follow::instruction::InitConfig { reins_bps: 2000, perf_reins_bps: 3000 }.data()).unwrap();
+    std::fs::write(format!("{dir}/set-plan-data.bin"), follow::instruction::SetPlan { price: PRICE, perf_fee_bps: 2000, open: true }.data()).unwrap();
+    std::fs::write(format!("{dir}/settle-data.bin"), follow::instruction::SettlePerformance { pnl: -5, report_hash: [4; 32] }.data()).unwrap();
 
     let f: Follow = load(&w.svm, &w.follow);
     assert_eq!(f.paid_until, T0 + 3 * MONTH);

@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { Keypair } from "@solana/web3.js";
 
-import { decodeFollowAccount, subscribeIx, isCopyable, followAddress, SIZE_FIXED, MONTH } from "../follow.js";
+import { decodeFollowAccount, subscribeIx, initConfigIx, setPlanIx, settlePerformanceIx, approveIx, associatedTokenAddress, DEVNET_USDC, isCopyable, followAddress, SIZE_FIXED, MONTH } from "../follow.js";
 
 const dir = new URL("../../target/fixtures/", import.meta.url).pathname;
 const have = existsSync(`${dir}follow-account.bin`);
@@ -36,4 +36,19 @@ test("a Follow account written by the program decodes", { skip: !have && "fixtur
   assert.ok(!isCopyable({ ...f, active: false }, 0), "stopped");
   assert.equal(followAddress(f.plan, f.follower).toBase58().length > 30, true);
   assert.equal(MONTH, 2_592_000);
+});
+
+test("init_config, set_plan and settle_performance match Anchor's encoding", { skip: !have && "fixtures missing" }, () => {
+  const k = () => Keypair.generate().publicKey;
+  assert.deepEqual(initConfigIx({ admin: k(), mint: k(), treasury: k(), reinsBps: 2000, perfReinsBps: 3000 }).data, readFileSync(`${dir}init-config-data.bin`));
+  assert.deepEqual(setPlanIx({ agent: k(), config: k(), payout: k(), price: 9_990_001n, perfFeeBps: 2000, open: true }).data, readFileSync(`${dir}set-plan-data.bin`));
+  const settle = settlePerformanceIx({ admin: k(), config: k(), plan: k(), follower: k(), followerToken: k(), payout: k(), treasury: k(), pnl: -5n, reportHash: Buffer.alloc(32, 4) });
+  assert.deepEqual(settle.data, readFileSync(`${dir}settle-data.bin`));
+});
+
+test("token helpers: Approve's layout and the associated account address", () => {
+  const owner = Keypair.generate().publicKey;
+  const a = approveIx({ account: owner, delegate: owner, owner, amount: 5n });
+  assert.deepEqual([...a.data], [4, 5, 0, 0, 0, 0, 0, 0, 0]);
+  assert.ok(associatedTokenAddress(owner, DEVNET_USDC).equals(associatedTokenAddress(owner, DEVNET_USDC)));
 });
