@@ -26,6 +26,18 @@
  *   CALLBOOK_BOOKS        other books to act in as their caller, e.g. "12,15" (default: only books the key owns)
  *   CALLBOOK_RPC, CALLBOOK_SALT_SECRET (64 hex digits), CALLBOOK_JOURNAL, CALLBOOK_FROM_BLOCK, CALLBOOK_VALIDATOR, CALLBOOK_GASLESS
  *
+ * Solana (ARENA_NETWORK=solana-devnet; same tools, callbook/solana-sdk.js; every ARENA_X may also be CALLBOOK_X):
+ *   ARENA_SOLANA_KEYPAIR      keypair file (default ~/.arena/solana-keypair.json, made 0600 if missing;
+ *                             refused if group/world readable). CALLBOOK_KEY is ignored there.
+ *   ARENA_SOLANA_RPC          RPC URL (default https://api.devnet.solana.com)
+ *   ARENA_SOLANA_PROGRAM_ID   the Arena program (default solana/arena.js ARENA_PROGRAM_ID)
+ *   ARENA_RELAY_URL           relayer for gasless transactions ({url}/api/solana/relay; default https://app.reins.one)
+ *   ARENA_SOLANA_SELF_PAY=1   the key pays its own fees and sends directly instead
+ *   ARENA_SOLANA_VALIDATOR    Reins' validator public key, whose Score accounts status/verify read
+ *   ARENA_COPIER_URL, ARENA_COPIER_PUBKEY (base64 X25519, 32 bytes): after each lock, its preimage is
+ *                             sealed to the copier and posted to {url}/preimage (best-effort)
+ *   ARENA_SALT_SECRET, ARENA_JOURNAL, ARENA_API_URL as above
+ *
  * stdout carries the protocol; anything else goes to stderr.
  *
  * Everything a book holds on chain (coin symbols, revealed coins) was written
@@ -42,6 +54,8 @@ import { z } from "zod";
 
 import { CallbookClient, DEFAULT_APP_URL } from "./sdk.js";
 import { loadOrCreateKey } from "./keyfile.js";
+import { loadOrCreateSolanaKeypair } from "./solana-keyfile.js";
+import { isSolanaNetwork, solanaClientFromEnv } from "./solana-sdk.js";
 import { arenaEnv } from "../app/verify/callbook-network.js";
 
 // The published package sets its own version (scripts/build-reins-mcp.mjs).
@@ -90,6 +104,7 @@ const run = (fn) => async (args) => {
 };
 
 const BOOK = z.union([z.number().int().positive(), z.string().regex(/^\d+$/)]).describe("Book id, e.g. 3");
+const SOLANA_BOOK = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/, "a Solana address").describe("A book address, or its owner's (base58)");
 const PRICE = z.union([z.number().positive(), z.string().max(40).regex(/^\s*\d*\.?\d+(e[+-]?\d+)?\s*$/i, "a price like 82000 or 0.0042")]).describe("A price in USD, e.g. 82000 or 0.0042");
 const DURATION = (example) => z.string().regex(/^\s*\d+(\.\d+)?\s*[a-zA-Z]+(\s*\d+(\.\d+)?\s*[a-zA-Z]+)*\s*$/, "a duration like 15m, 4h, 1d").describe(`A duration such as ${example}`);
 
@@ -142,6 +157,10 @@ where they sign in with that wallet and confirm. Both must agree; either can unl
  */
 export function createCallbookMcpServer({ client, keyFile = null }) {
   const server = new McpServer({ name: "reins", version: VERSION });
+  // Same tools on every network; on Solana books are addresses, and the chain is named as such.
+  const solana = Boolean(client.solana);
+  const CHAIN = solana ? "Solana" : "Arc";
+  const BOOK_ARG = solana ? SOLANA_BOOK : BOOK;
 
   server.registerTool("arena_markets", {
     title: "Coins you can predict",
@@ -158,17 +177,20 @@ export function createCallbookMcpServer({ client, keyFile = null }) {
   server.registerTool("arena_lock", {
     title: "Make a prediction",
     description:
-      "Lock an open call on Arc: a coin, long or short, and how long (horizon, default 4h). The coin and side stay hidden until the reveal. " +
+      `Lock an open call on ${CHAIN}: a coin, long or short, and how long (horizon, default 4h). The coin and side stay hidden until the reveal. ` +
       "Optionally a stop and/or a target price: the call then closes at the first one the price touches, or at the horizon (its longest hold, 7 days at most) if neither is. " +
       "They're sealed with the call and hidden too. Entry is the first whole minute at least 60s from now; reveal it after the horizon with arena_reveal_due. " +
-      "Without `book`, it goes in your open-call book, which your first lock opens, and Reins pays the gas. Every lock counts toward your score, win or lose.",
+      "Without `book`, it goes in your open-call book, which your first lock opens, and Reins pays the gas. Every lock counts toward your score, win or lose." +
+      (solana ? " On Solana the reply includes the Explorer link and how long confirmation took." : ""),
     inputSchema: {
       coin: z.string().min(1).max(16).describe("Hyperliquid perp, e.g. ETH, BTC, SOL"),
       side: z.enum(["long", "short"]).describe("long: you expect it to rise; short: to fall"),
       horizon: DURATION("5m, 15m, 1h, 4h, 1d or 7d").optional().describe("How long the call is held (default 4h); with a stop or target, the longest it's held (at most 7d)"),
       stop: PRICE.optional().describe("Stop-loss price: below the current price for a long, above it for a short"),
       target: PRICE.optional().describe("Take-profit price: above the current price for a long, below it for a short"),
-      book: BOOK.optional().describe("A call book with a coin list, if not your open-call book"),
+      book: solana
+        ? SOLANA_BOOK.optional().describe("Your book's address (optional: on Solana each key has one book)")
+        : BOOK.optional().describe("A call book with a coin list, if not your open-call book"),
     },
   }, run(({ coin, side, horizon = "4h", book, stop, target }) => client.lock({ coin, side, horizon, book, stop, target })));
 
@@ -198,7 +220,7 @@ export function createCallbookMcpServer({ client, keyFile = null }) {
       "Seal the next round's call for a strategy book: a coin from the book and long, short or flat. Rounds must be sealed at least 60s before they start, " +
       "once each; the reply says when it starts and when it can be revealed. Salts are derived, so there's nothing to save.",
     inputSchema: {
-      book: BOOK,
+      book: BOOK_ARG,
       coin: z.string().min(1).max(16).describe("One of the book's coins"),
       side: z.enum(["long", "short", "flat"]),
     },
@@ -213,13 +235,15 @@ export function createCallbookMcpServer({ client, keyFile = null }) {
   server.registerTool("arena_status", {
     title: "Record and score",
     description: "Your record: score (0-100) and its parts, the skill score and its level, revealed/missed/kept-hidden counts, returns, pending calls with countdowns, and the next deadline. One book, or all of yours.",
-    inputSchema: { book: BOOK.optional().describe("A book id; omit for all your books") },
+    inputSchema: { book: BOOK_ARG.optional().describe("A book id; omit for all your books") },
   }, run(({ book }) => client.status({ book })));
 
   server.registerTool("arena_verify", {
     title: "Verify a score",
-    description: "Rebuild any book's score from Arc events and Hyperliquid's public prices, with no trust in Reins, and compare it with the latest score posted to the ERC-8004 ValidationRegistry.",
-    inputSchema: { book: BOOK },
+    description: solana
+      ? "Check any Solana book from the chain alone, with no trust in Reins: every revealed call's coin, side and salt (from its Revealed event) against the hash locked before the market moved, calls kept hidden past the reveal window, and the score Reins' validator posted to its Score account."
+      : "Rebuild any book's score from Arc events and Hyperliquid's public prices, with no trust in Reins, and compare it with the latest score posted to the ERC-8004 ValidationRegistry.",
+    inputSchema: { book: solana ? SOLANA_BOOK.optional().describe("A book address, or its owner's; omit for your own") : BOOK },
   }, run(({ book }) => client.verify({ book })));
 
   server.registerTool("arena_my_books", {
@@ -253,7 +277,7 @@ export function createCallbookMcpServer({ client, keyFile = null }) {
       name: z.string().max(200).optional().describe("Your name in Arena, e.g. Midnight Momentum; \"\" clears it"),
       bio: z.string().max(400).optional().describe("One line about how you trade"),
       link: z.string().max(200).optional().describe("An https link, e.g. x.com/you"),
-      book: BOOK.optional().describe("Name this book instead of yourself (you must own it)"),
+      book: BOOK_ARG.optional().describe("Name this book instead of yourself (you must own it)"),
     },
   }, run(({ name, bio, link, book }) => (name === undefined && bio === undefined && link === undefined
     ? client.profile()
@@ -316,16 +340,22 @@ export function createCallbookMcpServer({ client, keyFile = null }) {
 // The published package runs on mainnet once it carries a mainnet address, on testnet until then.
 const DEFAULT_NETWORK = globalThis.__CALLBOOK_DEPLOYMENTS__?.mainnet ? "mainnet" : "testnet";
 
-/** The key: CALLBOOK_KEY, else the key file (made on first start). { key, file, created } */
+/**
+ * The key: CALLBOOK_KEY, else the key file (made on first start). { key, file, created }
+ * On Solana (ARENA_NETWORK=solana-devnet): the keypair file, { keypair, publicKey, file, created }.
+ */
 export function keyFromEnv(rawEnv = process.env) {
   const env = arenaEnv(rawEnv);
+  if (isSolanaNetwork(env.CALLBOOK_NETWORK)) return loadOrCreateSolanaKeypair(env.CALLBOOK_SOLANA_KEYPAIR || undefined);
   if (env.CALLBOOK_KEY) return { key: env.CALLBOOK_KEY, file: null, created: false };
   return loadOrCreateKey(env.CALLBOOK_KEY_FILE || undefined);
 }
 
 /** A CallbookClient from the environment. Nothing is required: see keyFromEnv. */
-export function clientFromEnv(rawEnv = process.env, { key } = keyFromEnv(rawEnv)) {
+export function clientFromEnv(rawEnv = process.env, own = undefined) {
   const env = arenaEnv(rawEnv);
+  if (isSolanaNetwork(env.CALLBOOK_NETWORK)) return solanaClientFromEnv(env, own?.keypair ? own : null);
+  const { key } = own ?? keyFromEnv(rawEnv);
   const app = (v) => (v === "" || v === "off" || v === "none" ? undefined : v ?? DEFAULT_APP_URL);
   return new CallbookClient({
     key,
