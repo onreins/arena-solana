@@ -52,3 +52,6 @@ copier/data/
 
 # local screenshots
 .screens/
+
+# exported service secrets (scripts/solana-export-keys.mjs)
+.secrets/

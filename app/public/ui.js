@@ -160,7 +160,15 @@ window.ReinsUI = (function () {
   var listeners = [];
   // The Reins mark: a rounded lowercase r and its dot, white on the dark sidebar.
   var MARK = '<svg width="26" height="26" viewBox="256 256 512 512" aria-hidden="true"><g fill="#fff"><rect x="307" y="327" width="130" height="368" rx="65"/><path d="M430 396C452 352 494 327 540 327a50.5 50.5 0 0 1 0 101c-58 0-103 34-103 96H415V396z"/><circle cx="670" cy="378" r="47"/></g></svg>';
-  var NAV = [
+  // A Solana-only site (scripts/solana-site.mjs marks its pages with <meta name="reins-site" content="solana">)
+  // shows only Arena: none of the Arc app's pages, and Solana's explorer instead of Arc's.
+  var siteMeta = document.querySelector('meta[name="reins-site"]');
+  var SOLANA_SITE = Boolean(siteMeta && siteMeta.getAttribute("content") === "solana");
+  var SOLANA_EXPLORER = "https://explorer.solana.com/address/BderjFgzJGQ6NsqNfbVmtHDhzjHP6B3ijPMGCrmNffqw?cluster=devnet";
+  var NAV = SOLANA_SITE ? [
+    [null, [["callbook", "Arena", "/arena"], ["user", "Following", "/arena-following"], ["info", "Guide", "/arena-guide"], ["help", "Docs", "/arena-docs"]]],
+    ["SOLANA DEVNET", [["window", "Solana Explorer", SOLANA_EXPLORER, "nav-explorer"]]],
+  ] : [
     [null, [["explore", "Agents", "/"], ["strategies", "Strategies", "/strategies"], ["callbook", "Arena", "/arena"], ["chat", "Chat", "/chat"], ["charts", "Charts", "/charts"], ["create", "Create agent", "/create"]]],
     ["ARC", [["window", "Block explorer", "#", "nav-explorer"]]],
   ];
@@ -172,7 +180,9 @@ window.ReinsUI = (function () {
   ];
   var herePath = function () { return location.pathname.toLowerCase().replace(/\.html$/, "").replace(/\/$/, "") || "/"; };
   // On a phone the sidebar is hidden, so the main pages move to a bar along the bottom.
-  var TABS = [["explore", "Agents", "/"], ["strategies", "Strategies", "/strategies"], ["callbook", "Arena", "/arena"], ["charts", "Charts", "/charts"], ["chat", "Chat", "/chat"], ["create", "Create", "/create"]];
+  var TABS = SOLANA_SITE
+    ? [["callbook", "Arena", "/arena"], ["user", "Following", "/arena-following"], ["info", "Guide", "/arena-guide"], ["help", "Docs", "/arena-docs"]]
+    : [["explore", "Agents", "/"], ["strategies", "Strategies", "/strategies"], ["callbook", "Arena", "/arena"], ["charts", "Charts", "/charts"], ["chat", "Chat", "/chat"], ["create", "Create", "/create"]];
   function topbar(page) {
     var groups = NAV.map(function (g) {
       return (g[0] ? '<div class="grp">' + g[0] + "</div>" : "") + g[1].map(function (it) {
@@ -182,20 +192,20 @@ window.ReinsUI = (function () {
     });
     var nav = groups.join("");
     var hidden = false;
-    try { hidden = localStorage.getItem("reins-promo") === "hidden"; } catch (e) { /* storage off */ }
+    try { hidden = SOLANA_SITE || localStorage.getItem("reins-promo") === "hidden"; } catch (e) { /* storage off */ }
     var rings = '<svg class="rings" viewBox="0 0 220 220" aria-hidden="true">' + [30, 55, 80, 105].map(function (r) {
       return '<circle cx="110" cy="110" r="' + r + '" fill="none" stroke="rgba(255,255,255,.07)"/>';
     }).join("") + "</svg>";
     $("side").className = "side";
     $("side").innerHTML =
-      '<div class="side-head"><a class="brand" href="/">' + MARK + 'Reins <span class="tag">BETA</span></a></div>' +
+      '<div class="side-head"><a class="brand" href="' + (SOLANA_SITE ? "/arena" : "/") + '">' + MARK + 'Reins <span class="tag">' + (SOLANA_SITE ? "SOLANA" : "BETA") + "</span></a></div>" +
       '<nav aria-label="Main">' + nav + "</nav>" +
       '<p class="side-legal"><a href="/terms">Terms</a><span aria-hidden="true">·</span><a href="/privacy">Privacy</a></p>' +
       (hidden ? "" : '<div class="promo" id="promo">' + rings + '<span class="badge"><img src="/tokens/arc.svg" alt=""></span>' +
         '<button class="x" id="promo-x" type="button" aria-label="Hide">' + icon("minus") + "</button><b>Tokenized stocks</b><span>Coming to Arc</span></div>");
     $("top").className = "top";
     $("top").innerHTML =
-      '<a class="top-brand" href="/" aria-label="Reins home">' + MARK + '<span class="tb-name">Reins</span><span class="tag">BETA</span></a>' +
+      '<a class="top-brand" href="' + (SOLANA_SITE ? "/arena" : "/") + '" aria-label="Reins home">' + MARK + '<span class="tb-name">Reins</span><span class="tag">' + (SOLANA_SITE ? "SOLANA" : "BETA") + "</span></a>" +
       '<label class="search">' + icon("search") + '<span class="sr-only">Search agents and strategies</span>' +
       '<input id="gsearch" type="search" placeholder="Search agents and strategies" autocomplete="off"><kbd>/</kbd></label>' +
       '<div class="top-r"><span class="net" id="net"><i></i><span id="net-text">Arc</span></span>' +
@@ -234,7 +244,7 @@ window.ReinsUI = (function () {
       return A.restore();
     }).then(function (s) { if (s) listeners.forEach(function (fn) { fn(s.address); }); }).catch(function () { /* sign-in unavailable */ });
     W.config().then(function (c) {
-      if (netFixed) return;
+      if (netFixed || SOLANA_SITE) return; // the Solana site names its own network (fixNet)
       $("nav-explorer").href = c.explorer;
       setNet(true, "Arc " + c.network);
     }).catch(function () { setNet(false, "Offline"); });

@@ -57,7 +57,9 @@
     "arena:verify": "node --env-file-if-exists=.env scripts/callbook-verify.js",
     "build:circle": "esbuild scripts/circle-client.js --bundle --format=iife --global-name=ReinsCircleSdk --platform=browser --target=es2020 --minify --legal-comments=eof --alias:jsonwebtoken=./scripts/shims/jwt-decode.js \"--define:process.env.NODE_ENV=\\\"production\\\"\" --outfile=app/public/vendor/circle-wallets.js",
     "test:solana": "node --test --test-concurrency=1 \"solana/test/*.test.js\"",
-    "test:programs": "anchor build && cargo test -p arena-score -p follow -p arena-tests"
+    "test:programs": "anchor build && cargo test -p arena-score -p follow -p arena-tests",
+    "solana:services": "node scripts/solana-services.mjs",
+    "build:solana-site": "npm run build && node scripts/solana-site.mjs"
   },
   "license": "MIT",
   "description": "A neutral evaluator for ERC-8183 agent jobs on Arc, built on a metered code sandbox.",

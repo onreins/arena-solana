@@ -506,7 +506,8 @@
   function proof() {
     var s = D.stats || {}, W = C.where(D);
     // On live mainnet the totals also count the frozen testnet month, and say so.
-    var archive = W.live && C.loadArchive ? C.loadArchive().catch(function () { return null; }) : Promise.resolve(null);
+    // Arc's testnet history counts toward Arc's totals only, never Solana's.
+    var archive = W.live && C.loadArchive && !C.onSolana() ? C.loadArchive().catch(function () { return null; }) : Promise.resolve(null);
     archive.then(function (a) {
       if (!$("st-sealed")) return; // a page without the totals
       var t = (a && a.stats) || {};
