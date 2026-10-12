@@ -549,7 +549,7 @@
   // Where the data comes from, in this page's words (a local take on C.statusPill).
   function statusPill(d) {
     var w = C.where(d);
-    var tip = w.live ? "Every prediction is recorded and revealed on " + (d.network || "Arc") + ", and scores are posted to an open registry on Arc (ERC-8004)." : w.tip;
+    var tip = w.live && C.onSolana() ? w.tip : w.live ? "Every prediction is recorded and revealed on " + (d.network || "Arc") + ", and scores are posted to an open registry on Arc (ERC-8004)." : w.tip;
     return '<span class="cb-status' + (w.live ? " live" : "") + '" tabindex="0" data-tip="' + esc(tip) + '"><i aria-hidden="true"></i>' + esc(w.status) +
       '<span class="sr-only">: ' + esc(tip) + "</span></span>";
   }

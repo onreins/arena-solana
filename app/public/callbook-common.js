@@ -49,7 +49,11 @@ window.Callbook = (function () {
 
   // Sample data is written once; move it so its latest period is the one
   // running now, so its countdowns count. Real data is never touched.
+  // Solana data (chainId "solana-devnet") is labelled Solana wherever the page would say Arc.
+  var onSolana = false;
+  var isSolana = function (d) { return Boolean(d && /^solana-/.test(String(d.chainId || ""))); };
   function rebase(d) {
+    if (isSolana(d)) onSolana = true;
     if (!d || d.mode !== "mock") return d;
     var P = periodOf(d) || 14400;
     var gen = Math.floor(Date.parse(d.generated) / 1000) || 0;
@@ -183,7 +187,9 @@ window.Callbook = (function () {
   var sealN = 0;
   function seal(cls, words) {
     var id = "cb-ring-" + sealN++;
-    var text = (words || "RECORDED ON ARC · ARENA BY REINS · ").repeat(2);
+    if (!words || words === SEAL_WORDS) words = onSolana ? SOLANA_SEAL_WORDS : SEAL_WORDS;
+    if (onSolana) words = words.replace("ERC-8004", "SOLANA");
+    var text = words.repeat(2);
     var ticks = "";
     for (var i = 0; i < 72; i++) {
       var a = (i / 72) * Math.PI * 2, r1 = 47, r2 = i % 6 === 0 ? 43.5 : 45.5;
@@ -378,6 +384,8 @@ window.Callbook = (function () {
     var mode = d && d.mode;
     if (d && d.archive) return { status: "Testnet history", chain: "On Arc testnet", live: false,
       tip: d.note || "Arena on Arc testnet, frozen when it moved to mainnet. Scored with the same rules." };
+    if (mode === "live" && (isSolana(d) || onSolana)) return { status: "Live on " + (d.network || "Solana"), chain: "On Solana", live: true,
+      tip: "Predictions are recorded and revealed on Solana, and scores are written to Score accounts any Solana program can read." };
     if (mode === "live") return { status: "Live on Arc", chain: "On Arc", live: true,
       tip: "Predictions are recorded and revealed on Arc, and scores are published to an open registry on Arc (ERC-8004)." };
     if (mode === "replay") return { status: "Replay over real prices", chain: "On chain", live: false,
@@ -391,6 +399,9 @@ window.Callbook = (function () {
       '<span class="sr-only">: ' + esc(w.tip) + "</span></span>";
   }
   var SEAL_WORDS = "RECORDED ON ARC · ARENA BY REINS · ";
+  var SOLANA_SEAL_WORDS = "RECORDED ON SOLANA · ARENA BY REINS · ";
+  /** Where a score is published, in a row label or caption. */
+  function publishedOn() { return onSolana ? "Written to a Score account on Solana" : "Published on Arc (ERC-8004)"; }
   var COSTS = { "hyperliquid-funding": "fees and real hourly Hyperliquid funding", "vanta-flat-carry": "fees and Vanta’s flat carry" };
   function costsText(c) { return own(COSTS, c) || (c ? String(c) : "fees"); }
 
@@ -585,7 +596,14 @@ window.Callbook = (function () {
   loadIndex().then(function (d) {
     if (!d || !U.fixNet) return;
     U.fixNet(d.archive ? "Arc testnet · history" : /^solana-/.test(String(d.chainId)) ? d.network || "Solana" : "Arc", d.explorer);
-    if (/^solana-/.test(String(d.chainId))) followingLink();
+    if (/^solana-/.test(String(d.chainId))) {
+      onSolana = true;
+      followingLink();
+      var big = document.getElementById("seal");
+      if (big) big.innerHTML = seal("big", SOLANA_SEAL_WORDS);
+      var travels = document.getElementById("travels");
+      if (travels) travels.innerHTML = "<b>The record travels with the agent.</b> It lives on Solana, in Score accounts any program can read, not in our database.";
+    }
   }).catch(function () { /* the label stays as the app's */ });
   // The Mainnet / Testnet switch on the leaderboard (a .cb-netsw group of two links).
   document.querySelectorAll(".cb-netsw a").forEach(function (a) {
@@ -601,6 +619,6 @@ window.Callbook = (function () {
     pct: pct, pctHtml: pctHtml, dd: dd, num: num, int: int, isNum: isNum, shortHash: shortHash, txLink: txLink,
     ago: ago, stamp: stamp, day: day, clock: clock, span: span, hours: hours, now: now,
     sidePill: sidePill, challengePill: challengePill, nextBoundary: nextBoundary,
-    seal: seal, guilloche: guilloche, scramble: scramble, reduce: reduce, tooltips: tooltips, copyButton: copyButton, modeBadge: modeBadge, statusPill: statusPill, SEAL_WORDS: SEAL_WORDS,
+    seal: seal, guilloche: guilloche, scramble: scramble, reduce: reduce, tooltips: tooltips, copyButton: copyButton, modeBadge: modeBadge, statusPill: statusPill, SEAL_WORDS: SEAL_WORDS, publishedOn: publishedOn, onSolana: function () { return onSolana; },
   };
 })();

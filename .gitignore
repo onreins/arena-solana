@@ -49,3 +49,6 @@ solana/.keys/
 # the copier is its own package
 copier/node_modules/
 copier/data/
+
+# local screenshots
+.screens/
