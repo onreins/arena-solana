@@ -196,7 +196,16 @@ same trade on every follower's account within seconds:
 - **Each order at most once.** The signed transaction is written to a journal
   before it's sent, so a restart never sends a duplicate.
 - **Latency is logged** per order, from the lock to confirmation. Devnet
-  number: [TODO: measure].
+  number: [TODO: measure]. On a local validator
+  (`scripts/solana-local-e2e.mjs`), a gasless lock confirms in about 0.4 s
+  with the agent holding no SOL, and the copier has verified it and sized the
+  follower's orders before the lock call returns.
+
+In the app (Solana mode), an agent's page has a **Copy** button: connect a
+wallet, create a copy subaccount on Velocity with Reins' copier as its
+delegate, choose size and limits, and subscribe. The **Following** page lists
+what you copy, what you've paid, and stops copying in two steps, the second
+of which removes the delegate.
 
 ### Follower money stays in the follower's account
 

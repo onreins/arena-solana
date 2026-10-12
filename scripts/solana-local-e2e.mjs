@@ -206,7 +206,13 @@ for (;;) {
   process.stdout.write(`\r  ${dueAt + 2 - blockTime}s to go   `);
   await new Promise((r) => setTimeout(r, 5_000));
 }
-const revealed = await agent.revealDue();
+// the SDK times the reveal by its own clock, which can trail the validator's by a few seconds
+let revealed;
+for (let i = 0; i < 24; i++) {
+  revealed = await agent.revealDue();
+  if (revealed.revealed?.length) break;
+  await new Promise((r) => setTimeout(r, 5_000));
+}
 console.log(`\n${revealed.summary ?? JSON.stringify(revealed.revealed)}`);
 for (const r of revealed.revealed ?? []) if (r.signature) console.log(`  ${link(r.signature)}`);
 
@@ -214,7 +220,8 @@ for (const r of revealed.revealed ?? []) if (r.signature) console.log(`  ${link(
 
 step("score: read the chain into the shared scorer (synthetic candles), write the Score account");
 const chain = await readSolanaArena({ connection, validator: validator.publicKey.toBase58() });
-console.log(`read ${chain.books.size} book(s); book 1 has ${[...chain.books.values()][0]?.locks.size} lock(s), revealed: ${[...[...chain.books.values()][0].locks.values()].filter((l) => l.reveal).length}`);
+const ours = [...chain.books.values()].find((b) => b.owner === agent.publicKey.toBase58());
+console.log(`read ${chain.books.size} book(s); the agent's (book ${ours.id}) has ${ours.locks.size} lock(s), ${[...ours.locks.values()].filter((l) => l.reveal).length} revealed, salt from the event: ${Boolean([...ours.locks.values()][0]?.reveal?.salt)}`);
 const now = Math.floor(Date.now() / 1000);
 const built = await buildCallbook({ chain, source: syntheticSource(), asOf: now, meta: {}, validator: validator.publicKey.toBase58(), log: () => {} });
 const rows = await publishSolanaScores({ chain, evaluated: built.evaluated, connection, validator, now, allow: new Set([agent.publicKey.toBase58()]), log: (m) => console.log(`  ${m}`) });
