@@ -10,7 +10,7 @@ Deployed on 2026-10-12. Devnet only, with no real funds anywhere. Every link bel
 | follow | [`A5Zpb539Yazb3kypH7tvZBVWuGCdCwXU6sdVU8RkgJHC`](https://explorer.solana.com/address/A5Zpb539Yazb3kypH7tvZBVWuGCdCwXU6sdVU8RkgJHC?cluster=devnet) |
 | score-gate | [`4L1DyajAKPeY5rMXt3cMnk93qXJo3tV5XetmTi8jskcK`](https://explorer.solana.com/address/4L1DyajAKPeY5rMXt3cMnk93qXJo3tV5XetmTi8jskcK?cluster=devnet) |
 
-Upgrade authority: the deployer `CKeLuqwDWd41VyKNywRFq9kmCS8Vs9ogXtrnXbrws33e`.
+Upgrade authority: the owner's wallet `84Su6XnmJwRtyysj9wq8cvxvSYAvpeUEJy7xcCFf9e7B` (moved from the deployer key on 2026-10-12). To upgrade a program, build it and deploy with that wallet as `--upgrade-authority`.
 
 ## Accounts
 
