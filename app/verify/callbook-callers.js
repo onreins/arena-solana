@@ -20,10 +20,13 @@
  *     before any price is fetched; one Hyperliquid doesn't list makes the call
  *     unscorable: flagged, never fetched, and scored as the worst outcome
  *   - a lock never revealed by entryAt + its horizon + 7 days is withheld
- *   - a withheld or unscorable call scores the worst outcome at its horizon
+ *   - a withheld or unscorable call scores the worst outcome over its horizon
  *     over the candidates: the book's own coins, or, for an any-coin book, the
  *     fixed reference set REFERENCE_SET (arena-v1: Hyperliquid's 50 most
- *     traded perps on 2026-10-07), long or short. The report names the set
+ *     traded perps on 2026-10-07) plus every coin the book itself revealed,
+ *     long or short. "Worst" is along the price path: the lowest candle low
+ *     (for a long) or highest high (for a short) between entry and exit, not
+ *     just the exit open. The report names the set
  */
 import { VANTA } from "./scoring.js";
 import { canonicalJson, hashText, SCORING_VERSION, requestForBook, latestResponse, LOCKED_TAG, SYMBOL_TAG, lockedHash, symbolCallHash } from "./callbook-chain.js";
@@ -35,6 +38,7 @@ import { exitsOf, exitsProblem, exitPath, EXITS_SINCE } from "./callbook-exits.j
 
 const HOUR = 3_600;
 const DAY = 86_400;
+const STEP = { "5m": 300, "15m": 900, "1h": HOUR, "4h": 4 * HOUR };
 /** Calls shorter than this are priced on 5-minute candles, longer ones on hourly candles. */
 export const FINE_BELOW = HOUR;
 /** About how far back Hyperliquid serves 5-minute candles (its most recent 5,000). */
@@ -128,22 +132,65 @@ const moveOf = (prices, coin, from, to) => {
 };
 
 /**
+ * The most adverse funding-adjusted move a coin made against each side while a
+ * call on it would have been open: entry at the first open at or after
+ * `entryAt`, then every candle that opens before the exit candle (the first
+ * open at or after `entryAt + horizon`), and that exit open itself. A long's
+ * worst is the lowest low against the entry, a short's the highest high. Each
+ * candle's low and high carry its open's funding factor (index / open).
+ * Returns { down, up } (down <= 0 <= up), or null without an entry and an exit.
+ * Without candle rows (a lookup-only price book) it is the close move alone.
+ */
+export function adverseMoves(prices, coin, entryAt, horizon) {
+  const a = prices.index(coin, entryAt), b = prices.index(coin, entryAt + horizon);
+  if (!(a > 0 && b > 0)) return null;
+  let down = Math.min(0, b / a - 1), up = Math.max(0, b / a - 1);
+  const rows = prices.candles?.(coin) ?? [];
+  const step = STEP[prices.interval] ?? HOUR;
+  const at = (t) => {
+    let lo = 0, hi = rows.length;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (rows[mid].t < t) lo = mid + 1; else hi = mid; }
+    return rows[lo] && rows[lo].t - t < step ? lo : -1;
+  };
+  const i0 = at(entryAt), j = at(entryAt + horizon);
+  if (i0 < 0 || j < 0) return { down, up };
+  for (let i = i0; i < j; i++) {
+    const r = rows[i], fi = prices.index(coin, r.t);
+    if (!(fi > 0 && r.o > 0)) continue;
+    const f = fi / r.o;
+    if (r.l > 0) down = Math.min(down, (r.l * f) / a - 1);
+    if (r.h > 0) up = Math.max(up, (r.h * f) / a - 1);
+  }
+  return { down, up };
+}
+
+/**
  * The worst a hidden or unknown call could have done over `horizon`: among the
- * candidate coins, the largest move called the wrong way.
+ * candidate coins and both sides, the largest adverse move along the price
+ * path (adverseMoves), not only from entry to exit. A tie keeps the first.
  */
 export function worstOver(prices, coins, entryAt, horizon) {
   let worst = { coin: coins[0] ?? null, side: 1, horizon, move: 0 };
   for (const coin of coins) {
-    const m = moveOf(prices, coin, entryAt, entryAt + horizon);
-    if (m != null && Math.abs(m) > Math.abs(worst.move)) worst = { coin, side: m > 0 ? -1 : 1, horizon, move: m };
+    const m = adverseMoves(prices, coin, entryAt, horizon);
+    if (!m) continue;
+    if (-m.down > Math.abs(worst.move)) worst = { coin, side: 1, horizon, move: m.down };
+    if (m.up > Math.abs(worst.move)) worst = { coin, side: -1, horizon, move: m.up };
   }
   return { ...worst, ...netOf(worst.side, worst.move) };
 }
 
-/** The coins a book's hidden call is scored against: its own coins that Hyperliquid lists, or the reference set. */
-export function candidatesFor(book, perpNames) {
-  if (book.anyCoin) return [...REFERENCE_SET];
-  return book.coins.map((c) => resolveSymbol(c, perpNames)).filter(Boolean);
+/**
+ * The coins a book's hidden call is scored against: its own coins that
+ * Hyperliquid lists, or, for an any-coin book, the reference set plus every
+ * coin the book itself has revealed in `locks` (so hiding the losers on a coin
+ * outside the set can't beat revealing them).
+ */
+export function candidatesFor(book, perpNames, locks = []) {
+  if (!book.anyCoin) return book.coins.map((c) => resolveSymbol(c, perpNames)).filter(Boolean);
+  const out = [...REFERENCE_SET];
+  for (const c of locks) if (c.status === "revealed" && c.coin && !out.includes(c.coin)) out.push(c.coin);
+  return out;
 }
 
 /**
@@ -152,7 +199,7 @@ export function candidatesFor(book, perpNames) {
  * `asOf`: the moment scored. A revealed call whose exit candle hadn't opened yet stays pending.
  */
 export function priceLocks(book, locks, prices, perpNames = book.coins, fine = null, asOf = Infinity) {
-  const candidates = candidatesFor(book, perpNames);
+  const candidates = candidatesFor(book, perpNames, locks);
   // The finest prices a call can use: 5-minute ones for a recent short call, or one with exits, while Hyperliquid has them.
   const recent = (c) => !Number.isFinite(asOf) || c.exitAt > asOf - FINE_HISTORY;
   const gridFor = (c, coins) => {
@@ -364,8 +411,9 @@ export function buildCallerReport({ chainId, callbook, book, asOf, scored }) {
     version: SCORING_VERSION,
     kind: "caller",
     scoring: "Vanta Network fees (MIT), see app/verify/NOTICE; caller score per docs/CALLBOOK.md",
-    chainId: Number(chainId),
-    callbook: String(callbook).toLowerCase(),
+    // Arc: a numeric chain id and a lowercase 0x address. Solana ("solana-devnet"): both as given, base58 being case-sensitive.
+    chainId: /^solana-/.test(String(chainId)) ? String(chainId) : Number(chainId),
+    callbook: /^solana-/.test(String(chainId)) ? String(callbook) : String(callbook).toLowerCase(),
     bookId: String(book.id),
     asOf,
     book: {
@@ -419,7 +467,7 @@ export async function evaluateCaller({ chain, book, source, asOf, reportBase, re
   const short = locks.filter((c) => c.status !== "pending" && (c.horizon < FINE_BELOW || c.exits) && c.exitAt > asOf - FINE_HISTORY);
   if (short.length) {
     const fineCoins = new Set(short.map((c) => c.coin).filter(Boolean));
-    if (short.some((c) => c.status !== "revealed")) for (const c of candidatesFor(book, names)) fineCoins.add(c);
+    if (short.some((c) => c.status !== "revealed")) for (const c of candidatesFor(book, names, locks)) fineCoins.add(c);
     const from = Math.max(minOf(short.map((c) => c.entryAt)) - HOUR, asOf - FINE_HISTORY - DAY);
     const to = Math.min(maxOf(short.map((c) => c.exitAt)) + HOUR, asOf + HOUR);
     fine = priceBook({ ...(await source.load([...fineCoins], from, to, "5m")), interval: "5m" }, { useFunding: true, openBy: asOf });
