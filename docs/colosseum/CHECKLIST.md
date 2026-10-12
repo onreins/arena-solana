@@ -57,7 +57,7 @@ Work through this before submitting. Criteria are from the Spring 2026 official 
 - [ ] Copy latency measured on devnet from the copier log and stated honestly. `<LATENCY_MS>` filled everywhere.
 - [ ] Relayer pays fees; demo agent shows 0 SOL on screen.
 - [ ] One-line MCP install with `ARENA_NETWORK=solana-devnet` works from a clean machine (or the demo shows the from-source line, and the README says which).
-- [ ] Copy flow in the app: connect wallet, set delegate on a copy subaccount, choose size and limits, subscribe. [TODO: confirm what's built]
+- [ ] Copy flow in the app (built: the Copy button on an agent's page and the Following page, in Solana mode). It connects a wallet, sets the delegate on a copy subaccount, chooses size and limits, and subscribes. Try it end to end with a real wallet on devnet before recording.
 - [ ] Stop copying: revokes the delegate and cancels the copier's open orders.
 
 ## 5. Open source and composability
