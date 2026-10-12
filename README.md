@@ -195,8 +195,10 @@ same trade on every follower's account within seconds:
   the entry.
 - **Each order at most once.** The signed transaction is written to a journal
   before it's sent, so a restart never sends a duplicate.
-- **Latency is logged** per order, from the lock to confirmation. Devnet
-  number: [TODO: measure]. On a local validator
+- **Latency is logged** per order, from the lock to confirmation. On
+  devnet, a copied order lands about 3 s after the agent's lock, and the
+  entry fills through Velocity's auction within seconds more (7.9 s lock to
+  filled in the demo). On a local validator
   (`scripts/solana-local-e2e.mjs`), a gasless lock confirms in about 0.4 s
   with the agent holding no SOL, and the copier has verified it and sized the
   follower's orders before the lock call returns.
@@ -242,9 +244,9 @@ runs on mainnet.
 
 ### Devnet programs
 
-Anchor 0.31. **Not yet deployed**: these are the ids reserved in
-`Anchor.toml`. They change if the deploy keypairs are regenerated
-(`anchor keys sync`).
+Anchor 0.31. **Deployed to Solana devnet** on 2026-10-12. The live
+accounts, transactions and measured latencies are in
+[docs/solana/DEVNET.md](docs/solana/DEVNET.md).
 
 | program | id | what it does |
 |---|---|---|

@@ -6,7 +6,7 @@ No mock data. Every transaction in the video is a real devnet transaction with a
 
 ## Placeholders to fill before recording
 
-The programs are **not yet deployed**. Ids reserved in `Anchor.toml` today are below; they change if the deploy keypairs are regenerated (`anchor keys sync`), so copy the ids from the real deploy.
+The programs are **deployed on devnet** (2026-10-12). Live accounts and transactions: `docs/solana/DEVNET.md`. Record on **BTC**: Velocity devnet's SOL oracle lags and SOL fills were refused.
 
 | Placeholder | What it is | Reserved today |
 |---|---|---|
@@ -14,11 +14,11 @@ The programs are **not yet deployed**. Ids reserved in `Anchor.toml` today are b
 | `<FOLLOW_PROGRAM_ID>` | Follow program (plans, subscriptions, performance fees) | `A5Zpb539Yazb3kypH7tvZBVWuGCdCwXU6sdVU8RkgJHC` |
 | `<SCORE_GATE_PROGRAM_ID>` | Score-gate example program | `4L1DyajAKPeY5rMXt3cMnk93qXJo3tV5XetmTi8jskcK` |
 | `<VELOCITY_PROGRAM_ID>` | Velocity Exchange | `vELoC1audYbSYVRXn1vPaV8Axoa9oU6BYmNGZZBDZ1P` (same id on devnet and mainnet) |
-| `<COPIER_PUBKEY>` | The copier: followers' delegate and fee payer for copied orders | |
+| `<COPIER_PUBKEY>` (`Hjuztfni7jQsjdwYmPGo6mojSoixsjVD5L41HQmCesmK`) | The copier: followers' delegate and fee payer for copied orders | |
 | `<BOOK>`, `<SCORE_ACCOUNT>` | The demo agent's record account and Score account (`["score", validator, book]`) | |
 | `<PLAN>`, `<FOLLOW_A>`, `<FOLLOW_B>` | The demo agent's Plan and two followers' Follow accounts | |
 | `<LOCK_SIG>`, `<COPY_SIG_A>`, `<COPY_SIG_B>`, `<REVEAL_SIG>`, `<SCORE_SIG>`, `<SUB_SIG>`, `<SETTLE_SIG>`, `<GATE_SIG>` | Signatures from the take you keep | |
-| `<LATENCY_MS>` | Copier log: lock to confirmed copy, per follower | TBD on devnet |
+| `<LATENCY_MS>` | Copier log: lock to confirmed copy, per follower | about 2,900 ms on devnet (order landed); about 7.9 s lock to filled |
 | `<SCORE_CMD>`, `<SETTLE_CMD>` | Commands that write the Score account and settle a performance fee | [TODO: confirm the real scripts] |
 
 Explorer links: `https://explorer.solana.com/tx/<SIG>?cluster=devnet` and `https://explorer.solana.com/address/<ADDR>?cluster=devnet`.

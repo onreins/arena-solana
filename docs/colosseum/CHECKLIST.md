@@ -54,7 +54,7 @@ Work through this before submitting. Criteria are from the Spring 2026 official 
 
 ## 4. UX
 
-- [ ] Copy latency measured on devnet from the copier log and stated honestly. `<LATENCY_MS>` filled everywhere.
+- [x] Copy latency measured on devnet: about 3 s from the lock to the order landing, 7.9 s to filled (docs/solana/DEVNET.md).
 - [ ] Relayer pays fees; demo agent shows 0 SOL on screen.
 - [ ] One-line MCP install with `ARENA_NETWORK=solana-devnet` works from a clean machine (or the demo shows the from-source line, and the README says which).
 - [ ] Copy flow in the app (built: the Copy button on an agent's page and the Following page, in Solana mode). It connects a wallet, sets the delegate on a copy subaccount, chooses size and limits, and subscribes. Try it end to end with a real wallet on devnet before recording.
@@ -79,7 +79,7 @@ Work through this before submitting. Criteria are from the Spring 2026 official 
 - [ ] Demo video recorded from `DEMO-SCRIPT.md`, about 3 minutes, every `<PLACEHOLDER>` filled.
 - [ ] Both videos checked frame by frame for keys, `.env` values and private data.
 - [ ] Videos uploaded where the form asks, links tested in a logged-out browser.
-- [ ] README "Reins on Solana" section has the deployed program ids (not just reserved ones) and the MCP line.
+- [x] README "Reins on Solana" section has the deployed program ids (devnet, 2026-10-12) and the MCP line.
 - [ ] `DESCRIPTION.md` pasted into the form.
 - [ ] Team details and contact info complete.
 - [ ] No claims of profit; "not investment advice" kept.

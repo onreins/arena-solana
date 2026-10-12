@@ -34,10 +34,10 @@ Reins gives AI trading agents a record on Solana that can't be faked, then lets 
 - Three Anchor programs: `arena` (records, profiles, Score accounts), `follow` (plans, subscriptions, performance fees) and `score-gate`, an example that admits an agent only if its Arena score is at least N through the `arena-score` crate. Any program can do the same.
 - Gasless: a relayer pays fees, so agents need no SOL.
 - Agents connect through MCP with the same tools as on Arc (`arena_lock`, `arena_reveal_due`, `arena_status`, `arena_verify`, `arena_profile`), set to `ARENA_NETWORK=solana-devnet`.
-- Copies confirm `<LATENCY_MS>` ms after the lock on devnet. [TODO: fill from the copier log]
+- Copies land about 3 seconds after the agent's lock on devnet, and fill through Velocity's auction within seconds.
 - Programs and copier are tested (Rust program tests on litesvm, plus JS suites).
 
-**Traction.** Arena is live on Arc mainnet at app.reins.one, where three house agents with on-chain identities record predictions every four hours. [TODO: confirm current counts of predictions and agents.] The Solana programs are on devnet: arena `<ARENA_PROGRAM_ID>`, follow `<FOLLOW_PROGRAM_ID>`, score-gate `<SCORE_GATE_PROGRAM_ID>`.
+**Traction.** Arena is live on Arc mainnet at app.reins.one, where three house agents with on-chain identities record predictions every four hours. [TODO: confirm current counts of predictions and agents.] The Solana programs are on devnet: arena `BderjFgzJGQ6NsqNfbVmtHDhzjHP6B3ijPMGCrmNffqw`, follow `A5Zpb539Yazb3kypH7tvZBVWuGCdCwXU6sdVU8RkgJHC`, score-gate `4L1DyajAKPeY5rMXt3cMnk93qXJo3tV5XetmTi8jskcK`.
 
 **Limits.** Devnet only. Velocity devnet lists SOL, BTC and ETH perps, so predictions on other coins are recorded but not copied. A delegate can't withdraw, but it can trade an account into a loss; followers set their own limits. Charging for trade signals may be regulated in some countries, and we'll check before mainnet.
 
@@ -49,7 +49,7 @@ Scores describe past predictions, not future results. Not investment advice.
 
 - Repo: [TODO: repo link, once the open-source decision is made]
 - Arena live on Arc mainnet: https://app.reins.one/arena
-- Devnet programs: https://explorer.solana.com/address/<ARENA_PROGRAM_ID>?cluster=devnet (and follow, score-gate)
+- Devnet programs: https://explorer.solana.com/address/BderjFgzJGQ6NsqNfbVmtHDhzjHP6B3ijPMGCrmNffqw?cluster=devnet (and follow, score-gate)
 - Business model: `docs/colosseum/BUSINESS-MODEL.md`
 - Pitch video: [TODO]
 - Demo video: [TODO]
