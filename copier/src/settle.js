@@ -51,7 +51,7 @@ export async function settleAll({ connection, admin, config, configAccount, pnlO
   for (const plan of await plansOfConfig(connection, config)) {
     for (const f of await followsOfPlan(connection, plan.address)) {
       const pnl = await pnlOf(f);
-      const fee = expectedFee({ hwmSet: f.hwmSet, hwm: f.hwm, pnl, perfFeeBps: plan.perfFeeBps });
+      const fee = expectedFee({ hwmSet: f.hwmSet, hwm: f.hwm, pnl, perfFeeBps: f.perfFeeBps }); // the rate the follower agreed to
       const report = settlementReport({ follow: f.address, follower: f.follower, subAccountId: f.settings.subAccountId, pnl, at: now() });
       const row = { follow: f.address.toBase58(), pnl: String(pnl), fee: String(fee), first: !f.hwmSet };
       if (dryRun) { out.push(row); continue; }

@@ -15,7 +15,7 @@ const settings = { sizeMode: SIZE_FIXED, sizeValue: 100n * USDC, maxTrade: 250n 
 
 test("subscribe's data matches Anchor's encoding", { skip: !have && "fixtures missing: cargo test -p arena-tests" }, () => {
   const k = () => Keypair.generate().publicKey;
-  const ix = subscribeIx({ follower: k(), config: k(), agent: k(), followerToken: k(), payout: k(), treasury: k(), months: 3, settings });
+  const ix = subscribeIx({ follower: k(), config: k(), agent: k(), followerToken: k(), payout: k(), treasury: k(), months: 3, settings, maxPrice: 9_990_001n, maxPerfFeeBps: 2000 });
   assert.deepEqual(ix.data, readFileSync(`${dir}subscribe-data.bin`));
   assert.equal(ix.keys.length, 9);
 });
@@ -31,6 +31,7 @@ test("a Follow account written by the program decodes", { skip: !have && "fixtur
   assert.equal(f.active, true);
   assert.deepEqual(f.settings, settings);
   assert.equal(f.hwmSet, false);
+  assert.equal(f.perfFeeBps, 2000, "the rate agreed at subscribe time");
   assert.ok(isCopyable(f, keys.paidUntil - 1));
   assert.ok(!isCopyable(f, keys.paidUntil), "lapsed the second it's due");
   assert.ok(!isCopyable({ ...f, active: false }, 0), "stopped");

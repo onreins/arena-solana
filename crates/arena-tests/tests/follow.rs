@@ -186,7 +186,7 @@ fn subscribe_ix(w: &World, months: u8, s: Settings) -> Instruction {
             system_program: system_program::ID,
         }
         .to_account_metas(None),
-        data: follow::instruction::Subscribe { months, settings: s }.data(),
+        data: follow::instruction::Subscribe { months, settings: s, max_price: PRICE, max_perf_fee_bps: PERF_FEE_BPS }.data(),
     }
 }
 
@@ -244,7 +244,7 @@ fn the_subscription_split_is_exact() {
         "{{\"plan\":\"{}\",\"follower\":\"{}\",\"paidUntil\":{},\"totalPaid\":{}}}",
         w.plan, w.follower.pubkey(), T0 + 3 * MONTH, total,
     )).unwrap();
-    std::fs::write(format!("{dir}/subscribe-data.bin"), follow::instruction::Subscribe { months: 3, settings: settings() }.data()).unwrap();
+    std::fs::write(format!("{dir}/subscribe-data.bin"), follow::instruction::Subscribe { months: 3, settings: settings(), max_price: PRICE, max_perf_fee_bps: PERF_FEE_BPS }.data()).unwrap();
     std::fs::write(format!("{dir}/init-config-data.bin"), follow::instruction::InitConfig { reins_bps: 2000, perf_reins_bps: 3000 }.data()).unwrap();
     std::fs::write(format!("{dir}/set-plan-data.bin"), follow::instruction::SetPlan { price: PRICE, perf_fee_bps: 2000, open: true }.data()).unwrap();
     std::fs::write(format!("{dir}/settle-data.bin"), follow::instruction::SettlePerformance { pnl: -5, report_hash: [4; 32] }.data()).unwrap();
@@ -405,4 +405,33 @@ fn only_the_configs_settler_settles_and_never_beyond_the_allowance() {
     let revoke = spl_token::instruction::revoke(&spl_token::ID, &ft, &follower.pubkey(), &[]).unwrap();
     ok(send(&mut w.svm, &[revoke], &[&follower]));
     fails(settle(&mut w, 5 * USDC as i64), "owner does not match");
+}
+
+// ---------------------------------------------------------------- the plan can't change under a follower
+
+#[test]
+fn a_price_raised_before_the_subscription_lands_fails_it() {
+    let mut w = world();
+    ok(set_plan(&mut w, PRICE + 1, PERF_FEE_BPS, true)); // the follower agreed to PRICE
+    fails(subscribe(&mut w, 1), "PlanChanged");
+    assert_eq!(balance(&w.svm, &w.follower_token), 1_000 * USDC, "nothing charged");
+    ok(set_plan(&mut w, PRICE, PERF_FEE_BPS + 1, true)); // or a higher fee rate
+    fails(subscribe(&mut w, 1), "PlanChanged");
+    ok(set_plan(&mut w, PRICE - 1, PERF_FEE_BPS - 1, true)); // lower is fine
+    ok(subscribe(&mut w, 1));
+    assert_eq!(load::<Follow>(&w.svm, &w.follow).perf_fee_bps, PERF_FEE_BPS - 1);
+}
+
+#[test]
+fn a_fee_rate_raised_after_subscribing_never_applies_to_that_follower() {
+    let mut w = world();
+    ok(subscribe(&mut w, 1));
+    let (fw, ft) = (w.follow, w.follower_token);
+    let follower = w.follower.insecure_clone();
+    approve(&mut w.svm, &ft, &follower, &fw, 100 * USDC);
+    ok(settle(&mut w, 0));
+    ok(set_plan(&mut w, PRICE, 5_000, true)); // the agent's owner raises the rate to 50%
+    let before = balance(&w.svm, &w.follower_token);
+    ok(settle(&mut w, 10 * USDC as i64));
+    assert_eq!(before - balance(&w.svm, &w.follower_token), 10 * USDC * PERF_FEE_BPS as u64 / 10_000, "charged at the agreed 20%");
 }

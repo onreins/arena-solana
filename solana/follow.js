@@ -101,13 +101,17 @@ export function setPlanIx({ agent, payer = agent, config, payout, price, perfFee
     Buffer.concat([u64(price), u16(perfFeeBps), u8(open ? 1 : 0)]), programId);
 }
 
-/** `treasury` and `payout` come from the Config and Plan accounts. */
-export function subscribeIx({ follower, config, agent, followerToken, payout, treasury, months, settings, programId = FOLLOW_PROGRAM_ID }) {
+/**
+ * `treasury` and `payout` come from the Config and Plan accounts. `maxPrice`
+ * and `maxPerfFeeBps` are the plan terms the follower saw: the program refuses
+ * the subscription if the plan has since risen above them.
+ */
+export function subscribeIx({ follower, config, agent, followerToken, payout, treasury, months, settings, maxPrice, maxPerfFeeBps, programId = FOLLOW_PROGRAM_ID }) {
   const plan = planAddress(config, agent, programId);
   return ix("subscribe", [
     signer(follower, true), acct(config), acct(plan), acct(followAddress(plan, follower, programId), true), acct(followerToken, true),
     acct(payout, true), acct(treasury, true), acct(TOKEN_PROGRAM_ID), acct(SystemProgram.programId),
-  ], Buffer.concat([u8(months), encodeSettings(settings)]), programId);
+  ], Buffer.concat([u8(months), encodeSettings(settings), u64(maxPrice), u16(maxPerfFeeBps)]), programId);
 }
 
 export function updateSettingsIx({ follower, plan, settings, programId = FOLLOW_PROGRAM_ID }) {
@@ -131,7 +135,7 @@ const ACCOUNTS = {
   Config: (r) => ({ version: r.u8(), bump: r.u8(), admin: r.key(), mint: r.key(), treasury: r.key(), reinsBps: r.u16(), perfReinsBps: r.u16() }),
   Plan: (r) => ({ version: r.u8(), bump: r.u8(), config: r.key(), agent: r.key(), payout: r.key(), price: r.u64(), perfFeeBps: r.u16(), open: r.bool(), createdAt: Number(r.i64()) }),
   Follow: (r) => ({
-    version: r.u8(), bump: r.u8(), plan: r.key(), follower: r.key(), paidUntil: Number(r.i64()), active: r.bool(), settings: readSettings(r),
+    version: r.u8(), bump: r.u8(), plan: r.key(), follower: r.key(), paidUntil: Number(r.i64()), active: r.bool(), settings: readSettings(r), perfFeeBps: r.u16(),
     hwmSet: r.bool(), hwm: r.i64(), totalPaid: r.u64(), perfFeesPaid: r.u64(), settlements: r.u32(), lastSettledAt: Number(r.i64()), createdAt: Number(r.i64()),
   }),
 };

@@ -88,11 +88,18 @@ pub mod follow {
     /// Pay for `months` and set the copy settings. The payment is split
     /// between the agent's owner and the treasury here and now; paid time
     /// extends from the later of now and the current paid-until.
-    pub fn subscribe(ctx: Context<Subscribe>, months: u8, settings: Settings) -> Result<()> {
+    ///
+    /// `max_price` and `max_perf_fee_bps` are what the follower saw: if the
+    /// agent's owner raised either before this lands, it fails instead of
+    /// charging more. The performance fee rate is fixed into the Follow here,
+    /// so a later rise in the plan's rate never applies to it until the
+    /// follower subscribes again.
+    pub fn subscribe(ctx: Context<Subscribe>, months: u8, settings: Settings, max_price: u64, max_perf_fee_bps: u16) -> Result<()> {
         require!((1..=MAX_MONTHS).contains(&months), FollowError::BadMonths);
         settings.check()?;
         let plan = &ctx.accounts.plan;
         require!(plan.open, FollowError::PlanClosed);
+        require!(plan.price <= max_price && plan.perf_fee_bps <= max_perf_fee_bps, FollowError::PlanChanged);
         let config = &ctx.accounts.config;
 
         let total = plan.price.checked_mul(months as u64).ok_or(FollowError::Overflow)?;
@@ -113,6 +120,7 @@ pub mod follow {
         f.paid_until = f.paid_until.max(now).checked_add(MONTH * months as i64).ok_or(FollowError::Overflow)?;
         f.active = true;
         f.settings = settings.clone();
+        f.perf_fee_bps = plan.perf_fee_bps;
         f.total_paid = f.total_paid.checked_add(total).ok_or(FollowError::Overflow)?;
 
         emit!(Subscribed {
@@ -157,7 +165,7 @@ pub mod follow {
         let now = Clock::get()?.unix_timestamp;
         let f = &ctx.accounts.follow;
         let hwm_before = f.hwm;
-        let (fee, hwm_after) = performance_fee(f.hwm_set, f.hwm, pnl, plan.perf_fee_bps)?;
+        let (fee, hwm_after) = performance_fee(f.hwm_set, f.hwm, pnl, f.perf_fee_bps)?;
         let (agent_part, reins_part) = split(fee, config.perf_reins_bps)?;
 
         // The Follow account is the delegate the follower approved on their USDC account.
@@ -407,6 +415,8 @@ pub struct Follow {
     /// False once the follower stops; the copier skips it.
     pub active: bool,
     pub settings: Settings,
+    /// The plan's performance fee rate when the follower last subscribed: the rate they agreed to.
+    pub perf_fee_bps: u16,
     pub hwm_set: bool,
     /// The high-water mark: the highest PnL a fee has been settled at.
     pub hwm: i64,
@@ -488,6 +498,8 @@ pub enum FollowError {
     PlanClosed,
     #[msg("Size, limits and a copy subaccount (not 0) must be set, with at most 10 copied positions open")]
     BadSettings,
+    #[msg("The plan's price or fee rate rose above what the follower agreed to")]
+    PlanChanged,
     #[msg("That token account isn't the follower's")]
     NotFollowersAccount,
     #[msg("Arithmetic overflow")]
