@@ -144,3 +144,16 @@ Below, **V** means `velocity-v1/programs/velocity/src/` and **SDK** means `@velo
   - the `builder_codes_enabled` flag;
   - `minOrderSize` and `orderStepSize` for markets 0-2;
   - the faucet `mint_to_user` works.
+
+---
+
+## Verified on Velocity devnet (2026-10-12)
+
+These were read live from devnet once network access was opened:
+
+- **Live:** the program `vELoC1audYbSYVRXn1vPaV8Axoa9oU6BYmNGZZBDZ1P` is executable, and its State account exists.
+- **Open:** `whitelist_mint` is the default key, so anyone can create an account.
+- **Builder codes are on:** `feature_bit_flags` = 5, which includes `BUILDER_CODES` (4). The fee on copied orders is available on devnet.
+- **Markets:** SOL-PERP, BTC-PERP and ETH-PERP exist. The order step size is 0.0001 for SOL and BTC and 0.001 for ETH.
+- **No minimum order size field:** Velocity's perp markets carry only `order_step_size`, so the smallest order is one step. The copier's adapter now uses that. It used to read a minimum-size field that doesn't exist and would have thrown.
+- **dUSDT** `GqmEqY…` uses the classic SPL Token program, which the app's deposit flow supports.

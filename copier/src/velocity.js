@@ -95,8 +95,10 @@ export async function createVelocityExchange({ connection, keypair, env = "devne
       const oracle = client.getOracleDataForPerpMarket(m.marketIndex);
       return {
         marketIndex: m.marketIndex,
-        minSize: big(perp.amm?.minOrderSize ?? perp.minOrderSize),
-        stepSize: big(perp.amm?.orderStepSize ?? perp.orderStepSize),
+        // Velocity's perp markets carry only orderStepSize (no minimum order size field, unlike Drift's
+        // spot markets): the smallest order is one step. Checked against devnet's markets on 2026-10-12.
+        minSize: big(perp.minOrderSize ?? perp.amm?.minOrderSize ?? perp.orderStepSize),
+        stepSize: big(perp.orderStepSize ?? perp.amm?.orderStepSize),
         price: big(oracle.price),
       };
     },
