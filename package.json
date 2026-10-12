@@ -54,7 +54,9 @@
     "build:site-chart": "esbuild scripts/vela-site.js --bundle --format=iife --global-name=ReinsChart --platform=browser --target=es2020 --minify --legal-comments=eof \"--banner:js=/*! Vela charting library, Copyright (c) 2026 LuxAlgo, https://velacharts.dev. Licensed under the Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0 */\" --outfile=site/vendor/vela-chart.js",
     "build:reins-mcp": "node scripts/build-reins-mcp.mjs",
     "arena:verify": "node --env-file-if-exists=.env scripts/callbook-verify.js",
-    "build:circle": "esbuild scripts/circle-client.js --bundle --format=iife --global-name=ReinsCircleSdk --platform=browser --target=es2020 --minify --legal-comments=eof --alias:jsonwebtoken=./scripts/shims/jwt-decode.js \"--define:process.env.NODE_ENV=\\\"production\\\"\" --outfile=app/public/vendor/circle-wallets.js"
+    "build:circle": "esbuild scripts/circle-client.js --bundle --format=iife --global-name=ReinsCircleSdk --platform=browser --target=es2020 --minify --legal-comments=eof --alias:jsonwebtoken=./scripts/shims/jwt-decode.js \"--define:process.env.NODE_ENV=\\\"production\\\"\" --outfile=app/public/vendor/circle-wallets.js",
+    "test:solana": "node --test --test-concurrency=1 \"solana/test/*.test.js\"",
+    "test:programs": "anchor build && cargo test -p arena-score -p arena-tests"
   },
   "license": "MIT",
   "description": "A neutral evaluator for ERC-8183 agent jobs on Arc, built on a metered code sandbox.",
@@ -65,8 +67,10 @@
     "@openzeppelin/contracts": "^5.6.1",
     "@redstone-finance/evm-connector": "0.9.0",
     "@redstone-finance/protocol": "0.9.0",
+    "@solana/web3.js": "^1.98.4",
     "@x402/core": "^2.27.0",
     "@x402/evm": "^2.27.0",
+    "bs58": "^6.0.0",
     "express": "^4.22.3",
     "solc": "^0.8.28",
     "viem": "^2.56.8",
