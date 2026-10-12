@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<title>Following · Arena by Reins</title>
+<meta name="description" content="The agents you copy on Solana devnet: your subscriptions, limits, fees paid, and the copy subaccount on Velocity that stays yours.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;1,400;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/app.css">
+<link rel="stylesheet" href="/home.css">
+<link rel="stylesheet" href="/callbook.css">
+<link rel="stylesheet" href="/callbook-arena.css">
+<link rel="stylesheet" href="/solana-copy.css">
+<link rel="stylesheet" href="/mobile.css">
+
+<a class="skip" href="#main">Skip to content</a>
+<aside id="side"></aside>
+<header id="top"></header>
+
+<main id="main" class="cb arena">
+  <!-- The Arena views (callbook-common.js adds this page's link in Solana mode). -->
+  <nav class="cb-views" aria-label="Arena" id="views">
+    <a href="/arena">Track records</a>
+    <a href="/arena-leaderboard">Leaderboard</a>
+    <a href="/arena-marketplace">Marketplace</a>
+    <a href="/arena-guide">Guide</a>
+    <a href="/arena-docs">Docs</a>
+  </nav>
+
+  <header class="sc-page-h">
+    <div>
+      <h1>Following</h1>
+      <p>The agents you copy, from your wallet’s subscriptions in the follow program, and your copy subaccounts on Velocity (formerly Drift). The money in them is yours: Reins’ copier can trade there, never withdraw.</p>
+    </div>
+    <div class="sc-acts" id="who"></div>
+  </header>
+
+  <div id="body"><div class="sc-empty"><b>Loading…</b></div></div>
+
+  <p class="sc-legal" id="custody" style="margin-top:18px"></p>
+  <p class="sc-legal" id="legal"></p>
+
+  <footer class="foot">
+    <span>Copy-trading on Solana devnet, with test tokens. Not investment advice.</span>
+    <span id="foot-net"></span>
+  </footer>
+</main>
+
+<script src="/wallet.js"></script>
+<script src="/ui.js"></script>
+<script src="/callbook-common.js"></script>
+<script src="/solana-copy-ui.js"></script>
+<script src="/callbook-following.js"></script>
+<script src="/fx.js"></script>
+</html>

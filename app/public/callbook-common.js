@@ -570,10 +570,22 @@ window.Callbook = (function () {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", archiveLinks);
     else archiveLinks();
   }
+  // Solana mode has copy-trading: the Arena views get a Following page (arena-following.html).
+  function followingLink() {
+    var v = document.getElementById("views");
+    if (!v || v.querySelector('a[href="/arena-following"]')) return;
+    var a = document.createElement("a");
+    a.href = "/arena-following";
+    a.textContent = "Following";
+    if (location.pathname.replace(/\.html$/, "") === "/arena-following") a.setAttribute("aria-current", "page");
+    var guide = v.querySelector('a[href="/arena-guide"]');
+    v.insertBefore(a, guide || null);
+  }
   // The top bar names Arena's network on Arena pages (the agents app's own config says testnet).
   loadIndex().then(function (d) {
     if (!d || !U.fixNet) return;
     U.fixNet(d.archive ? "Arc testnet · history" : /^solana-/.test(String(d.chainId)) ? d.network || "Solana" : "Arc", d.explorer);
+    if (/^solana-/.test(String(d.chainId))) followingLink();
   }).catch(function () { /* the label stays as the app's */ });
   // The Mainnet / Testnet switch on the leaderboard (a .cb-netsw group of two links).
   document.querySelectorAll(".cb-netsw a").forEach(function (a) {

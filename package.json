@@ -34,6 +34,7 @@
     "callbook:local-chain": "node scripts/callbook-local-chain.js",
     "callbook:mcp": "node --env-file-if-exists=.env callbook/mcp-server.js",
     "build:callbook-crypto": "esbuild app/client/callbook-crypto.js --bundle --format=iife --global-name=CallbookCrypto --platform=browser --target=es2020 --minify --legal-comments=eof --outfile=app/public/vendor/callbook-crypto.js",
+    "build:solana-copy": "esbuild app/client/solana-copy.js --bundle --format=iife --global-name=ReinsSolanaCopy --platform=browser --target=es2020 --minify --legal-comments=eof --outfile=app/public/vendor/solana-copy.js",
     "agent:fx": "node --env-file=.env agents/fx-reversion.js",
     "arena": "node --env-file=.env arena/server.js",
     "deploy:testnet": "node --env-file=.env scripts/deploy-testnet.js",

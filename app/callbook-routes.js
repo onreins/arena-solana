@@ -5,6 +5,8 @@
  *   GET /api/callbook               every book and caller, the totals and the feed
  *   GET /api/callbook/book/:id      one book with every period
  *   GET /api/callbook/caller/:id    one caller (an open-call book) with every call
+ *   GET /api/callbook/solana-config what the Copy flow and the Following page need (Solana only):
+ *                                   the follow Config, the copier's delegate key, the mints and program ids
  *   GET /api/callbook/report/:id    the canonical report a validation response
  *       ?asOf=<unix seconds>        points to; its keccak256 is the responseHash
  *                                   (cached by id and asOf; 30 a minute per client)
@@ -46,7 +48,9 @@ import { createAgentCards } from "./verify/arena-agent-card.js";
 import { countersFromEnv, ipBucket, brief } from "./verify/callbook-util.js";
 import { artifact } from "../scripts/artifact.js";
 import { PublicKey } from "@solana/web3.js";
-import { solanaNetwork, connectionFor } from "./verify/solana-network.js";
+import { solanaNetwork, connectionFor, publicKeyText } from "./verify/solana-network.js";
+import { FOLLOW_PROGRAM_ID, DEVNET_USDC } from "../solana/follow.js";
+import { VELOCITY_PROGRAM_ID, DEVNET_QUOTE } from "./client/solana-velocity-browser.js";
 import { readSolanaArena, solanaStateFromSnapshot } from "./verify/solana-chain.js";
 
 const TTL_MS = 60_000;
@@ -191,6 +195,21 @@ export function mountCallbook(app, { env: rawEnv = process.env, source, now = ()
     } catch (err) {
       fail(res, err);
     }
+  });
+
+  /**
+   * GET /api/callbook/solana-config: public keys only, for the browser's Copy flow.
+   *   FOLLOW_CONFIG          the follow program Config whose plans Reins' copier serves
+   *   COPIER_PUBKEY          the copier's public key: the delegate followers set on Velocity
+   *   USDC_MINT              subscription mint (default: Circle's devnet USDC, solana/follow.js)
+   *   FOLLOW_PROGRAM_ID, VELOCITY_PROGRAM_ID   overrides of the program ids
+   *   SOLANA_PUBLIC_RPC_URL  the RPC browsers use (default: the cluster's public RPC). Never
+   *                          SOLANA_RPC_URL, which may carry an API key.
+   * Copying is `ready` only with a valid follow config and copier key.
+   */
+  app.get("/api/callbook/solana-config", (_req, res) => {
+    if (!solana) return res.status(404).json({ error: "copy-trading runs on Solana; this server isn't in Solana mode" });
+    res.set("cache-control", "public, max-age=60").json(solanaCopyConfig(rawEnv, net));
   });
 
   // With no network configured, the routes point at the static export, so a
@@ -361,4 +380,32 @@ export function mountCallbook(app, { env: rawEnv = process.env, source, now = ()
       }
     });
   }
+}
+
+/** The Copy flow's settings from the environment (see GET /api/callbook/solana-config). Pure. */
+export function solanaCopyConfig(env, net) {
+  const problems = [];
+  const keyOf = (name, fallback = null) => {
+    const raw = String(env[name] ?? "").trim();
+    if (!raw) return fallback;
+    const k = publicKeyText(raw);
+    if (!k) problems.push(`${name} isn't a valid public key`);
+    return k ?? fallback;
+  };
+  const followConfig = keyOf("FOLLOW_CONFIG");
+  const copier = keyOf("COPIER_PUBKEY");
+  const out = {
+    cluster: net.cluster, network: net.label, explorer: net.explorer,
+    rpc: String(env.SOLANA_PUBLIC_RPC_URL ?? "").trim() || (net.cluster === "devnet" ? "https://api.devnet.solana.com" : net.rpc),
+    followProgram: keyOf("FOLLOW_PROGRAM_ID", FOLLOW_PROGRAM_ID.toBase58()),
+    followConfig, copier,
+    usdcMint: keyOf("USDC_MINT", DEVNET_USDC.toBase58()),
+    velocityProgram: keyOf("VELOCITY_PROGRAM_ID", VELOCITY_PROGRAM_ID.toBase58()),
+    quote: { ...DEVNET_QUOTE },
+    ready: false, problems,
+  };
+  if (!followConfig) problems.push("FOLLOW_CONFIG is not set, so there is nothing to subscribe to");
+  if (!copier) problems.push("COPIER_PUBKEY is not set, so there is no delegate to set on Velocity");
+  out.ready = Boolean(followConfig && copier);
+  return out;
 }
