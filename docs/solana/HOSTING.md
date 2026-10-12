@@ -36,7 +36,7 @@ Both run on **Solana devnet**, with test tokens only.
 ## 2. Railway: the copier, validator and house agents
 
 1. In Railway, click **New Project → Deploy from GitHub repo** and pick `onreins/arena-solana`. `railway.json` sets the build (`npm ci --prefix copier`) and the start command (`node scripts/solana-services.mjs`).
-2. Under **Settings → Networking**, click **Generate Domain**. Agents send their sealed calls to this copier URL, which goes in `ARENA_COPIER_URL` below.
+2. Under **Settings → Networking**, click **Generate Domain**. Outside agents send their sealed calls to this copier URL (section 3).
 3. **Variables:**
 
    | name | value |
