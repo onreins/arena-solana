@@ -8,10 +8,12 @@ skip-lint = false
 [programs.localnet]
 arena = "BderjFgzJGQ6NsqNfbVmtHDhzjHP6B3ijPMGCrmNffqw"
 score_gate = "4L1DyajAKPeY5rMXt3cMnk93qXJo3tV5XetmTi8jskcK"
+follow = "A5Zpb539Yazb3kypH7tvZBVWuGCdCwXU6sdVU8RkgJHC"
 
 [programs.devnet]
 arena = "BderjFgzJGQ6NsqNfbVmtHDhzjHP6B3ijPMGCrmNffqw"
 score_gate = "4L1DyajAKPeY5rMXt3cMnk93qXJo3tV5XetmTi8jskcK"
+follow = "A5Zpb539Yazb3kypH7tvZBVWuGCdCwXU6sdVU8RkgJHC"
 
 [provider]
 cluster = "devnet"

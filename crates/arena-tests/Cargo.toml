@@ -9,6 +9,8 @@ publish = false
 anchor-lang = "0.31.1"
 arena = { path = "../../programs/arena", features = ["no-entrypoint"] }
 score-gate = { path = "../../programs/score-gate", features = ["no-entrypoint"] }
+follow = { path = "../../programs/follow", features = ["no-entrypoint"] }
+anchor-spl = "0.31.1"
 litesvm = "0.6.1"
 solana-sdk = "2.2"
 base64 = "0.22"
