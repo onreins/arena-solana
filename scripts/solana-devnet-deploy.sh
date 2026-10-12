@@ -26,6 +26,7 @@ done
 anchor build
 echo "wallet $(solana address), balance $(solana balance)"
 for k in arena follow score_gate; do
-  solana program deploy "target/deploy/$k.so" --program-id "target/deploy/$k-keypair.json" --url "$URL"
+  # --use-rpc: send through RPC; the default TPU path needs direct websocket access, which a proxied network lacks
+  solana program deploy "target/deploy/$k.so" --program-id "target/deploy/$k-keypair.json" --url "$URL" --use-rpc
   echo "$k: $(solana address -k target/deploy/$k-keypair.json)  https://explorer.solana.com/address/$(solana address -k target/deploy/$k-keypair.json)?cluster=devnet"
 done
