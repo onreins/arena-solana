@@ -1,0 +1,21 @@
+[toolchain]
+anchor_version = "0.31.1"
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+arena = "BderjFgzJGQ6NsqNfbVmtHDhzjHP6B3ijPMGCrmNffqw"
+score_gate = "4L1DyajAKPeY5rMXt3cMnk93qXJo3tV5XetmTi8jskcK"
+
+[programs.devnet]
+arena = "BderjFgzJGQ6NsqNfbVmtHDhzjHP6B3ijPMGCrmNffqw"
+score_gate = "4L1DyajAKPeY5rMXt3cMnk93qXJo3tV5XetmTi8jskcK"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "node --test --test-concurrency=1 \"solana/test/*.test.js\""
