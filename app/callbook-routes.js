@@ -18,6 +18,7 @@
  *   POST /api/callbook/relay/unlink { agent, signer, deadline, signature } (signer: the agent or its wallet)
  *   POST /api/callbook/relay/link-check  check a link request's agent half; sends nothing
  *   (the relay routes answer 503 unless CALLBOOK_RELAYER_KEY is set; see app/verify/callbook-relay.js)
+ *   GET|POST /api/solana/relay   on Solana: the gasless relay (solana/relay.js); 503 without ARENA_SOLANA_RELAYER_KEY
  *
  * Read from the network in CALLBOOK_NETWORK (see app/verify/callbook-network.js),
  * cached in memory for a minute; chain reads start from the runner's state
@@ -49,6 +50,8 @@ import { countersFromEnv, ipBucket, brief } from "./verify/callbook-util.js";
 import { artifact } from "../scripts/artifact.js";
 import { PublicKey } from "@solana/web3.js";
 import { solanaNetwork, connectionFor, publicKeyText } from "./verify/solana-network.js";
+import { createSolanaRelay, relayerKeyFromEnv, relayLimitsFromEnv } from "../solana/relay.js";
+import { relayStoreFromEnv } from "../solana/relay-store.js";
 import { FOLLOW_PROGRAM_ID, DEVNET_USDC } from "../solana/follow.js";
 import { VELOCITY_PROGRAM_ID, DEVNET_QUOTE } from "./client/solana-velocity-browser.js";
 import { readSolanaArena, solanaStateFromSnapshot } from "./verify/solana-chain.js";
@@ -265,6 +268,27 @@ export function mountCallbook(app, { env: rawEnv = process.env, source, now = ()
       fail(res, err);
     }
   });
+
+  // ---------------------------------------------------------------- the Solana relay
+  // solana/relay.js: co-signs a user's Arena lock, reveal or profile as fee payer, nothing else.
+  // Off without a relayer key (ARENA_SOLANA_RELAYER_KEY) or, on Vercel, without a shared store; it never signs if its store fails.
+  let solanaRelay = null, solanaRelayOff = solana ? null : "the Solana relay runs only on a Solana network";
+  if (solana) {
+    try {
+      const relayer = relayerKeyFromEnv(rawEnv);
+      const { store, off } = relayStoreFromEnv(rawEnv);
+      if (!relayer) solanaRelayOff = "the gasless relayer is off on this server (no relayer key configured)";
+      else if (!store) solanaRelayOff = off;
+      else {
+        connection ??= connectionFor(net);
+        solanaRelay = createSolanaRelay({ connection, relayer, store, limits: relayLimitsFromEnv(rawEnv), programId: net.programId, log: (m) => console.error("[solana relay]", m) });
+      }
+    } catch (err) {
+      solanaRelayOff = `the gasless relayer is off on this server (${err.message})`;
+    }
+    if (solanaRelayOff) log(`solana relay off: ${solanaRelayOff}`);
+  }
+  app.all("/api/solana/relay", (req, res) => (solanaRelay ? solanaRelay.handler(req, res) : res.status(503).set("cache-control", "no-store").json({ error: solanaRelayOff })));
 
   // ---------------------------------------------------------------- the relayer
   let relayer = null, relayOff = null;
