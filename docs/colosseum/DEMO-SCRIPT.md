@@ -1,147 +1,150 @@
 # Technical demo video script (about 3 minutes)
 
-For the Colosseum submission. Shows the real flow on Solana devnet: an agent records a prediction through MCP, it confirms in under a second, it's revealed, it's scored, and another on-chain program reads the score.
+For the Colosseum submission. Shows the real flow on Solana devnet: an agent records a prediction through MCP, the copier places it on followers' own Velocity (formerly Drift) accounts within seconds with take-profit and stop-loss attached, the prediction is revealed and scored, and the subscription and fee split are shown on-chain.
 
 No mock data. Every transaction in the video is a real devnet transaction with an Explorer link.
 
 ## Placeholders to fill before recording
 
-| Placeholder | What it is |
-|---|---|
-| `<PROGRAM_ID>` | Arena program id on devnet |
-| `<GATE_PROGRAM_ID>` | The score-gate example program id on devnet |
-| `<BOOK>` | The demo agent's book (record) account address |
-| `<SCORE_ACCOUNT>` | The demo agent's Score account address |
-| `<LOCK_SIG>`, `<REVEAL_SIG>`, `<SCORE_SIG>`, `<GATE_SIG>` | Transaction signatures from the take you keep |
-| `<DEMO_HORIZON>` | A short horizon for the demo, e.g. 60 seconds. [TODO: confirm the shortest horizon the devnet program allows] |
-| `<SCORE_CMD>` | The command that runs the scorer and writes the Score account. [TODO: confirm the real npm script] |
+The programs are **not yet deployed**. Ids reserved in `Anchor.toml` today are below; they change if the deploy keypairs are regenerated (`anchor keys sync`), so copy the ids from the real deploy.
 
-Explorer links use `https://explorer.solana.com/tx/<SIG>?cluster=devnet` and `https://explorer.solana.com/address/<ADDR>?cluster=devnet`.
+| Placeholder | What it is | Reserved today |
+|---|---|---|
+| `<ARENA_PROGRAM_ID>` | Arena program on devnet | `BderjFgzJGQ6NsqNfbVmtHDhzjHP6B3ijPMGCrmNffqw` |
+| `<FOLLOW_PROGRAM_ID>` | Follow program (plans, subscriptions, performance fees) | `A5Zpb539Yazb3kypH7tvZBVWuGCdCwXU6sdVU8RkgJHC` |
+| `<SCORE_GATE_PROGRAM_ID>` | Score-gate example program | `4L1DyajAKPeY5rMXt3cMnk93qXJo3tV5XetmTi8jskcK` |
+| `<VELOCITY_PROGRAM_ID>` | Velocity Exchange | `vELoC1audYbSYVRXn1vPaV8Axoa9oU6BYmNGZZBDZ1P` (same id on devnet and mainnet) |
+| `<COPIER_PUBKEY>` | The copier: followers' delegate and fee payer for copied orders | |
+| `<BOOK>`, `<SCORE_ACCOUNT>` | The demo agent's record account and Score account (`["score", validator, book]`) | |
+| `<PLAN>`, `<FOLLOW_A>`, `<FOLLOW_B>` | The demo agent's Plan and two followers' Follow accounts | |
+| `<LOCK_SIG>`, `<COPY_SIG_A>`, `<COPY_SIG_B>`, `<REVEAL_SIG>`, `<SCORE_SIG>`, `<SUB_SIG>`, `<SETTLE_SIG>`, `<GATE_SIG>` | Signatures from the take you keep | |
+| `<LATENCY_MS>` | Copier log: lock to confirmed copy, per follower | TBD on devnet |
+| `<SCORE_CMD>`, `<SETTLE_CMD>` | Commands that write the Score account and settle a performance fee | [TODO: confirm the real scripts] |
+
+Explorer links: `https://explorer.solana.com/tx/<SIG>?cluster=devnet` and `https://explorer.solana.com/address/<ADDR>?cluster=devnet`.
 
 ## Before you hit record
 
-- MCP server installed in Claude Code (or Cursor) with the Solana backend, network `solana-devnet`. [TODO: confirm the exact install line and env var, e.g. `ARENA_NETWORK=solana-devnet`]
-- The agent's key file exists with `0600` permissions. Never show its contents. The demo keypair holds **no SOL**, to show the relayer pays the fee.
-- Have a demo agent that was **already scored** (a house agent with a score of 70 or more), so the score-gate step doesn't wait on a scoring run. Also have one low-scoring agent to show a refusal. [TODO: confirm which devnet agents qualify]
-- Browser tabs ready: Solana Explorer (devnet), the Arena page in Solana mode, the score-gate source in an editor.
-- Terminal font large. Hide anything with keys, tokens or `.env` values.
+- **Programs deployed** to devnet, a Config initialised (Reins share of subscriptions and of performance fees set), and the demo agent's Plan set (for example $20 a month, 10% performance fee, in devnet USDC).
+- **MCP server** added to Claude Code with `ARENA_NETWORK=solana-devnet`. The agent's keypair file is `0600` and holds **no SOL**; never show its contents. `ARENA_COPIER_URL` and `ARENA_COPIER_PUBKEY` are set so each lock's preimage is sealed to the copier.
+- **Copier running** (`copier/`, `npm start`) with `FOLLOW_CONFIG` pointing at the Config, against a private devnet RPC (the public one rate-limits). Its log is on screen; it prints public keys only.
+- **Two followers onboarded ahead of time**, each with:
+  - a Velocity devnet account funded with dUSDT from the faucet;
+  - a dedicated copy subaccount whose delegate is `<COPIER_PUBKEY>`;
+  - a paid Follow account (this is `<SUB_SIG>`), with size and limits set;
+  - a USDC allowance granted to their Follow account, for performance fees.
+- **A third follow that is unpaid or stopped**, to show the copier skipping it.
+- **Coin:** SOL, BTC or ETH only. Velocity devnet lists just these three perps.
+- **Horizon:** the program's minimum is 5 minutes. Use 5 minutes and cut the wait.
+- **A house agent that's already scored** (for the optional score-gate beat), and one with a low score.
+- Browser tabs: Solana Explorer (devnet), Velocity devnet account views for both followers [TODO: confirm a devnet UI exists; otherwise use Explorer and the Following page], the Arena page in Solana mode.
+- Terminal font large. Hide keys, tokens, `.env` values and key files.
+- **Builder fee:** only mention it if `builder_codes_enabled` is confirmed on devnet and the copied tx shows it.
 
 Total: about 3:00.
 
 ---
 
-## 1. Intro (0:00 to 0:15)
+## 1. Intro (0:00 to 0:12)
 
 On screen: Arena leaderboard in Solana devnet mode.
 
-> This is Arena running on Solana devnet. I'll show an AI agent record a prediction, reveal it, get scored, and then another Solana program read that score on-chain.
+> This is Reins on Solana devnet. An AI agent will record a prediction, and two followers will get the same trade on their own Velocity accounts within seconds. Then it's revealed, scored, and you'll see who got paid, on-chain.
 
-## 2. Connect the agent (0:15 to 0:35)
+## 2. The agent connects (0:12 to 0:30)
 
-On screen: terminal, then Claude Code.
+On screen: terminal, then Claude Code `/mcp`.
 
-> The agent connects through MCP. One line adds the Arena tools to Claude.
+Show: `claude mcp add reins -e ARENA_NETWORK=solana-devnet -- npx -y @onreins/mcp` [TODO: confirm a published package includes the Solana backend; otherwise show `ARENA_NETWORK=solana-devnet npm run callbook:mcp` from the repo]
 
-Show: `claude mcp add reins -- npx -y @onreins/mcp` [TODO: confirm the Solana install line; add the network env var if needed]
+> The agent connects through MCP, with the same tools as on Arc. Its key has no SOL. A relayer pays the fee, and it only co-signs transactions that contain nothing but Arena instructions.
 
-> The agent's keypair has no SOL. It won't need any. Our relayer pays the fee, and it only co-signs transactions that contain nothing but Arena instructions.
+Show: the tool list (`arena_lock`, `arena_reveal_due`, `arena_status`, `arena_verify`, `arena_profile`) and the agent wallet at 0 SOL.
 
-Show: `/mcp` listing the tools `arena_lock`, `arena_reveal_due`, `arena_status`, `arena_verify`, `arena_profile`.
+## 3. Record a prediction (0:30 to 0:55)
 
-## 3. Lock a prediction (0:35 to 1:05)
-
-On screen: Claude chat.
-
-Prompt to type:
-
-> Use arena_lock to record a prediction: SOL long, horizon <DEMO_HORIZON>.
-
-> The agent calls `arena_lock`. Only a hash goes on-chain. It binds the program id, the book, the call id, the horizon, the coin, the side and a secret salt. Nobody can read the prediction yet, and nobody can change it later.
-
-Show: the tool result with the signature `<LOCK_SIG>` and the time to confirmation.
-
-> Confirmed in [TODO: real measured time, e.g. about 400] milliseconds.
-
-Click the Explorer link.
-
-On screen: Solana Explorer, `<LOCK_SIG>` on devnet. Point at: program `<PROGRAM_ID>`, fee payer is the relayer, not the agent.
-
-> The entry time comes from Solana's on-chain clock, not from the agent. So it can't be backdated.
-
-## 4. Check status (1:05 to 1:20)
-
-On screen: Claude chat.
+On screen: Claude chat, with the copier log visible beside it.
 
 Prompt:
 
-> Use arena_status to show my open predictions.
+> Use arena_lock: SOL long, 5 minute horizon, with a stop and a target.
 
-> `arena_status` shows the open prediction and when it can be revealed. It can be revealed only after the horizon ends, within a grace window, and only once.
+> Only a hash goes on-chain. The entry time comes from Solana's clock, so it can't be backdated, and nobody can read the prediction until it's revealed.
 
-## 5. Reveal (1:20 to 1:45)
+Show: `<LOCK_SIG>` in the tool result, then Explorer: program `<ARENA_PROGRAM_ID>`, fee payer is the relayer.
 
-Wait for `<DEMO_HORIZON>` to pass (cut the wait in editing; keep the on-screen clock so viewers see time passed).
+## 4. Followers' orders land (0:55 to 1:35)
+
+On screen: copier log, then Explorer.
+
+> At the same moment, the agent sealed the full prediction to the copier. The copier checks it against the hash on-chain before it trades anything. It can only copy what was actually committed.
+
+Point at the log lines: preimage verified; follower A copied in `<LATENCY_MS>` ms; follower B copied in `<LATENCY_MS>` ms; follow C skipped, not paid.
+
+> Two paid followers, copied in about `<LATENCY_MS>` milliseconds from the lock. The unpaid one is skipped.
+
+Open `<COPY_SIG_A>` on Explorer: program `<VELOCITY_PROGRAM_ID>`, signer `<COPIER_PUBKEY>` as delegate, one transaction with the market entry plus two reduce-only trigger orders.
+
+> One transaction: the entry, then the stop-loss and take-profit as real reduce-only orders on Velocity. Each follower's size and limits are checked first: size per trade, open copied positions, and a daily loss cap.
+
+Show follower A's copy subaccount: the open SOL position and the two resting trigger orders.
+
+> The copier is a delegate on this one subaccount. It can place and cancel orders. It can't withdraw. The follower can revoke it from Velocity at any time. The money never leaves their account.
+
+## 5. Reveal and score (1:35 to 2:05)
+
+Cut the 5-minute wait; keep an on-screen clock.
 
 Prompt:
 
-> Use arena_reveal_due to reveal anything that's due.
+> Use arena_reveal_due.
 
-> `arena_reveal_due` sends the coin, the side and the salt. The program checks they match the hash. The reveal event includes the salt, so any scorer can read it straight from the event.
+> The reveal sends the coin, side and salt. The program checks they match the hash, and the event carries the salt, so any scorer can read it.
 
-Show: `<REVEAL_SIG>` and click through to Explorer.
+Show: `<REVEAL_SIG>` on Explorer.
 
-> If the agent never reveals, the prediction counts as its worst possible result, measured along the real price path. Hiding a loser doesn't help.
+Show: `<SCORE_CMD>`, then `<SCORE_SIG>` and the `<SCORE_ACCOUNT>` fields.
 
-## 6. Score (1:45 to 2:10)
+> The scorer grades revealed predictions against real prices, after fees, and writes a Score account. A prediction that's never revealed counts as its worst result along the price path. `arena_verify` rebuilds the score from chain data and public prices.
 
-On screen: terminal, then the agent's record page in Solana mode.
+## 6. Who got paid (2:05 to 2:35)
 
-Show: `<SCORE_CMD>` running against devnet.
+On screen: Explorer.
 
-> The scorer grades revealed predictions against real market prices, after fees. The validator authority writes the result to a Score account: the score, the counts, the time of scoring and a hash of the full report.
+Open `<SUB_SIG>` (follower A's subscription).
 
-Show: `<SCORE_SIG>` in Explorer, then `<SCORE_ACCOUNT>` on the record page.
+> Here's follower A's subscription. One transaction, two transfers: most to the agent's owner, the rest to the Reins treasury, at a fixed rate. The Follow account records paid-until, size and limits.
 
-Prompt in Claude:
+Open `<FOLLOW_A>` and point at paid-until and settings.
 
-> Use arena_verify on my book, then arena_profile.
+Open `<SETTLE_SIG>` (after `<SETTLE_CMD>`).
 
-> `arena_verify` rebuilds the score from chain data and public prices. No keys, and no trust in us. `arena_profile` shows the agent's name and record.
+> The performance fee is charged only above the follower's previous peak. We measure the copy subaccount's profit off-chain, and the program applies the high-water mark, splits the fee and records it. It's paid from an allowance the follower set on their own USDC account, so it can never exceed what they approved, and they can revoke it.
 
-## 7. Another program reads the score (2:10 to 2:45)
+If the builder fee is confirmed on devnet, add:
 
-On screen: editor with the score-gate example program.
+> And each copied order carries a small Velocity builder fee, at most 10 basis points.
 
-> Here's the part that makes it composable. This is a separate example program, the score gate. It uses our `arena-score` crate to read a Score account.
+## 7. Optional: another program reads the score (2:35 to 2:50)
 
-Show the key lines (illustrative; match them to the real crate API before recording):
+On screen: editor with `programs/score-gate/src/lib.rs`, then Explorer.
 
 ```rust
-// score-gate example: only agents scoring >= 70 pass
-let score = arena_score::read(&ctx.accounts.score)?; // checks owner == Arena program
-require!(score.book == ctx.accounts.book.key(), GateError::WrongBook);
-require!(score.score >= 70, GateError::ScoreTooLow);
+let s = arena_score::read_score(&ctx.accounts.score, &validator, &agent)?;
+require!(s.score >= min_score, GateError::ScoreTooLow);
 ```
 
-> The crate checks that the account belongs to the Arena program, so nobody can pass in a fake score. Then the gate checks the score is 70 or more.
+> Any Solana program can use the record. This example admits an agent only if its Arena score is at least a minimum. The `arena-score` crate checks the account really is Arena's.
 
-On screen: terminal. Call the gate for the high-scoring agent.
+Show: `<GATE_SIG>` succeeding for the high-scoring agent, and `ScoreTooLow` for the low one.
 
-> This agent scores [TODO: real score]. It passes.
+Cut this section if time is short.
 
-Show: `<GATE_SIG>` in Explorer, success.
+## 8. Close (2:50 to 3:00)
 
-Call the gate for the low-scoring agent.
+On screen: README "Reins on Solana" section with the program ids.
 
-> This one scores [TODO: real score]. Refused, with `ScoreTooLow`.
-
-> A vault, a copy-trading app or a launchpad can drop these three lines into its own program. It trusts the record, not the agent.
-
-## 8. Close (2:45 to 3:00)
-
-On screen: README top section with `<PROGRAM_ID>` and the one-line MCP install.
-
-> Recorded in under a second. Fees paid by the relayer. Scored against real prices. Readable by any Solana program.
+> A record that can't be faked. Copies within seconds. The follower's money stays in the follower's account.
 > Don't trust an agent's claims. Check its record.
 
 ---
@@ -149,5 +152,6 @@ On screen: README top section with `<PROGRAM_ID>` and the one-line MCP install.
 ## If something fails on the take
 
 - Don't edit a failure into a success. Re-record the step.
-- If the relayer is rate-limited, wait or use another demo key; don't raise the limits for the video.
-- If you can't show a sub-second confirmation honestly, say the real time.
+- Say the real latency, whatever it is. Don't trim it.
+- If the relayer is rate-limited, wait or use another demo key; don't raise limits for the video.
+- If Velocity devnet was wiped or changed, re-run follower onboarding before recording.
