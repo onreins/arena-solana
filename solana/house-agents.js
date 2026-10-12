@@ -71,7 +71,7 @@ export async function tick({ agents, clients, source, coins, secret, now = Math.
       log(`${agent.name}: no call this period`);
       continue;
     }
-    const out = await client.lock({ coin: call.coin, side: call.side, horizon: "4h" });
+    const out = await client.lock({ coin: call.coin, side: call.side > 0 ? "long" : "short", horizon: "4h" });
     log(`${agent.name}: ${call.side > 0 ? "long" : "short"} ${call.coin} (${call.why}) ${out.explorer ?? out.signature ?? ""}`);
   }
 }
@@ -83,7 +83,11 @@ async function main() {
   const dir = env.ARENA_HOUSE_KEYS_DIR || join(homedir(), ".arena", "house");
   const coins = (env.ARENA_HOUSE_COINS || "BTC,ETH,SOL").split(",").map((c) => c.trim()).filter(Boolean);
   const network = env.ARENA_NETWORK || "solana-devnet";
-  const clients = Object.fromEntries(AGENTS.map((a) => [a.key, createCallbookClient({ network, keyFile: join(dir, `${a.key}.json`) })]));
+  const copier = env.ARENA_COPIER_URL && env.ARENA_COPIER_PUBKEY ? { url: env.ARENA_COPIER_URL, publicKey: env.ARENA_COPIER_PUBKEY } : undefined;
+  const clients = Object.fromEntries(AGENTS.map((a) => [a.key, createCallbookClient({
+    network, keyFile: join(dir, `${a.key}.json`), relayUrl: env.ARENA_RELAY_URL, rpc: env.ARENA_SOLANA_RPC, copier,
+    selfPay: env.ARENA_SOLANA_SELF_PAY === "1",
+  })]));
   for (const a of AGENTS) {
     const c = clients[a.key];
     console.log(`${a.name}: ${c.publicKey.toBase58()}`);

@@ -52,11 +52,11 @@ function read(file) {
   const secret = Uint8Array.from(bytes);
   bytes.fill(0);
   try {
+    // Keypair keeps this very array as its secret key: it must not be zeroed after.
     return Keypair.fromSecretKey(secret);
   } catch {
-    throw new CallbookError(`${file} holds 64 bytes that aren't a valid Solana keypair.`, "BadKeyFile");
-  } finally {
     secret.fill(0);
+    throw new CallbookError(`${file} holds 64 bytes that aren't a valid Solana keypair.`, "BadKeyFile");
   }
 }
 

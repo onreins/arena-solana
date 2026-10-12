@@ -12,6 +12,7 @@
  *
  *   node src/settle.js            (env as server.js, plus SETTLER_KEYPAIR: the config admin, 0600)
  */
+import "./poll-confirm.js";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";

@@ -93,3 +93,22 @@ test("ARENA_NETWORK=solana-devnet takes the key from ARENA_SOLANA_KEYPAIR", (t) 
     assert.ok(!inspect(client, { depth: 5 }).includes(s));
   }
 });
+
+test("a key loaded from an existing file still signs validly (its secret isn't zeroed)", async () => {
+  const { Transaction, SystemProgram } = await import("@solana/web3.js");
+  const dir = mkdtempSync(path.join(tmpdir(), "arena-key-"));
+  try {
+    const kp = Keypair.generate();
+    const file = path.join(dir, "k.json");
+    writeFileSync(file, JSON.stringify([...kp.secretKey]), { mode: 0o600 });
+    const { keypair } = loadOrCreateSolanaKeypair(file);
+    assert.equal(keypair.publicKey.toBase58(), kp.publicKey.toBase58());
+    const tx = new Transaction({ feePayer: keypair.publicKey, blockhash: "11111111111111111111111111111111", lastValidBlockHeight: 1 })
+      .add(SystemProgram.transfer({ fromPubkey: keypair.publicKey, toPubkey: kp.publicKey, lamports: 1 }));
+    tx.sign(keypair);
+    assert.ok(tx.verifySignatures(), "the signature verifies");
+    assert.ok(keypair.secretKey.some((b) => b !== 0), "the secret is intact");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

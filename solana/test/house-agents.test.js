@@ -26,7 +26,7 @@ test("each agent locks once per period, reveals every tick, and skips flat perio
   const run = (now) => tick({ agents, clients, source, coins: ["BTC", "ETH", "SOL"], secret: "s".repeat(32), now, locked, log: () => {} });
   await run(T);
   await run(T + 60); // same period: no second lock
-  assert.deepEqual(clients.hot.locks, [{ coin: "ETH", side: 1, horizon: "4h" }]);
+  assert.deepEqual(clients.hot.locks, [{ coin: "ETH", side: "long", horizon: "4h" }], "the SDK takes long or short");
   assert.equal(clients.cold.locks.length, 0, "flat: nothing locked");
   assert.equal(clients.hot.reveals, 2);
   await run(T + PERIOD); // next period

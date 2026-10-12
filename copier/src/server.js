@@ -14,6 +14,7 @@
  *
  * No secret is ever printed: only public keys.
  */
+import "./poll-confirm.js";
 import { createServer } from "node:http";
 import { readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
