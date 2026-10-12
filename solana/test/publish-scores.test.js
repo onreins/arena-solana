@@ -20,7 +20,7 @@ function mockConnection({ existing = new Set() } = {}) {
   c.getAccountInfo = async (k) => (existing.has(k.toBase58()) ? { data: Buffer.alloc(0) } : null);
   c.getLatestBlockhash = async () => ({ blockhash: "11111111111111111111111111111111", lastValidBlockHeight: 10 });
   c.sendRawTransaction = async (raw) => (c.sent.push(Transaction.from(raw)), `sig${c.sent.length}`);
-  c.confirmTransaction = async () => ({ value: { err: null } });
+  c.getSignatureStatuses = async (sigs) => ({ value: sigs.map(() => ({ confirmationStatus: "confirmed", err: null })) });
   return c;
 }
 

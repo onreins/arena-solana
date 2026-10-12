@@ -22,13 +22,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import express from "express";
 import {
-  Connection, Keypair, PublicKey, SystemProgram, Transaction, TransactionInstruction, LAMPORTS_PER_SOL, sendAndConfirmTransaction,
+  Connection, Keypair, PublicKey, SystemProgram, Transaction, TransactionInstruction, LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
 
 import { mountCallbook } from "../app/callbook-routes.js";
 import { createCallbookClient } from "../callbook/sdk.js";
 import { generateRecipientKeys } from "../solana/preimage-box.js";
-import { bookAddress, scoreAddress } from "../solana/arena.js";
+import { bookAddress, scoreAddress, sendAndConfirmByPolling, confirmByPolling } from "../solana/arena.js";
 import {
   TOKEN_PROGRAM_ID, configAddress, planAddress, followAddress, associatedTokenAddress, createAssociatedTokenAccountIx,
   initConfigIx, setPlanIx, subscribeIx, approveIx, followsOfPlan, decodeFollowAccount, SIZE_FIXED,
@@ -46,11 +46,11 @@ const USDC = 1_000_000n;
 const connection = new Connection(RPC, "confirmed");
 const link = (sig) => `https://explorer.solana.com/tx/${sig}?cluster=custom&customUrl=${encodeURIComponent(RPC)}`;
 const step = (s) => console.log(`\n== ${s}`);
-const send = (ixs, signers) => sendAndConfirmTransaction(connection, new Transaction().add(...ixs), signers, { commitment: "confirmed" });
+const send = (ixs, signers) => sendAndConfirmByPolling(connection, new Transaction().add(...ixs), signers);
 
 async function funded(sol = 10) {
   const k = Keypair.generate();
-  await connection.confirmTransaction(await connection.requestAirdrop(k.publicKey, sol * LAMPORTS_PER_SOL), "confirmed");
+  await confirmByPolling(connection, await connection.requestAirdrop(k.publicKey, sol * LAMPORTS_PER_SOL));
   return k;
 }
 

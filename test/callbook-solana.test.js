@@ -87,6 +87,8 @@ class MockChain {
   async getBlockTime() { return this.now; }
   async sendRawTransaction(raw) { return this.process(Transaction.from(raw)).signature; }
   async confirmTransaction({ signature }) { return { context: { slot: 5 }, value: { err: this.txs.get(signature)?.err ?? null } }; }
+  async getSignatureStatuses(sigs) { return { context: { slot: 5 }, value: sigs.map((sig) => (this.txs.has(sig) ? { confirmationStatus: "confirmed", err: this.txs.get(sig)?.err ?? null } : null)) }; }
+  async getBlockHeight() { return 0; }
   async getSignaturesForAddress(addr) {
     return (this.byAddress.get(new PublicKey(addr).toBase58()) ?? []).slice().reverse().map((s) => ({ signature: s, err: this.txs.get(s).err }));
   }

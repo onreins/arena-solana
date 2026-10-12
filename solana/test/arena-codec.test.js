@@ -74,3 +74,11 @@ test("accounts decode by discriminator; anything else is null", () => {
   assert.equal(b.openedAt, 9);
   assert.equal(decodeAccount(Buffer.alloc(60)), null);
 });
+
+test("confirming by polling: confirmed, failed, and expired", async () => {
+  const { confirmByPolling } = await import("../arena.js");
+  const conn = (status, height = 0) => ({ getSignatureStatuses: async () => ({ value: [status] }), getBlockHeight: async () => height });
+  assert.equal((await confirmByPolling(conn({ confirmationStatus: "confirmed", err: null }), "s", 10, { everyMs: 1 })).confirmationStatus, "confirmed");
+  await assert.rejects(confirmByPolling(conn({ confirmationStatus: "confirmed", err: { InstructionError: [0, "x"] } }), "s", 10, { everyMs: 1 }), /failed/);
+  await assert.rejects(confirmByPolling(conn(null, 11), "s", 10, { everyMs: 1 }), (e) => e.expired === true);
+});

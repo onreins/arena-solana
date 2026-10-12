@@ -13,7 +13,7 @@ import { Transaction } from "@solana/web3.js";
 
 import { shouldPublish } from "../app/verify/callbook-publish.js";
 import { requestForBook, latestResponse, SCORING_VERSION } from "../app/verify/callbook-chain.js";
-import { writeScoreIx, scoreAddress, bookAddress, ARENA_PROGRAM_ID } from "./arena.js";
+import { writeScoreIx, scoreAddress, bookAddress, confirmByPolling, ARENA_PROGRAM_ID } from "./arena.js";
 
 const DAY = 86_400;
 const FEE = 5_000;
@@ -79,8 +79,7 @@ export async function publishSolanaScores({
       .add(writeScoreIx({ validator: validator.publicKey, owner: book.owner, ...args, programId }));
     tx.sign(validator);
     const signature = await connection.sendRawTransaction(tx.serialize(), { skipPreflight: false });
-    const res = await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
-    if (res.value.err) throw new Error(`write_score for book ${book.id} failed (${signature})`);
+    await confirmByPolling(connection, signature, lastValidBlockHeight).catch(() => { throw new Error(`write_score for book ${book.id} failed (${signature})`); });
     log?.(`book ${book.id}: score ${args.score} (${decision.why}) ${signature}`);
     out.push({ ...row, tx: signature, account: account.toBase58() });
   }

@@ -48,7 +48,7 @@ test("a pass settles each follow under the config's plans", { skip: !existsSync(
     },
     getLatestBlockhash: async () => ({ blockhash: "11111111111111111111111111111111", lastValidBlockHeight: 1 }),
     sendRawTransaction: async (raw) => (sent.push(Transaction.from(raw)), "sig"),
-    confirmTransaction: async () => ({ value: { err: null } }),
+    getSignatureStatuses: async (sigs) => ({ value: sigs.map(() => ({ confirmationStatus: "confirmed", err: null })) }),
   };
   const admin = Keypair.generate();
   const rows = await settleAll({
@@ -58,6 +58,8 @@ test("a pass settles each follow under the config's plans", { skip: !existsSync(
   assert.equal(rows.length, 1);
   assert.equal(rows[0].first, true, "the fixture follow has no mark yet: this sets it");
   assert.equal(rows[0].fee, "0");
+  assert.equal(rows[0].error, undefined, "settled and confirmed");
+  assert.equal(rows[0].tx, "sig");
   assert.equal(sent.length, 1);
   assert.equal(sent[0].instructions[0].data.readBigInt64LE(8), 12_000_000n);
   assert.ok(sent[0].instructions[0].keys[5].pubkey.equals(payout));

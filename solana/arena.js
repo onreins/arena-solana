@@ -242,3 +242,42 @@ export function eventsFromLogs(logs, programId = ARENA_PROGRAM_ID) {
   }
   return out;
 }
+
+// ------------------------------------------------------------------ confirming without websockets
+
+/**
+ * Wait for a transaction by polling getSignatureStatuses over HTTP, until it
+ * is confirmed (resolves) or fails or its blockhash expires (throws).
+ * web3.js's confirmTransaction listens on a websocket, which a proxied
+ * network (and some RPC providers) can't open: polling works everywhere.
+ */
+export async function confirmByPolling(connection, signature, lastValidBlockHeight, { everyMs = 500, commitment = "confirmed" } = {}) {
+  const done = commitment === "finalized" ? ["finalized"] : ["confirmed", "finalized"];
+  for (let i = 0; ; i++) {
+    const { value: [s] } = await connection.getSignatureStatuses([signature]);
+    if (s?.err) throw Object.assign(new Error(`transaction ${signature} failed: ${JSON.stringify(s.err)}`), { signature, err: s.err });
+    if (s && done.includes(s.confirmationStatus)) return s;
+    if (lastValidBlockHeight != null && i % 4 === 3 && (await connection.getBlockHeight("confirmed")) > lastValidBlockHeight) {
+      const { value: [late] } = await connection.getSignatureStatuses([signature], { searchTransactionHistory: true });
+      if (late && !late.err && done.includes(late.confirmationStatus)) return late;
+      throw Object.assign(new Error(`transaction ${signature} expired before it was confirmed`), { signature, expired: true });
+    }
+    await new Promise((r) => setTimeout(r, everyMs));
+  }
+}
+
+/** Sign (if signers are given), send and confirm a legacy transaction, by polling. Returns the signature. */
+export async function sendAndConfirmByPolling(connection, tx, signers = []) {
+  if (!tx.recentBlockhash) {
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
+    tx.recentBlockhash = blockhash;
+    tx.lastValidBlockHeight = lastValidBlockHeight;
+  }
+  if (signers.length) {
+    tx.feePayer ??= signers[0].publicKey;
+    tx.sign(...signers);
+  }
+  const signature = await connection.sendRawTransaction(tx.serialize(), { skipPreflight: false });
+  await confirmByPolling(connection, signature, tx.lastValidBlockHeight);
+  return signature;
+}

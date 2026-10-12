@@ -38,7 +38,7 @@ import path from "node:path";
 import { Connection, Keypair, PublicKey, Transaction } from "@solana/web3.js";
 
 import {
-  ARENA_PROGRAM_ID, GRACE, bookAddress, callAddress, profileAddress, scoreAddress, callHash, lockIx, revealIx, setProfileIx,
+  ARENA_PROGRAM_ID, GRACE, confirmByPolling, bookAddress, callAddress, profileAddress, scoreAddress, callHash, lockIx, revealIx, setProfileIx,
   decodeAccount, eventsFromLogs,
 } from "../solana/arena.js";
 import { seal as sealPreimage } from "../solana/preimage-box.js";
@@ -250,8 +250,8 @@ export class SolanaCallbookClient {
         tx.sign(this.#keypair);
         signature = await this.connection.sendRawTransaction(tx.serialize());
       }
-      const conf = await this.connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
-      if (conf?.value?.err) throw solanaError(conf.value.err, what);
+      // polled over HTTP: a websocket confirmation fails on proxied networks
+      await confirmByPolling(this.connection, signature, lastValidBlockHeight).catch((e) => { throw e.err ? solanaError(e.err, what) : e; });
     } catch (err) {
       throw solanaError(err, what);
     }

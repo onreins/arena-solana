@@ -21,6 +21,7 @@ import {
   FOLLOW_PROGRAM_ID, accountDiscriminator, decodeFollowAccount, followsOfPlan, associatedTokenAddress, settlePerformanceIx,
 } from "../../solana/follow.js";
 import { readSecretFile } from "./server.js";
+import { confirmByPolling } from "../../solana/arena.js";
 
 /** The report a settlement commits to: what was measured, from where, when. */
 export function settlementReport({ follow, follower, subAccountId, pnl, at }) {
@@ -65,7 +66,7 @@ export async function settleAll({ connection, admin, config, configAccount, pnlO
         const tx = new Transaction({ feePayer: admin.publicKey, blockhash, lastValidBlockHeight }).add(ix);
         tx.sign(admin);
         row.tx = await connection.sendRawTransaction(tx.serialize());
-        await connection.confirmTransaction({ signature: row.tx, blockhash, lastValidBlockHeight }, "confirmed");
+        await confirmByPolling(connection, row.tx, lastValidBlockHeight);
         log(`${row.follow}: pnl ${row.pnl}, fee ${row.fee}${row.first ? " (sets the high-water mark)" : ""} ${row.tx}`);
       } catch (err) {
         // Usually an allowance too small or revoked: nothing moved, the mark stays; the copier can pause this follow.

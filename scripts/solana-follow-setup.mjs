@@ -17,8 +17,9 @@
 import { readFileSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { Connection, Keypair, Transaction, sendAndConfirmTransaction, PublicKey } from "@solana/web3.js";
+import { Connection, Keypair, Transaction, PublicKey } from "@solana/web3.js";
 
+import { sendAndConfirmByPolling } from "../solana/arena.js";
 import {
   DEVNET_USDC, configAddress, planAddress, associatedTokenAddress, createAssociatedTokenAccountIx, initConfigIx, setPlanIx,
 } from "../solana/follow.js";
@@ -38,7 +39,7 @@ const admin = keypairFile(env.SOLANA_ADMIN_KEYPAIR || join(homedir(), ".config",
 const mint = new PublicKey(env.USDC_MINT || DEVNET_USDC);
 const treasury = associatedTokenAddress(admin.publicKey, mint);
 const config = configAddress(admin.publicKey);
-const send = (ixs, signers) => sendAndConfirmTransaction(connection, new Transaction().add(...ixs), signers, { commitment: "confirmed" });
+const send = (ixs, signers) => sendAndConfirmByPolling(connection, new Transaction().add(...ixs), signers);
 const tx = (sig) => `https://explorer.solana.com/tx/${sig}?cluster=devnet`;
 
 if (!(await connection.getAccountInfo(config))) {
