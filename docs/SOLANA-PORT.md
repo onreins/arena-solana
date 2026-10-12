@@ -1,6 +1,6 @@
-# Arena on Solana: the Colosseum build
+# Reins on Solana: the Colosseum build
 
-The brief for porting Arena to Solana in this repo (`onreins/arena-solana`, a private copy of `onreins/reinsApp`), shaped to win Colosseum's Solana hackathon and get into its accelerator.
+The brief for the Solana version of Reins in this repo (`onreins/arena-solana`, a full private copy of `onreins/reinsApp`), for Colosseum's Solana hackathon.
 
 **To start:** open a new cloud session on `onreins/arena-solana` and say:
 
@@ -8,120 +8,116 @@ The brief for porting Arena to Solana in this repo (`onreins/arena-solana`, a pr
 
 ---
 
-## The pitch, in one line
+## What we're building
 
-**Arena is the credit score for AI trading agents.** An agent commits every prediction on Solana before the market moves, and anyone can verify its track record. Faking, deleting and cherry-picking are all impossible. Any Solana program can read the score on-chain, so vaults, copy-trading apps and agent launchpads can trust an agent's record without trusting the agent.
+The Solana version of Reins centres on **agents and copy-trading**. Mandates are out of scope.
+
+1. **Arena:** proof of skill for AI trading agents. Every call is locked on Solana before the market moves and scored against real prices. Nothing can be deleted, and anyone can check the math.
+2. **Copy-trading:** follow a proven agent and its trades are placed on your own account the moment it locks a call, with the call's take-profit and stop-loss as real orders. Reins never holds anyone's money.
+3. **Revenue built in:** subscriptions, a share of followers' profits, and a fee on copied trades.
+
+The flow: **a proven record, then one click to copy, then everyone earns.**
+
+Keep the Arc version working throughout. Solana goes alongside it, chosen by config.
 
 ## The hackathon
 
-Colosseum runs Solana's global hackathons and backs the winners through its accelerator and pre-seed fund.
-
-- **This round:** Fall 2026, reportedly running until about **Nov 2, 2026**. These dates come from a third-party listing, so confirm them on colosseum.com.
-- **Last round's prizes (Spring 2026, Solana Frontier):**
+- **This round:** Colosseum's Fall 2026 hackathon, reportedly running until about **Nov 2, 2026**. These dates come from a third-party listing, so confirm them on colosseum.com.
+- **Last round's prizes (Spring 2026):**
   - Grand Champion: $30,000
   - Public Goods Award: $10,000
   - University Award: $10,000
-  - $10,000 each to the next 20 standout teams
-  - on top of the cash: a shot at Colosseum's accelerator and pre-seed funding
-- **Eligibility:** the Spring 2026 official rules don't bar existing projects. Only one project per team is allowed, and every member must register on colosseum.com before the registration cutoff (it was a week before the deadline).
-
-### How it's judged (official criteria, Spring 2026)
-
-Every piece of work below should move at least one of these:
-
-| Criterion | What judges ask | How Arena on Solana wins it |
-|---|---|---|
-| **Functionality** | How well does it work? Code quality? | A deployed devnet program with real tests, plus a real end-to-end flow: an agent locks, reveals and is scored. No mock data in the demo. |
-| **Potential impact** | Total addressable market? Impact on the Solana ecosystem? | Solana is where AI agents trade. Every agent needs a track record that can't be faked, so this is infrastructure for the whole agent economy. |
-| **Novelty** | How unique is it? | Commit–reveal on-chain records with scores that other programs can read. Existing "agent leaderboards" are self-reported. |
-| **UX** | Does it use Solana's speed for great UX? | Locks confirm in about 400ms, fees are fractions of a cent, and the relayer pays them, so agents need no SOL. Installing it into Claude or Cursor is one line through MCP. |
-| **Open source** | Is it open source? Does it compose with other Solana primitives? | **Scores as on-chain accounts any program can read** through a CPI-friendly crate (a Rust library other programs call into). An adapter for the Solana Agent Kit / ElizaOS ecosystem. (The repo is private; see the open-source decision below.) |
-| **Business plan** | Is there a viable business? | The marketplace: agents with proven records sell subscriptions to their calls, bonded so a hidden call pays subscribers back, and Arena takes a fee. There's also a paid scoring API for funds and launchpads. |
-
----
-
-## What Arena is (the Arc version this ports)
-
-A tamper-proof track record for AI trading agents, live on Arc mainnet at app.reins.one:
-1. An agent **locks** a hashed prediction before the market moves.
-2. It **reveals** the prediction after the prediction's horizon (time window) ends.
-3. An off-chain scorer grades revealed calls against real Hyperliquid prices. Calls never revealed ("withheld") score at their worst.
-
-It records predictions only: no funds, no orders, no positions.
-
-### Read these first
-
-| File | What it is |
-|---|---|
-| `contracts/Callbook.sol` | The EVM contract |
-| `app/verify/callbook-chain.js` | Chain reader that builds the in-memory `chain` state |
-| `app/verify/callbook-callers.js`, `callbook.js`, `callbook-prices.js` | The scorer |
-| `app/verify/callbook-relay.js` | Gasless relay |
-| `app/callbook-routes.js` | API |
-| `callbook/sdk.js`, `callbook/mcp-server.js` | The `@onreins/mcp` agent tools: `arena_lock`, `arena_reveal_due`, `arena_status`, `arena_verify`, `arena_profile`, … |
-| `docs/` | Design notes |
+  - $10,000 each to 20 more teams
+  - plus accelerator and pre-seed chances
+- **Eligibility:** the rules don't bar existing projects. One project per team, and every member registers on colosseum.com before the cutoff.
+- **Judging (official, Spring 2026):** functionality, potential impact, novelty, UX (using Solana's speed), open source and composability, and **business plan**. Colosseum backs companies, so the revenue has to be real and visible in the code.
 
 ---
 
 ## Build plan, in priority order
 
-Work on branch `solana-port`, push it, and open a PR into `master` of `onreins/arena-solana`. Keep the Arc version working: Solana goes alongside it, not in place of it.
+Work on branch `solana-port`, push it, and open a PR into `master` of `onreins/arena-solana`.
 
-### 1. Anchor program `programs/arena` (Rust)
-- **Open-call books first** (the path agents use through MCP): one book per account, opened on its first lock.
-- `lock(call_hash, horizon)` records the entry time from the on-chain `Clock`. No client-supplied timestamps, so no backdating.
-- `reveal(book, call_id, symbol, side, salt)` checks the commitment. The commitment must bind the program id, book, call id, horizon, coin, side and salt, using fixed-layout hashing (no ambiguous concatenation).
-- A call can be revealed only after it exits, within a GRACE window, and only once.
-- **Emit events that include the salt.** The audit found the EVM scorer could only read the salt from transaction calldata, which a front-runner could hide.
-- **Score accounts:** a validator authority writes one Score account per book, holding the score, call counts, the time of scoring and a report hash. This stands in for ERC-8004's Validation Registry. Make the layout **stable and documented**, and publish a tiny `arena-score` Rust crate with a read helper, so other programs can gate on a score (for example "only agents scoring ≥ 70 may manage this vault"). This is what earns the composability marks.
-- Profiles next: name, bio and link, with length caps.
-- Scheduled seal/reveal books are lower priority. Skip them if time is short.
+### Phase A: Arena on Solana (the trust layer)
 
-### 2. Gasless locking (the relayer pays the fee)
-- The user's keypair signs, and the relayer co-signs as fee payer.
-- Before co-signing, the relay checks that the transaction contains **only Arena instructions** from a plain user signer.
-- Limits mirror `callbook-relay.js`: per account, per IP, a global hourly cap, and a daily lamport budget.
-- The rate-limit store **fails closed**: if it can't be reached, refuse.
-- Each signed transaction is sent **at most once**.
-- Short validity: recent blockhash only.
+Read first: `contracts/Callbook.sol`, `app/verify/callbook-chain.js`, `callbook-callers.js`, `callbook.js`, `callbook-prices.js`, `callbook-relay.js`, `app/callbook-routes.js`, `callbook/sdk.js` and `callbook/mcp-server.js`.
 
-### 3. Program tests
-Use `anchor test`, or litesvm/bankrun. Cover:
-- commitment binding
-- no backdating
-- the reveal window, and a double reveal
-- a withheld call stays withheld
-- profile length caps
-- a Score account written only by the validator authority
+1. **Anchor program `programs/arena` (Rust)**, matching `Callbook.sol`:
+   - **Open-call books** (the path agents use through MCP): one book per account, opened on its first lock.
+   - `lock(call_hash, horizon)` takes the entry time from the on-chain `Clock`, so nothing can be backdated.
+   - `reveal(book, call_id, symbol, side, salt)` checks the commitment. The commitment binds the program id, book, call id, horizon, coin, side and salt, using fixed-layout hashing.
+   - A call can be revealed only after it exits, within a GRACE window, and only once.
+   - **Emit events that include the salt.** The audit found the EVM scorer could only read the salt from transaction calldata, which a front-runner could hide.
+   - **Score accounts:** a validator authority writes one Score account per book, standing in for ERC-8004's Validation Registry.
+   - Then profiles (name, bio and link, with length caps).
+2. **Gasless locking:** the relayer pays the fee, the user signs, and the relayer co-signs.
+   - Before co-signing, check that the transaction contains only Arena instructions.
+   - Limits mirror `callbook-relay.js`, and the rate-limit store **fails closed**.
+   - Each signed transaction is sent at most once, and only with a recent blockhash.
+3. **Program tests:**
+   - commitment binding
+   - no backdating
+   - the reveal window, and a double reveal
+   - a withheld call stays withheld
+   - profile caps
+   - Score accounts are written only by the validator
+4. **Solana chain reader:** produces the **same** in-memory `chain` shape as `readCallbook`, so the existing scorer, API and pages work unchanged. Select it with `ARENA_NETWORK=solana-devnet`.
+5. **SDK and MCP:** a Solana backend in `callbook/sdk.js` and `callbook/mcp-server.js`, with the **same tool names**. The key lives in a local file with `0600` permissions, and is never printed or sent.
+6. **Scorer fix from the audit** (in the shared scorer):
+   - Hidden and withheld calls score at a real worst: the adverse move along the price path (candle highs and lows).
+   - For any-coin books, the candidates include the coins the book itself revealed.
+   - **Do not change `SCORING_VERSION` (`"arena-v1"`).**
 
-### 4. Off-chain chain reader
-A Solana chain reader that produces the **same** in-memory `chain` shape as `readCallbook`, so the existing scorer, API and pages are reused unchanged. Pick the network by config, e.g. `ARENA_NETWORK=solana-devnet`.
+### Phase B: Copy-trading on Drift (the product people pay for)
 
-### 5. SDK, MCP and agent-framework adapters
-- A Solana backend in `callbook/sdk.js` and `mcp-server.js`, with the same tool names.
-- The key lives in a local file with `0600` permissions, and is never printed or sent.
-- **Adapters for the Solana agent ecosystem:** a small plugin or wrapper for **Solana Agent Kit** (and ElizaOS if time allows) that exposes "lock a call" and "check a score". This is high value for impact and composability.
+Drift is Solana's main perps exchange and has a devnet. **Check each Drift feature below against Drift's current docs and SDK before building on it.** If one doesn't exist or works differently, say so and pick the closest real alternative.
 
-### 6. Scorer fix from the audit (in the shared scorer)
-- A hidden or withheld call must score at a **real worst**: the adverse move **along the price path** (candle highs and lows), not just the entry-to-exit move.
-- For any-coin books, the candidate coins must include the coins **the book itself revealed**. Otherwise "reveal the winning side, hide the losing side" on a coin outside the top-50 reference set beats revealing.
-- **Do not change `SCORING_VERSION` (`"arena-v1"`).** It is embedded in on-chain validation request descriptors.
+1. **No custody, through Drift delegates.**
+   - A follower keeps their own Drift account and sets Reins' copier as its **delegate**, an authority that can place and cancel orders but **cannot withdraw**.
+   - Reins never holds follower funds, and a follower can revoke at any time from Drift itself.
+2. **The copier service (`copier/`, Node).** When a followed agent locks a call, it places the same trade on every follower's account:
+   - **Size:** each follower's own setting (a fixed amount or a % of account).
+   - **TP and SL:** the call's take-profit and stop-loss go in as real trigger orders. The stop and target are already part of an Arena call (`callbook-exits.js`).
+   - **Follower limits, checked before every order:** a maximum size per trade, a maximum number of open copied positions, and a daily loss cap that pauses copying once hit.
+   - **Speed:** orders go out within seconds of the lock. Log the latency per order, because it's a demo number.
+   - **Safety:** each order is placed exactly once, a restart never sends duplicates, and the copier's key comes from the environment and is never printed.
+3. **How followers get the call at lock time.**
+   - The public sees a call only at its reveal. Followers have to act at entry.
+   - The agent's SDK sends the call's preimage to the copier, encrypted to the copier's key, when it locks.
+   - The copier checks it against the on-chain lock hash before trading, so it trades only on what was actually committed.
+   - The public record is unchanged: the reveal later proves the timing.
+4. **A follow program `programs/follow` (Anchor), for subscriptions on-chain:**
+   - Each follower–agent pair is one Follow account, with a paid-until date, size settings and limits.
+   - The follower pays in USDC (SPL): a monthly price set by the agent's owner, split between the agent's owner and a Reins treasury at a fixed rate.
+   - The copier trades only for active, paid follows.
+5. **Revenue, all three ways:**
+   - **Subscriptions:** described in 4.
+   - **Performance fee:** a share of a follower's copied profit, only above their previous peak (a high-water mark). Settled periodically from the follower's PnL as reported by Drift, and split between the agent's owner and Reins. If doing this fully on-chain is too much for the MVP, compute it off-chain, record each settlement on-chain, and say so.
+   - **A fee on copied orders:** if Drift lets an app add its own fee to orders it routes (builder or referral fees), use it. If not, leave it out and say so.
+6. **Tests:**
+   - the copier refuses unpaid follows
+   - follower limits hold
+   - an order is never placed twice
+   - a preimage that doesn't match the lock is refused
+   - the subscription split is exact
+   - the performance fee is charged only above the high-water mark
+7. **App:**
+   - On an agent's page, a **Copy** button: connect a Solana wallet, set up the Drift delegate, choose size and limits, then subscribe.
+   - A **Following** page showing each copied agent, open positions, PnL, fees paid and a stop-copying button.
+   - The existing leaderboard, agent pages and guide get a Solana mode.
 
-### 7. The demo surface
-- A Solana network mode on the existing Arena pages (leaderboard, an agent's record, the guide) reading from devnet. Show **Solana Explorer links** for every lock and reveal, and show a lock confirming in under a second.
-- *Stretch goal:* a **Solana Action / Blink** that shares an agent's live record, and "follow this agent", as a link that unfurls in X or Discord. A cheap UX and novelty win.
+### Phase C: Deploy and demo
 
-### 8. Deploy and document
-- Deploy the program to **Solana devnet only**, and seed a few house agents that lock and reveal on a schedule, so the demo shows real records.
-- Hackathon README (top of `README.md`):
-  - the one-line pitch
-  - the problem (agent track records are self-reported and fakeable)
-  - how it works (diagram)
-  - the devnet program id
-  - how to try it in one line through MCP
-  - the composability story (reading a Score account from another program)
-  - the business model
-  - the team
+- Deploy the programs to **Solana devnet only**.
+- Run a few **house agents** from the existing agents in the repo, so the demo has real records and agents to copy on day one.
+- Show Solana Explorer links for every lock, reveal, subscription and copied order.
+- **README:** a Solana section in the existing README's voice:
+  - Arena
+  - copy-trading
+  - how follower money stays in the follower's own account
+  - the revenue model
+  - the devnet program ids
+  - how to connect an agent (one line through MCP)
 
 ---
 
@@ -129,32 +125,41 @@ A Solana chain reader that produces the **same** in-memory `chain` shape as `rea
 
 Colosseum usually asks for the items below. Confirm the exact list on the submission form.
 
-1. **Pitch video (about 3 minutes):** the problem, the solution, why Solana, traction (Arena is already live on Arc mainnet, with real agents and records), the business model, and the team.
-2. **Technical demo video (about 3 minutes):** an agent in Claude or Cursor locks a call through MCP, sees it on devnet in under a second, reveals it, gets scored, and the Score account is read by another program.
-3. **The GitHub repo** with the README above.
-4. **The project description** for the form: short, plain, and leading with the one-line pitch.
+1. **Pitch video (about 3 minutes):**
+   - the problem: agent trading records are self-reported, and copying a bot means trusting a screenshot
+   - Reins: proven records plus copy-trading without custody
+   - why Solana: speed for copy orders
+   - traction: live on Arc
+   - **the business model with simple numbers** (for example: followers × subscription + the performance fee)
+2. **Technical demo video (about 3 minutes):** an agent locks a call through MCP, followers' orders land on Drift devnet within seconds with TP and SL attached, then the call is revealed and scored, and the subscription and fee split are shown on-chain.
+3. The GitHub repo, with the README.
+4. A short project description for the form.
 
-Write the video **scripts** and a **shot list** as markdown. The person records the videos.
+Write the scripts, a shot list and a one-page **business model** (pricing, take rates, a simple revenue projection) as markdown. The person records the videos.
 
 ## The open-source decision (for the user)
 
-Judges explicitly score **open source**, and the Public Goods Award rewards it. This repo is private, and **must stay private until the user says otherwise**. Prepare for both outcomes:
-- Add a `LICENSE` file (suggested: Apache-2.0 for the program, the `arena-score` crate and the SDK).
-- Keep everything that's to be open-sourced free of secrets and private business details, so the user can make the program, crate and SDK public in one step if they choose.
+Judges score open source. This repo is private and **stays private until the user decides**.
+- Add a `LICENSE` file (suggested: Apache-2.0).
+- Keep the programs and SDK free of secrets and private business details, so the user can make them public in one step if they choose.
 - **Do not make anything public yourself.**
 
 ## Hard rules
 - Never commit secrets or keypairs: gitignore them, and never print secret values.
-- **No mainnet deploys, and no spending real funds.** Devnet airdrops only.
+- **No mainnet deploys, and no spending real funds.** Devnet only.
+- **No custody:** follower funds never leave the follower's own Drift account, and Reins' authority can never withdraw.
 - Keep the repo private. Don't push to or change `onreins/reinsApp`.
 - Use conventional commit messages, with no attribution or co-author lines.
-- Write tests first for program logic, run them, and report real results.
+- Write tests first for program and copier logic, run them, and report real results.
 - If the environment can't install Rust, the Solana CLI or Anchor, say so plainly and do the TypeScript/off-chain parts you can.
+- Verify every Drift and Solana feature against current docs before relying on it, and report anything that didn't exist as assumed.
+- Note in the README that charging subscription and performance fees for trade signals may be regulated in some countries, and should be checked before mainnet.
 
 ## Final report
-- What works end to end
+- What works end to end, per phase
 - Test results (pass/fail counts)
-- The devnet program id
+- The devnet program ids
+- Copy-order latency
 - The PR link
-- The status of the submission kit (scripts, README, license)
-- What's left before submission, mapped to the six judging criteria
+- The status of the submission kit
+- What's left before submission
