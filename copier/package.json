@@ -8,7 +8,8 @@
   "scripts": {
     "start": "node src/server.js",
     "test": "node --test --test-concurrency=1 \"test/*.test.js\"",
-    "keys": "node src/keys.js"
+    "keys": "node src/keys.js",
+    "settle": "node src/settle.js"
   },
   "dependencies": {
     "@velocity-exchange/sdk": "0.26.0"

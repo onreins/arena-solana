@@ -116,6 +116,12 @@ export async function createVelocityExchange({ connection, keypair, env = "devne
       };
     },
 
+    /** The copy subaccount's all-time PnL (quote units): what performance fees are settled on. */
+    async pnl(f) {
+      await ensureUser(f);
+      return big(client.getUser(sub(f), authorityOf(f)).getTotalAllTimePnl());
+    },
+
     async sign(f, market, orders, { userOrderId, maxTs }) {
       await ensureUser(f);
       const params = velocityOrderParams(orders, { marketIndex: market.marketIndex, userOrderId, maxTs, builder });
