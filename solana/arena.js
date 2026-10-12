@@ -199,7 +199,7 @@ const EVENTS = {
   BookOpened: (r) => ({ book: r.key(), owner: r.key(), openedAt: num(r.i64()) }),
   Locked: (r) => ({ book: r.key(), owner: r.key(), callId: num(r.u64()), callHash: r.bytes(32), lockedAt: num(r.i64()), entryAt: num(r.i64()), horizon: r.u32() }),
   Revealed: (r) => ({ book: r.key(), owner: r.key(), callId: num(r.u64()), coin: r.string(), side: r.i8(), horizon: r.u32(), salt: r.bytes(32), revealedAt: num(r.i64()) }),
-  ProfileSet: (r) => ({ owner: r.key(), name: r.string(), bio: r.string(), link: r.string(), updatedAt: num(r.i64()) }),
+  ProfileSet: (r) => ({ owner: r.key(), profileName: r.string(), bio: r.string(), link: r.string(), updatedAt: num(r.i64()) }),
   ScoreWritten: (r) => ({
     validator: r.key(), book: r.key(), owner: r.key(), score: r.u8(), calls: r.u32(), revealed: r.u32(), withheld: r.u32(),
     throughCall: num(r.u64()), scoredAt: num(r.i64()), reportHash: r.bytes(32), scoring: r.bytes(16).toString("utf8").replace(/\0+$/, ""),
@@ -207,7 +207,10 @@ const EVENTS = {
 };
 const EVENT_BY_DISC = Object.fromEntries(Object.keys(EVENTS).map((n) => [disc("event", n).toString("hex"), n]));
 
-/** { name, ...fields } for one event's bytes, or null if it isn't an Arena event. */
+/**
+ * { name, ...fields } for one event's bytes, or null if it isn't an Arena event.
+ * `name` is the event's type; ProfileSet's profile name is `profileName`.
+ */
 export function decodeEvent(data) {
   const b = Buffer.from(data);
   const name = EVENT_BY_DISC[b.subarray(0, 8).toString("hex")];

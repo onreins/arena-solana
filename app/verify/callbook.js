@@ -401,7 +401,9 @@ export function buildReport({ chainId, callbook, book, asOf, scored }) {
 /** Where a report can be fetched; `asOf` in the URI is what lets anyone rebuild it. */
 export function reportUri({ base, chainId, callbook, bookId, asOf }) {
   if (base) return `${base.replace(/\/$/, "")}/api/callbook/report/${bookId}?asOf=${asOf}`;
-  return `callbook-report:eip155:${chainId}/${String(callbook).toLowerCase()}/${bookId}?asOf=${asOf}`;
+  // Arc: eip155:<chainId>/<lowercase 0x address>. Solana (chainId "solana-devnet"): the program id as is, base58 being case-sensitive.
+  const evm = !/^solana-/.test(String(chainId));
+  return `callbook-report:${evm ? `eip155:${chainId}` : chainId}/${evm ? String(callbook).toLowerCase() : callbook}/${bookId}?asOf=${asOf}`;
 }
 export function asOfFromUri(uri) {
   const m = /[?&]asOf=(\d+)/.exec(uri ?? "");

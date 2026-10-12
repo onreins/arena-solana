@@ -85,7 +85,14 @@ window.Callbook = (function () {
   }
   // A person’s profile page: every record one address runs, in one place.
   var ADDR_RE = /^0x[0-9a-fA-F]{40}$/;
-  function profileHref(owner) { return ADDR_RE.test(owner || "") ? "/arena/p/" + String(owner).toLowerCase() : null; }
+  // A Solana account (base58, case-sensitive: never lowercased) and a Solana transaction signature.
+  var SOL_ADDR_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+  var SOL_SIG_RE = /^[1-9A-HJ-NP-Za-km-z]{64,90}$/;
+  function isAccount(a) { return ADDR_RE.test(a || "") || SOL_ADDR_RE.test(a || ""); }
+  function profileHref(owner) {
+    if (ADDR_RE.test(owner || "")) return "/arena/p/" + String(owner).toLowerCase();
+    return SOL_ADDR_RE.test(owner || "") ? "/arena/p/" + owner : null;
+  }
   /** " · More from this person", for a record's meta line. */
   function moreFrom(x) {
     var href = profileHref(x && x.owner);
@@ -107,10 +114,13 @@ window.Callbook = (function () {
   function isHttp(u) { return typeof u === "string" && /^https?:\/\/[^\s"'<>]+$/i.test(u); }
   function shortHash(h, a, b) { if (!h) return "—"; h = String(h); return h.length > 14 ? h.slice(0, a || 6) + "…" + h.slice(-(b || 4)) : h; }
   // A hash as a link to the explorer, or as plain text when there's no tx.
+  // An explorer with a query (Solana's "https://explorer.solana.com?cluster=devnet") keeps it after the path.
   function txLink(explorer, tx, label, kind) {
     var text = esc(label || shortHash(tx));
-    if (!tx || !HEX.test(tx) || !isHttp(explorer)) return '<span class="cb-hash">' + text + "</span>";
-    return '<a class="cb-hash" href="' + esc(explorer.replace(/\/$/, "") + "/" + (kind || "tx") + "/" + tx) + '" target="_blank" rel="noopener" title="' + esc(tx) + '">' +
+    var ok = tx && (HEX.test(tx) || SOL_SIG_RE.test(tx) || SOL_ADDR_RE.test(tx));
+    if (!ok || !isHttp(explorer)) return '<span class="cb-hash">' + text + "</span>";
+    var q = explorer.indexOf("?"), base = q >= 0 ? explorer.slice(0, q) : explorer, query = q >= 0 ? explorer.slice(q) : "";
+    return '<a class="cb-hash" href="' + esc(base.replace(/\/$/, "") + "/" + (kind || "tx") + "/" + tx + query) + '" target="_blank" rel="noopener" title="' + esc(tx) + '">' +
       text + U.icon("ext") + "</a>";
   }
   function ago(t) {
@@ -563,7 +573,7 @@ window.Callbook = (function () {
   // The top bar names Arena's network on Arena pages (the agents app's own config says testnet).
   loadIndex().then(function (d) {
     if (!d || !U.fixNet) return;
-    U.fixNet(d.archive ? "Arc testnet · history" : "Arc", d.explorer);
+    U.fixNet(d.archive ? "Arc testnet · history" : /^solana-/.test(String(d.chainId)) ? d.network || "Solana" : "Arc", d.explorer);
   }).catch(function () { /* the label stays as the app's */ });
   // The Mainnet / Testnet switch on the leaderboard (a .cb-netsw group of two links).
   document.querySelectorAll(".cb-netsw a").forEach(function (a) {
@@ -575,7 +585,7 @@ window.Callbook = (function () {
     wantTestnet: wantTestnet, loadArchive: loadArchive,
     medal: medal, medals: medals,
     skillHtml: skillHtml, skillTip: skillTip, skillPanel: skillPanel, countUp: countUp, glow: glow, levelLine: levelLine, RECORD: RECORD, skillRank: skillRank, LEVELS: LEVELS,
-    own: own, nameOf: nameOf, movedTag: movedTag, profileHref: profileHref, moreFrom: moreFrom, scoreParts: scoreParts, identicon: identicon, ADDR_RE: ADDR_RE, YOUNG_DAYS: YOUNG_DAYS, challengeLine: challengeLine, isHttp: isHttp, RULES: RULES, scoreOf: scoreOf, scoreWhy: scoreWhy, periodAt: periodAt, eodOf: eodOf, where: where, costsText: costsText, loadIndex: loadIndex, loadBook: loadBook, loadCaller: loadCaller, params: params, wantMock: wantMock, ID_RE: ID_RE,
+    own: own, nameOf: nameOf, movedTag: movedTag, profileHref: profileHref, moreFrom: moreFrom, scoreParts: scoreParts, identicon: identicon, ADDR_RE: ADDR_RE, isAccount: isAccount, YOUNG_DAYS: YOUNG_DAYS, challengeLine: challengeLine, isHttp: isHttp, RULES: RULES, scoreOf: scoreOf, scoreWhy: scoreWhy, periodAt: periodAt, eodOf: eodOf, where: where, costsText: costsText, loadIndex: loadIndex, loadBook: loadBook, loadCaller: loadCaller, params: params, wantMock: wantMock, ID_RE: ID_RE,
     pct: pct, pctHtml: pctHtml, dd: dd, num: num, int: int, isNum: isNum, shortHash: shortHash, txLink: txLink,
     ago: ago, stamp: stamp, day: day, clock: clock, span: span, hours: hours, now: now,
     sidePill: sidePill, challengePill: challengePill, nextBoundary: nextBoundary,

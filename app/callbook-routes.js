@@ -23,6 +23,11 @@
  * nothing configured, the index, book and caller routes redirect to the
  * static export in app/public/data, and the report route answers 404.
  *
+ * With ARENA_NETWORK=solana-devnet the same routes read Arena's Solana program
+ * instead (app/verify/solana-network.js, solana-chain.js): the chain has the
+ * same shape, so scoring and the API are unchanged. Agent links and the EVM
+ * relayer don't exist there: the link route answers 404 and the relay 503.
+ *
  * Client addresses for rate limits come from req.ip, which honours the app's
  * TRUST_PROXY setting (app/server.js). On Vercel set TRUST_PROXY=1: Vercel
  * overwrites X-Forwarded-For with the real client address, and trusting one
@@ -40,6 +45,9 @@ import { createRelayer, RelayError } from "./verify/callbook-relay.js";
 import { createAgentCards } from "./verify/arena-agent-card.js";
 import { countersFromEnv, ipBucket, brief } from "./verify/callbook-util.js";
 import { artifact } from "../scripts/artifact.js";
+import { PublicKey } from "@solana/web3.js";
+import { solanaNetwork, connectionFor } from "./verify/solana-network.js";
+import { readSolanaArena, solanaStateFromSnapshot } from "./verify/solana-chain.js";
 
 const TTL_MS = 60_000;
 const ID_RE = /^\d{1,12}$/;
@@ -62,12 +70,12 @@ const VIEWS = parseAbi([
  */
 const CACHE_INDEX = "public, max-age=30, s-maxage=30, stale-while-revalidate=60";
 
-export function mountCallbook(app, { env: rawEnv = process.env, source, now = () => Math.floor(Date.now() / 1000) } = {}) {
+export function mountCallbook(app, { env: rawEnv = process.env, source, now = () => Math.floor(Date.now() / 1000), solanaConnection = null } = {}) {
   const env = arenaEnv(rawEnv); // ARENA_X settings are read as CALLBOOK_X
   const log = (m) => console.error("[callbook]", m);
   let net = null, setupError = null;
   try {
-    net = callbookNetwork(env);
+    net = solanaNetwork(env) ?? callbookNetwork(env); // a Solana network first: callbookNetwork knows only Arc's
     if (net?.validationOff) log(net.validationOff);
   } catch (err) {
     setupError = err.message;
@@ -77,10 +85,13 @@ export function mountCallbook(app, { env: rawEnv = process.env, source, now = ()
   const prices = source ?? createPriceSource({ log: (m) => console.error("[callbook prices]", m) });
   const counter = countersFromEnv(env, { now, log });
   let client = null, chainState = null, cache = null, building = null, identity;
+  const solana = net?.kind === "solana";
+  let connection = solanaConnection;
 
   /** The runner's last snapshot, if it matches what we read: a cold start continues from there. */
   async function initialState() {
     if (!net.stateFile || !existsSync(net.stateFile)) return null;
+    if (solana) return solanaStateFromSnapshot(readFileSync(net.stateFile, "utf8"), { programId: net.programId, chainId: net.chainId, validator: net.validator });
     return stateFromSnapshot(readFileSync(net.stateFile, "utf8"), {
       address: net.address, chainId: await client.getChainId(), validationRegistry: net.registry, validator: net.validator,
     });
@@ -90,6 +101,12 @@ export function mountCallbook(app, { env: rawEnv = process.env, source, now = ()
   let reading = Promise.resolve();
   function chain() {
     const next = reading.then(async () => {
+      if (solana) {
+        connection ??= connectionFor(net);
+        if (!chainState) chainState = await initialState().catch(() => null);
+        chainState = await readSolanaArena({ connection, programId: net.programId, chainId: net.chainId, validator: net.validator, state: chainState });
+        return chainState;
+      }
       client ??= clientFor(net);
       if (!chainState) chainState = await initialState().catch(() => null);
       chainState = await readCallbook({
@@ -130,7 +147,8 @@ export function mountCallbook(app, { env: rawEnv = process.env, source, now = ()
         const state = await chain();
         const meta = {
           mode: net.local ? "replay" : "live", network: net.label, chainId: state.chainId, explorer: net.explorer,
-          contract: net.address.toLowerCase(), validationRegistry: net.registry?.toLowerCase() ?? null,
+          // A Solana program id is base58, which is case-sensitive.
+          contract: solana ? net.address : net.address.toLowerCase(), validationRegistry: net.registry?.toLowerCase() ?? null,
         };
         const built = await buildCallbook({
           chain: state, source: prices, asOf: now(), meta, validator: net.validator ?? undefined, reportBase: env.CALLBOOK_REPORT_BASE,
@@ -154,6 +172,7 @@ export function mountCallbook(app, { env: rawEnv = process.env, source, now = ()
   /** GET /api/callbook/link/:agent -> { agent, wallet (or null), nonce }: what an unlink or link signs against. */
   app.get("/api/callbook/link/:agent", async (req, res) => {
     if (!net) return res.status(404).json({ error: "Arena isn't configured on this server" });
+    if (solana) return res.status(404).json({ error: "agent links aren't on Solana" });
     if (!/^0x[0-9a-fA-F]{40}$/.test(req.params.agent)) return res.status(400).json({ error: "that isn't an address" });
     try {
       // Each answer costs two RPC reads: limited per client, and kept a few seconds.
@@ -231,6 +250,7 @@ export function mountCallbook(app, { env: rawEnv = process.env, source, now = ()
   // ---------------------------------------------------------------- the relayer
   let relayer = null, relayOff = null;
   if (!net) relayOff = "Callbook isn't configured on this server";
+  else if (solana) relayOff = "the gasless relayer isn't available on Solana from this server yet";
   else if (!/^0x[0-9a-fA-F]{64}$/.test(env.CALLBOOK_RELAYER_KEY ?? "")) relayOff = "the gasless relayer is off on this server (no relayer key configured)";
   // On Vercel each instance has its own memory: limits and the gas budget only hold with shared counters.
   else if (env.VERCEL && counter.kind !== "rest") { relayOff = "the gasless relayer is off on this server (no shared rate-limit store configured)"; log("relay off: set KV_REST_API_URL and KV_REST_API_TOKEN for shared rate limits on Vercel"); }
@@ -268,6 +288,7 @@ export function mountCallbook(app, { env: rawEnv = process.env, source, now = ()
     const problems = [];
     const body = { ok: false, problems, network: net?.name ?? null, contract: net?.address ?? null };
     if (!net) problems.push(setupError ?? "Arena isn't configured on this server");
+    else if (solana) await checkSolanaHealth(body, problems);
     else {
       try {
         client ??= clientFor(net);
@@ -299,6 +320,28 @@ export function mountCallbook(app, { env: rawEnv = process.env, source, now = ()
     }
     body.ok = problems.length === 0;
     return body;
+  }
+
+  /** Solana: the cluster reachable, how far the reader is behind, and the validator's SOL. */
+  async function checkSolanaHealth(body, problems) {
+    try {
+      connection ??= connectionFor(net);
+      const head = await connection.getSlot("confirmed");
+      body.chain = { head: String(head), readTo: chainState ? String(chainState.toSlot) : null, lagSlots: chainState ? head - chainState.toSlot : null };
+      body.relayer = { on: false };
+      problems.push(relayOff);
+      if (!net.validator) {
+        body.validator = null;
+        problems.push(net.validationOff);
+      } else {
+        const sol = (await connection.getBalance(new PublicKey(net.validator), "confirmed")) / 1e9;
+        const minSol = Number(env.CALLBOOK_VALIDATOR_MIN_SOL ?? 0.01);
+        body.validator = { address: net.validator, balanceSol: Math.round(sol * 1e4) / 1e4, minSol };
+        if (sol < minSol) problems.push(`the validator ${net.validator} has ${sol.toFixed(4)} SOL, under ${minSol}: fund it or daily scores stop`);
+      }
+    } catch (err) {
+      problems.push(`the chain couldn't be read: ${brief(err)}`);
+    }
   }
 
   // Route name -> relayer function. link-check sends nothing: it checks a link request's agent half.
