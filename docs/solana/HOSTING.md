@@ -15,7 +15,7 @@ Both run on **Solana devnet**, with test tokens only.
 ## 1. Vercel: the website, API and relay
 
 1. In Vercel, click **Add New → Project** and import `onreins/arena-solana`. Make it a **new project**, not the existing Arena one.
-2. **Build Command:** `npm run build && node scripts/solana-site.mjs`. This build step marks the pages as the Solana site, so the sidebar shows only Arena and `/` opens the Solana Arena. Leave the other settings as `vercel.json` sets them.
+2. **Build settings:** leave them as they are. `vercel.json` defines one service, `app`, that Vercel imports as is. It builds with `npm run build && node scripts/solana-site.mjs`, which marks the pages as the Solana site, so the sidebar shows only Arena and `/` opens the Solana Arena. One function (`api/index.js`) serves the pages, the API and the relay.
 3. **Storage:** add an **Upstash Redis** (KV) database to the project. The relay keeps its rate limits there and refuses to run without it. Vercel sets `KV_REST_API_URL` and `KV_REST_API_TOKEN` for you.
 4. **Environment variables:**
 

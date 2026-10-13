@@ -1,40 +1,57 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": null,
-  "installCommand": "npm install --omit=dev --ignore-scripts",
-  "buildCommand": "npm run build",
-  "outputDirectory": "app/public",
-  "cleanUrls": true,
-  "functions": {
-    "api/index.js": {
-      "includeFiles": "{build/*.json,deployments/*.json,app/data/*.json}",
-      "maxDuration": 60
+  "services": {
+    "app": {
+      "root": ".",
+      "entrypoint": "api/index.js",
+      "installCommand": "npm install --omit=dev --ignore-scripts",
+      "buildCommand": "npm run build && node scripts/solana-site.mjs",
+      "outputDirectory": "app/public",
+      "cleanUrls": true,
+      "functions": {
+        "api/index.js": {
+          "includeFiles": "{build/*.json,deployments/*.json,app/data/*.json,app/public/**}",
+          "maxDuration": 60
+        }
+      }
     }
   },
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/index"
-    },
-    {
-      "source": "/arena/p/:address",
-      "destination": "/arena-profile"
-    },
-    {
-      "source": "/arena/link",
-      "destination": "/arena-link"
+      "source": "/(.*)",
+      "destination": {
+        "service": "app"
+      }
     }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Content-Security-Policy", "value": "frame-ancestors 'none'" },
-        { "key": "Permissions-Policy", "value": "geolocation=()" },
-        { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "frame-ancestors 'none'"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "geolocation=()"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=31536000; includeSubDomains"
+        }
       ]
     },
     {

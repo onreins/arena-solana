@@ -8,6 +8,9 @@
 !/arena
 !/bridge
 !/mandate
+# The Solana chain reader, relay and follow codec (app/callbook-routes.js on ARENA_NETWORK=solana-devnet).
+!/solana
+/solana/test
 # The Callbook API reads the ERC-8004 registry ABIs from here (app/verify/callbook-network.js).
 !/evaluator
 /evaluator/*
@@ -25,6 +28,8 @@
 /scripts/*
 !/scripts/artifact.js
 !/scripts/compile.js
+# The Solana site's build step (vercel.json).
+!/scripts/solana-site.mjs
 /build/*
 !/build/Mandate.json
 !/build/MandateFactory.json
