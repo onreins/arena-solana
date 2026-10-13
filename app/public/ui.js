@@ -208,7 +208,7 @@ window.ReinsUI = (function () {
       '<a class="top-brand" href="' + (SOLANA_SITE ? "/arena" : "/") + '" aria-label="Reins home">' + MARK + '<span class="tb-name">Reins</span><span class="tag">' + (SOLANA_SITE ? "SOLANA" : "BETA") + "</span></a>" +
       '<label class="search">' + icon("search") + '<span class="sr-only">Search agents and strategies</span>' +
       '<input id="gsearch" type="search" placeholder="Search agents and strategies" autocomplete="off"><kbd>/</kbd></label>' +
-      '<div class="top-r"><span class="net" id="net"><i></i><span id="net-text">Arc</span></span>' +
+      '<div class="top-r"><span class="net" id="net"><i></i><span id="net-text">' + (SOLANA_SITE ? "Solana devnet" : "Arc") + '</span></span>' +
       '<button class="btn-white" id="wallet" type="button" aria-haspopup="true">Sign in</button>' +
       // On a phone: round buttons for search and the menu, as on Aave Pro (mobile.css shows them).
       '<button class="top-ic" id="m-search" type="button" aria-label="Search">' + icon("search") + "</button>" +

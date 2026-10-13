@@ -20,7 +20,24 @@ const redirect = (to) => `<!doctype html><html lang="en"><head><meta charset="ut
   `<title>Reins Arena on Solana</title><meta http-equiv="refresh" content="0; url=${to}"><link rel="canonical" href="${to}"></head>` +
   `<body><p><a href="${to}">Reins Arena on Solana</a></p><script>location.replace(${JSON.stringify(to)})</script></body></html>\n`;
 
-let marked = 0, redirected = 0;
+/**
+ * Arc wording a page shows before its data loads, and its Solana version. The
+ * page scripts swap some of it once the API answers; writing it here means a
+ * visitor never sees Arc on the Solana site, even while loading.
+ */
+export const SOLANA_TEXT = {
+  "arena.html": [
+    ["It lives in an open registry on Arc (ERC-8004), not in our database.",
+      "It lives on Solana, in Score accounts any program can read, not in our database."],
+    ["send predictions straight to the Arena contract on Arc,",
+      "send predictions straight to the Arena program on Solana,"],
+    ["Arena runs on Arc testnet today, with mainnet next. Predictions, reveals and scores are real transactions you can open on the Arc explorer.",
+      "Arena runs on Solana devnet today, with mainnet next. Predictions, reveals and scores are real transactions you can open on Solana Explorer."],
+    ['<span id="feed-t">On Arc, as it happens</span>', '<span id="feed-t">On Solana, as it happens</span>'],
+  ],
+};
+
+let marked = 0, redirected = 0, reworded = 0;
 for (const f of readdirSync(dir).filter((x) => x.endsWith(".html"))) {
   const name = f.replace(/\.html$/, "");
   if (ARC_PAGES.includes(name)) {
@@ -28,9 +45,15 @@ for (const f of readdirSync(dir).filter((x) => x.endsWith(".html"))) {
     redirected++;
     continue;
   }
-  const html = readFileSync(join(dir, f), "utf8");
-  if (html.includes(META)) continue;
-  writeFileSync(join(dir, f), html.replace(/<head([^>]*)>/i, `<head$1>\n  ${META}`));
-  marked++;
+  let html = readFileSync(join(dir, f), "utf8");
+  for (const [arc, solana] of SOLANA_TEXT[f] ?? []) {
+    if (html.includes(arc)) { html = html.replace(arc, solana); reworded++; }
+    else if (!html.includes(solana)) throw new Error(`solana site: ${f} no longer has "${arc}"; update SOLANA_TEXT`);
+  }
+  if (!html.includes(META)) {
+    html = html.replace(/<head([^>]*)>/i, `<head$1>\n  ${META}`);
+    marked++;
+  }
+  writeFileSync(join(dir, f), html);
 }
-console.log(`solana site: ${marked} page(s) marked, ${redirected} Arc page(s) now lead to /arena`);
+console.log(`solana site: ${marked} page(s) marked, ${reworded} Arc phrase(s) reworded, ${redirected} Arc page(s) now lead to /arena`);

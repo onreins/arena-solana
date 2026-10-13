@@ -21,6 +21,9 @@ test("marks Arena pages as the Solana site and sends the Arc app's pages to /are
     for (const f of ["index.html", "charts.html", "strategies.html"]) {
       assert.match(readFileSync(join(dir, f), "utf8"), /url=\/arena/, `${f} leads to /arena`);
     }
+    const arena = readFileSync(join(dir, "arena.html"), "utf8");
+    assert.doesNotMatch(arena.replace(/<!--[\s\S]*?-->/g, ""), /\bArc\b/, "the Solana Arena page never says Arc, even before its data loads");
+    assert.match(arena, /On Solana, as it happens/);
     execFileSync(process.execPath, [new URL("../scripts/solana-site.mjs", import.meta.url).pathname, dir]); // twice: still marked once
     assert.equal(readFileSync(join(dir, "arena.html"), "utf8").match(/reins-site/g).length, 1);
   } finally {
