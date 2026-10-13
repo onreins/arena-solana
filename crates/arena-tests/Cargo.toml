@@ -1,0 +1,16 @@
+[package]
+name = "arena-tests"
+version = "0.1.0"
+description = "Integration tests for the Arena programs, run in litesvm against the built .so files"
+edition = "2021"
+publish = false
+
+[dev-dependencies]
+anchor-lang = "0.31.1"
+arena = { path = "../../programs/arena", features = ["no-entrypoint"] }
+score-gate = { path = "../../programs/score-gate", features = ["no-entrypoint"] }
+follow = { path = "../../programs/follow", features = ["no-entrypoint"] }
+anchor-spl = "0.31.1"
+litesvm = "0.6.1"
+solana-sdk = "2.2"
+base64 = "0.22"

@@ -441,6 +441,12 @@ export function stateFromSnapshot(text, { address, chainId, validationRegistry =
 /** The request (naming `validator`, when given) that asks for this book to be scored, if any. */
 export function requestForBook(chain, bookId, validator) {
   for (const r of chain.validation.requests.values()) {
+    if (r.implied) {
+      // Solana (solana-chain.js): a Score account names its book itself, so no request is filed and
+      // there's no agent to match. Base58 is case-sensitive: compared exactly. Arc never sets `implied`.
+      if (r.book?.bookId === Number(bookId) && r.book.callbook === chain.address && r.book.chainId === chain.chainId && (!validator || r.validator === validator)) return r;
+      continue;
+    }
     if (!r.book || r.book.bookId !== Number(bookId) || !same(r.book.callbook, chain.address) || r.book.chainId !== Number(chain.chainId)) continue;
     if (validator && !same(r.validator, validator)) continue;
     // A descriptor that names an agent counts only when filed by that agent.

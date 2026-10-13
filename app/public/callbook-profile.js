@@ -12,8 +12,9 @@
   $("guil").innerHTML = C.guilloche(1200, 360, 0.87);
 
   var LATEST = 20, MAX_DETAILS = 12;
-  var m = /\/arena\/p\/(0x[0-9a-fA-F]{40})\/?$/.exec(location.pathname);
-  var ADDR = (m ? m[1] : C.params.get("a") || "").toLowerCase();
+  var m = /\/arena\/p\/(0x[0-9a-fA-F]{40}|[1-9A-HJ-NP-Za-km-z]{32,44})\/?$/.exec(location.pathname);
+  var ADDR = m ? m[1] : C.params.get("a") || "";
+  if (/^0x/i.test(ADDR)) ADDR = ADDR.toLowerCase(); // a Solana account is base58: case-sensitive, kept as is
 
   var hrefOf = function (r) { return r.kind === "caller" ? "/arena-caller?c=" + encodeURIComponent(r.id) : "/arena-bot?b=" + encodeURIComponent(r.id); };
   var sum = function (list, f) { return list.reduce(function (n, r) { return n + (f(r) || 0); }, 0); };
@@ -196,7 +197,7 @@
   }
 
   // ------------------------------------------------------------- the page
-  if (!C.ADDR_RE.test(ADDR)) { missing("That isn’t an address"); return; }
+  if (!C.isAccount(ADDR)) { missing("That isn’t an address"); return; }
   C.loadIndex().then(function (D) {
     $("foot-net").textContent = D.network || "Arc";
     // This address's records, and those of every agent linked to it (marked `via`).

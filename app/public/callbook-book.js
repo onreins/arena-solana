@@ -54,7 +54,7 @@
       '<circle class="v" cx="50" cy="50" r="' + r + '" stroke-dasharray="' + (s / 100 * c).toFixed(2) + " " + c.toFixed(2) + '"/></svg>' +
       '<div class="cbk-score"><b>' + esc(Math.round(s)) + '</b><span>/100</span></div></div>' +
       "<figcaption><b>" + (s === 0 && why && why.short ? "Score 0 · " + esc(why.short) : "Score, out of 100") + "</b>" +
-      "<span>" + (v ? "Published on Arc (ERC-8004) <span class=\"nb\">" + esc(C.ago(v.at)) + "</span>" : "Updated daily") + "</span></figcaption></div>" + breakdown(b, s, why) + C.skillPanel(b.skill);
+      "<span>" + (v ? C.publishedOn() + " <span class=\"nb\">" + esc(C.ago(v.at)) + "</span>" : "Updated daily") + "</span></figcaption></div>" + breakdown(b, s, why) + C.skillPanel(b.skill);
   }
   function breakdown(b, s, why) {
     return C.scoreParts(b, "the market", why && why.next);
@@ -273,7 +273,7 @@
     $("report").innerHTML =
       row("Report hash", r.hash ? '<span class="cb-hash">' + esc(C.shortHash(r.hash, 12, 8)) + "</span>" + C.copyButton(r.hash, "Copy the report hash") : '<span class="muted">—</span>') +
       (C.isHttp(r.uri) ? row("Full report", '<a class="cb-hash" href="' + esc(r.uri) + '" target="_blank" rel="noopener">' + esc(r.uri) + U.icon("ext") + "</a>") : "") +
-      (v ? row("Published on Arc (ERC-8004)", '<span class="cb-hash">' + esc(C.shortHash(v.responseHash, 12, 8)) + "</span><small>response hash · score " + esc(v.score) + " · " + esc(C.stamp(v.at)) + "</small>") : "") +
+      (v ? row(C.publishedOn(), '<span class="cb-hash">' + esc(C.shortHash(v.responseHash, 12, 8)) + "</span><small>response hash · score " + esc(v.score) + " · " + esc(C.stamp(v.at)) + "</small>") : "") +
       (b.request && b.request.requestHash ? row("ERC-8004 request", '<span class="cb-hash">' + esc(C.shortHash(b.request.requestHash, 12, 8)) + "</span>" + C.copyButton(b.request.requestHash, "Copy the request hash") +
         "<small>the validation request this score answers" + (b.request.validator ? ", validator " + esc(U.short(b.request.validator)) : "") + "</small>") : "") +
       (r.uri && !C.isHttp(r.uri) ? row("Report URI", '<span class="cb-hash cbk-uri">' + esc(r.uri) + "</span>") : "") +

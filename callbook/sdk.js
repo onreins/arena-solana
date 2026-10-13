@@ -30,6 +30,10 @@
  * that can never be revealed: the loser reverts with StaleId instead.
  *
  * Every error is a CallbookError whose message is a plain sentence.
+ *
+ * Solana: `new CallbookClient({ network: "solana-devnet", ... })` (or
+ * createCallbookClient) returns a SolanaCallbookClient (callbook/solana-sdk.js)
+ * with the same methods, on the Arena program instead of the Arc contract.
  */
 import { createWalletClient, http, keccak256, toHex, parseEventLogs, isAddress, getAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -55,6 +59,12 @@ import {
 import { strategyTiming, callHorizon, parseDuration, formatDuration, countdown, utc, MAX_HORIZON, MIN_CALL_HORIZON } from "./durations.js";
 import { withExits, exitsProblem, sealedPrice } from "../app/verify/callbook-exits.js";
 import { bookLine, strategyStatus, callsStatus, sealableRound, SIDE_WORD } from "./view.js";
+import { SolanaCallbookClient, isSolanaNetwork } from "./solana-sdk.js";
+
+export { SolanaCallbookClient, isSolanaNetwork };
+
+/** The client for o.network: Arc (local | testnet | mainnet) or Solana (solana-devnet). */
+export const createCallbookClient = (o = {}) => (isSolanaNetwork(o.network) ? new SolanaCallbookClient(o) : new CallbookClient(o));
 
 const CALLBOOK = artifact("Callbook");
 const ABI = CALLBOOK.abi;
@@ -109,6 +119,8 @@ export class CallbookClient {
    * @param {object} [o.publicClient]   an existing viem public client
    */
   constructor(o = {}) {
+    // A Solana network gets the Solana client, with the same methods.
+    if (isSolanaNetwork(o.network)) return new SolanaCallbookClient(o); // eslint-disable-line no-constructor-return
     if (!/^0x[0-9a-fA-F]{64}$/.test(o.key ?? "")) fail("The key must be a 0x-prefixed 64-hex private key (ARENA_KEY). Use a fresh key that holds nothing of value.", "BadKey");
     if (o.address != null && !isAddress(o.address)) fail(`"${o.address}" isn't a contract address.`, "BadAddress");
     this.account = privateKeyToAccount(o.key);

@@ -49,7 +49,11 @@ window.Callbook = (function () {
 
   // Sample data is written once; move it so its latest period is the one
   // running now, so its countdowns count. Real data is never touched.
+  // Solana data (chainId "solana-devnet") is labelled Solana wherever the page would say Arc.
+  var onSolana = false;
+  var isSolana = function (d) { return Boolean(d && /^solana-/.test(String(d.chainId || ""))); };
   function rebase(d) {
+    if (isSolana(d)) onSolana = true;
     if (!d || d.mode !== "mock") return d;
     var P = periodOf(d) || 14400;
     var gen = Math.floor(Date.parse(d.generated) / 1000) || 0;
@@ -85,7 +89,14 @@ window.Callbook = (function () {
   }
   // A person’s profile page: every record one address runs, in one place.
   var ADDR_RE = /^0x[0-9a-fA-F]{40}$/;
-  function profileHref(owner) { return ADDR_RE.test(owner || "") ? "/arena/p/" + String(owner).toLowerCase() : null; }
+  // A Solana account (base58, case-sensitive: never lowercased) and a Solana transaction signature.
+  var SOL_ADDR_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+  var SOL_SIG_RE = /^[1-9A-HJ-NP-Za-km-z]{64,90}$/;
+  function isAccount(a) { return ADDR_RE.test(a || "") || SOL_ADDR_RE.test(a || ""); }
+  function profileHref(owner) {
+    if (ADDR_RE.test(owner || "")) return "/arena/p/" + String(owner).toLowerCase();
+    return SOL_ADDR_RE.test(owner || "") ? "/arena/p/" + owner : null;
+  }
   /** " · More from this person", for a record's meta line. */
   function moreFrom(x) {
     var href = profileHref(x && x.owner);
@@ -107,10 +118,13 @@ window.Callbook = (function () {
   function isHttp(u) { return typeof u === "string" && /^https?:\/\/[^\s"'<>]+$/i.test(u); }
   function shortHash(h, a, b) { if (!h) return "—"; h = String(h); return h.length > 14 ? h.slice(0, a || 6) + "…" + h.slice(-(b || 4)) : h; }
   // A hash as a link to the explorer, or as plain text when there's no tx.
+  // An explorer with a query (Solana's "https://explorer.solana.com?cluster=devnet") keeps it after the path.
   function txLink(explorer, tx, label, kind) {
     var text = esc(label || shortHash(tx));
-    if (!tx || !HEX.test(tx) || !isHttp(explorer)) return '<span class="cb-hash">' + text + "</span>";
-    return '<a class="cb-hash" href="' + esc(explorer.replace(/\/$/, "") + "/" + (kind || "tx") + "/" + tx) + '" target="_blank" rel="noopener" title="' + esc(tx) + '">' +
+    var ok = tx && (HEX.test(tx) || SOL_SIG_RE.test(tx) || SOL_ADDR_RE.test(tx));
+    if (!ok || !isHttp(explorer)) return '<span class="cb-hash">' + text + "</span>";
+    var q = explorer.indexOf("?"), base = q >= 0 ? explorer.slice(0, q) : explorer, query = q >= 0 ? explorer.slice(q) : "";
+    return '<a class="cb-hash" href="' + esc(base.replace(/\/$/, "") + "/" + (kind || "tx") + "/" + tx + query) + '" target="_blank" rel="noopener" title="' + esc(tx) + '">' +
       text + U.icon("ext") + "</a>";
   }
   function ago(t) {
@@ -173,7 +187,9 @@ window.Callbook = (function () {
   var sealN = 0;
   function seal(cls, words) {
     var id = "cb-ring-" + sealN++;
-    var text = (words || "RECORDED ON ARC · ARENA BY REINS · ").repeat(2);
+    if (!words || words === SEAL_WORDS) words = onSolana ? SOLANA_SEAL_WORDS : SEAL_WORDS;
+    if (onSolana) words = words.replace("ERC-8004", "SOLANA");
+    var text = words.repeat(2);
     var ticks = "";
     for (var i = 0; i < 72; i++) {
       var a = (i / 72) * Math.PI * 2, r1 = 47, r2 = i % 6 === 0 ? 43.5 : 45.5;
@@ -368,6 +384,8 @@ window.Callbook = (function () {
     var mode = d && d.mode;
     if (d && d.archive) return { status: "Testnet history", chain: "On Arc testnet", live: false,
       tip: d.note || "Arena on Arc testnet, frozen when it moved to mainnet. Scored with the same rules." };
+    if (mode === "live" && (isSolana(d) || onSolana)) return { status: "Live on " + (d.network || "Solana"), chain: "On Solana", live: true,
+      tip: "Predictions are recorded and revealed on Solana, and scores are written to Score accounts any Solana program can read." };
     if (mode === "live") return { status: "Live on Arc", chain: "On Arc", live: true,
       tip: "Predictions are recorded and revealed on Arc, and scores are published to an open registry on Arc (ERC-8004)." };
     if (mode === "replay") return { status: "Replay over real prices", chain: "On chain", live: false,
@@ -381,6 +399,9 @@ window.Callbook = (function () {
       '<span class="sr-only">: ' + esc(w.tip) + "</span></span>";
   }
   var SEAL_WORDS = "RECORDED ON ARC · ARENA BY REINS · ";
+  var SOLANA_SEAL_WORDS = "RECORDED ON SOLANA · ARENA BY REINS · ";
+  /** Where a score is published, in a row label or caption. */
+  function publishedOn() { return onSolana ? "Written to a Score account on Solana" : "Published on Arc (ERC-8004)"; }
   var COSTS = { "hyperliquid-funding": "fees and real hourly Hyperliquid funding", "vanta-flat-carry": "fees and Vanta’s flat carry" };
   function costsText(c) { return own(COSTS, c) || (c ? String(c) : "fees"); }
 
@@ -560,10 +581,29 @@ window.Callbook = (function () {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", archiveLinks);
     else archiveLinks();
   }
+  // Solana mode has copy-trading: the Arena views get a Following page (arena-following.html).
+  function followingLink() {
+    var v = document.getElementById("views");
+    if (!v || v.querySelector('a[href="/arena-following"]')) return;
+    var a = document.createElement("a");
+    a.href = "/arena-following";
+    a.textContent = "Following";
+    if (location.pathname.replace(/\.html$/, "") === "/arena-following") a.setAttribute("aria-current", "page");
+    var guide = v.querySelector('a[href="/arena-guide"]');
+    v.insertBefore(a, guide || null);
+  }
   // The top bar names Arena's network on Arena pages (the agents app's own config says testnet).
   loadIndex().then(function (d) {
     if (!d || !U.fixNet) return;
-    U.fixNet(d.archive ? "Arc testnet · history" : "Arc", d.explorer);
+    U.fixNet(d.archive ? "Arc testnet · history" : /^solana-/.test(String(d.chainId)) ? d.network || "Solana" : "Arc", d.explorer);
+    if (/^solana-/.test(String(d.chainId))) {
+      onSolana = true;
+      followingLink();
+      var big = document.getElementById("seal");
+      if (big) big.innerHTML = seal("big", SOLANA_SEAL_WORDS);
+      var travels = document.getElementById("travels");
+      if (travels) travels.innerHTML = "<b>The record travels with the agent.</b> It lives on Solana, in Score accounts any program can read, not in our database.";
+    }
   }).catch(function () { /* the label stays as the app's */ });
   // The Mainnet / Testnet switch on the leaderboard (a .cb-netsw group of two links).
   document.querySelectorAll(".cb-netsw a").forEach(function (a) {
@@ -575,10 +615,10 @@ window.Callbook = (function () {
     wantTestnet: wantTestnet, loadArchive: loadArchive,
     medal: medal, medals: medals,
     skillHtml: skillHtml, skillTip: skillTip, skillPanel: skillPanel, countUp: countUp, glow: glow, levelLine: levelLine, RECORD: RECORD, skillRank: skillRank, LEVELS: LEVELS,
-    own: own, nameOf: nameOf, movedTag: movedTag, profileHref: profileHref, moreFrom: moreFrom, scoreParts: scoreParts, identicon: identicon, ADDR_RE: ADDR_RE, YOUNG_DAYS: YOUNG_DAYS, challengeLine: challengeLine, isHttp: isHttp, RULES: RULES, scoreOf: scoreOf, scoreWhy: scoreWhy, periodAt: periodAt, eodOf: eodOf, where: where, costsText: costsText, loadIndex: loadIndex, loadBook: loadBook, loadCaller: loadCaller, params: params, wantMock: wantMock, ID_RE: ID_RE,
+    own: own, nameOf: nameOf, movedTag: movedTag, profileHref: profileHref, moreFrom: moreFrom, scoreParts: scoreParts, identicon: identicon, ADDR_RE: ADDR_RE, isAccount: isAccount, YOUNG_DAYS: YOUNG_DAYS, challengeLine: challengeLine, isHttp: isHttp, RULES: RULES, scoreOf: scoreOf, scoreWhy: scoreWhy, periodAt: periodAt, eodOf: eodOf, where: where, costsText: costsText, loadIndex: loadIndex, loadBook: loadBook, loadCaller: loadCaller, params: params, wantMock: wantMock, ID_RE: ID_RE,
     pct: pct, pctHtml: pctHtml, dd: dd, num: num, int: int, isNum: isNum, shortHash: shortHash, txLink: txLink,
     ago: ago, stamp: stamp, day: day, clock: clock, span: span, hours: hours, now: now,
     sidePill: sidePill, challengePill: challengePill, nextBoundary: nextBoundary,
-    seal: seal, guilloche: guilloche, scramble: scramble, reduce: reduce, tooltips: tooltips, copyButton: copyButton, modeBadge: modeBadge, statusPill: statusPill, SEAL_WORDS: SEAL_WORDS,
+    seal: seal, guilloche: guilloche, scramble: scramble, reduce: reduce, tooltips: tooltips, copyButton: copyButton, modeBadge: modeBadge, statusPill: statusPill, SEAL_WORDS: SEAL_WORDS, publishedOn: publishedOn, onSolana: function () { return onSolana; },
   };
 })();

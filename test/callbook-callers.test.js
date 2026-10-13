@@ -169,6 +169,61 @@ describe("locks", () => {
     assert.equal(worstOver(prices, ["BTC"], T0, 2 * HOUR).move, 0);
   });
 
+  /** Flat candles at 100, with wicks: { [candle open time]: { h, l } } for one coin. */
+  const wicked = (coins, wicks) => {
+    const data = synthetic(coins, T0 - DAY, T0 + 40 * DAY, () => 100);
+    for (const [coin, byT] of Object.entries(wicks)) {
+      for (const r of data.candles[coin]) if (byT[r.t]) Object.assign(r, byT[r.t]);
+    }
+    return data;
+  };
+
+  test("audit: a withheld call scores the worst point on the price path (a wick), not just the close", () => {
+    // BTC opens and closes at 100 every hour, but one candle mid-call wicks down to 80.
+    const prices = priceBook(wicked(["BTC"], { BTC: { [T0 + 2 * HOUR]: { l: 80 } } }));
+    const listed = { ...anyCoinBook([lock(0, T0, 4 * HOUR, null)]), anyCoin: false, coins: ["btc"] };
+    const asOf = T0 + 4 * HOUR + GRACE + 1;
+    const [w] = priceLocks(listed, deriveLocks(listed, asOf, NAMES), prices, NAMES);
+    assert.equal(w.status, "withheld");
+    assert.deepEqual(w.worst, { coin: "BTC", side: 1, horizon: 4 * HOUR }, "a long, caught by the wick down");
+    assert.ok(Math.abs(w.ret - netOf(1, -0.2).net) < 1e-9, `scored at the 20% wick, not the flat close (got ${w.ret})`);
+    // A wick at or after the exit candle opens is outside the call.
+    const late = priceBook(wicked(["BTC"], { BTC: { [T0 + 4 * HOUR]: { l: 50 } } }));
+    assert.equal(worstOver(late, ["BTC"], T0, 4 * HOUR).move, 0);
+    // The worse side wins: a wick up to 130 beats a wick down to 90, so the worst is a short.
+    const both = priceBook(wicked(["BTC"], { BTC: { [T0 + HOUR]: { l: 90 }, [T0 + 3 * HOUR]: { h: 130 } } }));
+    const ws = worstOver(both, ["BTC"], T0, 4 * HOUR);
+    assert.equal(ws.side, -1);
+    assert.ok(Math.abs(ws.move - 0.3) < 1e-9);
+    assert.ok(Math.abs(ws.net - netOf(-1, 0.3).net) < 1e-9);
+  });
+
+  test("audit: an any-coin book's withheld call is also scored against the coins the book itself revealed", async () => {
+    // OBSCURE is outside the reference set. The book reveals a winning long on it, and hides a call
+    // made while it fell 50%: that hidden call must score at least as badly as the fall.
+    const names = [...NAMES, "OBSCURE"];
+    assert.ok(!REFERENCE_SET.includes("OBSCURE"));
+    const price = (c, t) => (c === "OBSCURE" ? (t >= T0 + 12 * HOUR && t < T0 + 20 * HOUR ? 50 : t >= T0 + 2 * HOUR && t < T0 + 12 * HOUR ? 120 : 100) : 100);
+    const b = anyCoinBook([
+      lock(0, T0, 4 * HOUR, rev("obscure", 1, 4 * HOUR, T0 + 5 * HOUR)),
+      lock(1, T0 + 10 * HOUR, 4 * HOUR, null),
+    ]);
+    const asOf = T0 + 14 * HOUR + GRACE + 1;
+    const prices = priceBook(synthetic(["OBSCURE", ...REFERENCE_SET], T0 - DAY, T0 + 40 * DAY, price));
+    const [r, w] = priceLocks(b, deriveLocks(b, asOf, names), prices, names);
+    assert.equal(r.status, "revealed");
+    assert.ok(r.ret > 0);
+    assert.equal(w.status, "withheld");
+    assert.deepEqual(w.worst, { coin: "OBSCURE", side: 1, horizon: 4 * HOUR });
+    assert.ok(Math.abs(w.ret - netOf(1, 50 / 120 - 1).net) < 1e-9);
+    // End to end, the revealed coin's prices are there to score it.
+    const source = { perpNames: async () => names, load: async (coins, from, to) => synthetic(coins, from, to, price) };
+    const ev = await evaluateCaller({ chain: { chainId: 1, address: "0x01" }, book: b, source, asOf, reportUri: () => "x" });
+    const hidden = ev.scored.periods.find((c) => c.callId === 1);
+    assert.equal(hidden.worst.coin, "OBSCURE");
+    assert.ok(Math.abs(hidden.ret - netOf(1, 50 / 120 - 1).net) < 1e-9);
+  });
+
   test("H3: coins are matched to Hyperliquid before any fetch; unknown ones are never fetched", async () => {
     const asked = [];
     const source = {
@@ -601,4 +656,16 @@ test("HTTP: the relay routes are 503 without a key, and work with one; unconfigu
   } finally {
     await on.close();
   }
+});
+
+test("a caller report keeps Solana's chain id and base58 program id as they are; Arc's is unchanged", async () => {
+  const { buildCallerReport } = await import("../app/verify/callbook-callers.js");
+  const scored = { periods: [], metrics: {}, score: { value: 50 }, skill: null, curve: [] };
+  const book = { id: 1, owner: "Owner", anyCoin: true, coins: [], locks: new Map() };
+  const sol = buildCallerReport({ chainId: "solana-devnet", callbook: "BderjFgzJGQ6NsqNfbVmtHDhzjHP6B3ijPMGCrmNffqw", book, asOf: 1, scored });
+  assert.equal(sol.report.chainId, "solana-devnet");
+  assert.equal(sol.report.callbook, "BderjFgzJGQ6NsqNfbVmtHDhzjHP6B3ijPMGCrmNffqw");
+  const arc = buildCallerReport({ chainId: 5042, callbook: "0xABCDEF0000000000000000000000000000000001", book, asOf: 1, scored });
+  assert.equal(arc.report.chainId, 5042);
+  assert.equal(arc.report.callbook, "0xabcdef0000000000000000000000000000000001");
 });

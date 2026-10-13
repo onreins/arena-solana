@@ -74,7 +74,7 @@
       '<circle class="v" cx="50" cy="50" r="' + r + '" stroke-dasharray="' + (s / 100 * c).toFixed(2) + " " + c.toFixed(2) + '"/></svg>' +
       '<div class="cbk-score"><b>' + esc(Math.round(s)) + "</b><span>/100</span></div></div>" +
       "<figcaption><b>" + (s === 0 && short ? "Score 0 · " + esc(short) : "Score, out of 100") + "</b><span>" +
-      (v ? "Published on Arc (ERC-8004) <span class=\"nb\">" + esc(C.ago(v.at)) + "</span>" : "Updated after every reveal") + "</span></figcaption></div>" +
+      (v ? C.publishedOn() + " <span class=\"nb\">" + esc(C.ago(v.at)) + "</span>" : "Updated after every reveal") + "</span></figcaption></div>" +
       C.scoreParts(x, "the coin", why) + C.skillPanel(x.skill);
   }
 
@@ -239,7 +239,7 @@
     $("report").innerHTML =
       row("Report hash", r.hash ? '<span class="cb-hash">' + esc(C.shortHash(r.hash, 12, 8)) + "</span>" + C.copyButton(r.hash, "Copy the report hash") : '<span class="muted">—</span>') +
       (r.uri ? row("Report URI", C.isHttp(r.uri) ? '<a class="cb-hash" href="' + esc(r.uri) + '" target="_blank" rel="noopener">' + esc(r.uri) + U.icon("ext") + "</a>" : '<span class="cb-hash cbk-uri">' + esc(r.uri) + "</span>") : "") +
-      (v ? row("Published on Arc (ERC-8004)", '<span class="cb-hash">' + esc(C.shortHash(v.responseHash, 12, 8)) + "</span><small>score " + esc(v.score) + " · " + esc(C.stamp(v.at)) + "</small>") : "") +
+      (v ? row(C.publishedOn(), '<span class="cb-hash">' + esc(C.shortHash(v.responseHash, 12, 8)) + "</span><small>score " + esc(v.score) + " · " + esc(C.stamp(v.at)) + "</small>") : "") +
       row("Prices", "Hyperliquid candle opens: 5-minute candles for predictions held under an hour, hourly for longer<small>entry at the first open at or after the entry time, exit at the first open after it’s been held its full time, less fees and funding</small>") +
       (r.reference ? row("Reference coins", esc(Array.isArray(r.reference) ? r.reference.join(", ") : String(r.reference)) + "<small>for a prediction that can’t be priced</small>") : "") +
       row("Rules", '<span class="mono">' + esc(r.version || "arena-v1") + "</span><small>score: 100 × (0.6·profit + 0.4·beats the coin) × (0.6 + 0.4·drops)</small>");

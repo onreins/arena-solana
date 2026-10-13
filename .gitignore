@@ -37,3 +37,21 @@ data/callbook-prices/
 packages/reins-mcp/dist/
 packages/reins-mcp/NOTICE
 packages/reins-mcp/*.tgz
+
+# Solana: build output and keypairs. Keypairs are secrets: never commit them.
+target/
+test-ledger/
+.anchor/
+*-keypair.json
+id.json
+solana/.keys/
+
+# the copier is its own package
+copier/node_modules/
+copier/data/
+
+# local screenshots
+.screens/
+
+# exported service secrets (scripts/solana-export-keys.mjs)
+.secrets/

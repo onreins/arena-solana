@@ -12,6 +12,7 @@ everything back at any time.
 - **App:** [app.reins.one](https://app.reins.one), Arc testnet
 - **Site:** [reins.one](https://reins.one), in the [`reins`](https://github.com/onreins/reins) repo
 - **Plain-language walkthrough:** [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md)
+- **On Solana:** Arena plus copy-trading, devnet: [Reins on Solana](#reins-on-solana)
 
 This answers item 12 of Arc's
 [Request for Builders](https://www.arc.io/blog/the-unfinished-business-of-finance-machine-commerce-and-global-money),
@@ -141,6 +142,137 @@ agent; card details and identity checks stay with Circle. Our server mints
 30-minute sessions with a key the browser never sees (`app/onramp.js`), and the
 page confirms arrival by reading the wallet's balance on-chain rather than
 trusting the widget's events. It runs in Circle's sandbox until a key is set.
+
+---
+
+## Reins on Solana
+
+On Solana, Reins is about agents and copy-trading. Mandates stay on Arc.
+Three things: **Arena** gives an AI trading agent a record nobody can fake,
+**copy-trading** places a proven agent's trades on your own account, and the
+**revenue** is built into the programs. A proven record, then one click to
+copy. It runs on Solana devnet, alongside the Arc version, chosen by config.
+
+### Arena: a record that can't be faked
+
+Every prediction is recorded on Solana before the market moves and scored
+against real prices. Nothing can be deleted, and anyone can check the math.
+
+- The agent locks a hash of its prediction. The entry time comes from
+  Solana's on-chain clock, so nothing can be backdated.
+- After its horizon, the agent reveals it within a 7-day window, once. The
+  program checks the hash, and the reveal event carries the salt, so any
+  scorer can read it.
+- A prediction that is never revealed counts as its worst result along the
+  real price path. Hiding a loser doesn't help.
+- A validator writes one Score account per record, at
+  `["score", validator, book]`. Any program can read it: `score-gate` is an
+  example that admits an agent only if its score is at least N, through the
+  `arena-score` crate. A vault could run the same check.
+- A relayer pays the fees, so an agent needs no SOL. It co-signs only
+  transactions that contain nothing but Arena instructions.
+
+### Copy-trading, on Velocity (formerly Drift)
+
+Copying runs on [Velocity Exchange](https://github.com/velocity-exchange/velocity-v1),
+Drift's successor. Drift's program was paused in April 2026; Velocity is its
+fork, with a new program id and SDK. On devnet it lists SOL, BTC and ETH
+perps, with dUSDT as collateral, so predictions on other coins are recorded
+but not copied.
+
+When a followed agent records a prediction, the copier (`copier/`) places the
+same trade on every follower's account within seconds:
+
+- **Only what was committed.** At lock time the agent's SDK seals the full
+  prediction to the copier. The copier checks it against the hash on-chain
+  before it trades anything.
+- **Only for paid follows.** It copies to Follow accounts that are active and
+  paid up, and skips the rest.
+- **The follower's limits first:** a maximum size per trade, a maximum number
+  of open copied positions, and a daily loss cap that pauses copying.
+- **Stop and target as real orders.** The prediction's stop-loss and
+  take-profit go in as reduce-only trigger orders, in the same transaction as
+  the entry.
+- **Each order at most once.** The signed transaction is written to a journal
+  before it's sent, so a restart never sends a duplicate.
+- **Latency is logged** per order, from the lock to confirmation. On
+  devnet, a copied order lands about 3 s after the agent's lock, and the
+  entry fills through Velocity's auction within seconds more (7.9 s lock to
+  filled in the demo). On a local validator
+  (`scripts/solana-local-e2e.mjs`), a gasless lock confirms in about 0.4 s
+  with the agent holding no SOL, and the copier has verified it and sized the
+  follower's orders before the lock call returns.
+
+In the app (Solana mode), an agent's page has a **Copy** button: connect a
+wallet, create a copy subaccount on Velocity with Reins' copier as its
+delegate, choose size and limits, and subscribe. The **Following** page lists
+what you copy, what you've paid, and stops copying in two steps, the second
+of which removes the delegate.
+
+### Follower money stays in the follower's account
+
+A follower keeps their own Velocity account and opens a dedicated copy
+subaccount. They set Reins' copier as its **delegate**: an authority that can
+place and cancel orders but **cannot withdraw**, enforced by Velocity's
+program. They can revoke it at any time from Velocity itself, without us.
+Reins never holds anyone's money. A delegate can still trade an account into
+a loss, which is why the follower sets the limits.
+
+### Revenue
+
+All three are in the `follow` program and the copier:
+
+- **Subscriptions.** An agent's owner sets a monthly price in USDC. Each
+  payment is split between the agent's owner and the Reins treasury in the
+  same transaction, at a fixed rate.
+- **Performance fee.** A share of a follower's copied profit, only above
+  their previous peak (a high-water mark). The profit is read off-chain from
+  the copy subaccount's all-time PnL; the program applies the mark, splits the
+  fee between the agent's owner and Reins, and records every settlement. It's
+  paid from an allowance the follower grants to their own Follow account, so
+  it can never exceed what they approved, and they can revoke it.
+- **A fee on copied orders.** Velocity builder codes, at most 10 bps per
+  order. Whether they're enabled on devnet is unconfirmed; without them,
+  orders go out with no fee.
+
+Example prices, take rates and a projection, with every assumption labelled:
+[docs/colosseum/BUSINESS-MODEL.md](docs/colosseum/BUSINESS-MODEL.md).
+
+**Charging subscription and performance fees for trade signals may be
+regulated in some countries.** That must be checked before anything here
+runs on mainnet.
+
+### Devnet programs
+
+Anchor 0.31. **Deployed to Solana devnet** on 2026-10-12. The live
+accounts, transactions and measured latencies are in
+[docs/solana/DEVNET.md](docs/solana/DEVNET.md).
+
+| program | id | what it does |
+|---|---|---|
+| `arena` | `BderjFgzJGQ6NsqNfbVmtHDhzjHP6B3ijPMGCrmNffqw` | predictions, reveals, profiles, Score accounts |
+| `follow` | `A5Zpb539Yazb3kypH7tvZBVWuGCdCwXU6sdVU8RkgJHC` | plans, subscriptions, performance fees |
+| `score-gate` | `4L1DyajAKPeY5rMXt3cMnk93qXJo3tV5XetmTi8jskcK` | example: admit an agent only above a score |
+
+The programs are tested with Rust tests on litesvm (`npm run test:programs`)
+and the JS side with `npm run test:solana` and `copier/`'s `npm test`.
+
+### Connect an agent
+
+```bash
+claude mcp add reins -e ARENA_NETWORK=solana-devnet -- npx -y @onreins/mcp
+```
+
+The same tools as on Arc (`arena_lock`, `arena_reveal_due`, `arena_status`,
+`arena_verify`, `arena_profile` and the rest), on Solana. On first start the
+server makes the agent a keypair in `~/.arena/solana-keypair.json` (`0600`)
+and never prints it. From this repo: `ARENA_NETWORK=solana-devnet npm run
+callbook:mcp`. [TODO: confirm a published `@onreins/mcp` includes the Solana
+backend; until then, use the from-repo line.] All settings:
+[callbook/mcp-server.js](callbook/mcp-server.js).
+
+Scores describe past predictions, not future results. Nothing in Reins is
+investment advice.
 
 ---
 
